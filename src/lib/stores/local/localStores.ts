@@ -219,6 +219,22 @@ export class LocalUsageStore implements UsageStore {
   }
 }
 
+/** Dev mode has no real users — People management needs the Supabase backend. */
+export class LocalPeopleStore {
+  async list(): Promise<never[]> {
+    return [];
+  }
+  async invite(): Promise<void> {
+    throw new Error("Inviting people requires the Supabase backend with auth enabled.");
+  }
+  async setRole(): Promise<void> {
+    throw new Error("Requires the Supabase backend.");
+  }
+  async remove(): Promise<void> {
+    throw new Error("Requires the Supabase backend.");
+  }
+}
+
 /** Dev mode has no Edge Functions, so Figma import is unavailable — the
  * Template Builder detects this and shows only the manual PNG path. */
 export class LocalDesignImportProvider implements DesignImportProvider {

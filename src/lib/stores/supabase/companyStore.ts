@@ -17,7 +17,12 @@ export class SupabaseCompanyStore implements CompanyStore {
   }
 
   async create(input: { name: string; slug: string }): Promise<Company> {
-    const { data, error } = await supabase().from("companies").insert(input).select().single();
+    // Under real RLS, companies are only creatable via this security-definer
+    // RPC, which also makes the caller an admin member atomically.
+    const { data, error } = await supabase().rpc("create_company_with_admin", {
+      p_name: input.name,
+      p_slug: input.slug,
+    });
     if (error) throw error;
     return toCompany(data as CompanyRow);
   }

@@ -58,6 +58,22 @@ export interface LocationStore {
   remove(id: string): Promise<void>;
 }
 
+export interface Member {
+  userId: string;
+  email: string;
+  name?: string;
+  role: import("../types").Role;
+}
+
+/** Team management under real auth (invites go through the invite-member
+ * Edge Function so the service role never reaches the client). */
+export interface PeopleStore {
+  list(companyId: string): Promise<Member[]>;
+  invite(companyId: string, email: string, role: import("../types").Role): Promise<void>;
+  setRole(companyId: string, userId: string, role: import("../types").Role): Promise<void>;
+  remove(companyId: string, userId: string): Promise<void>;
+}
+
 export interface UsageStore {
   /** Fire-and-forget from SchemaRenderer; failures must never break the UI. */
   record(companyId: string, templateId: string, action: UsageAction, userId?: string): Promise<void>;
@@ -91,6 +107,7 @@ export interface Stores {
   brandAssets: BrandAssetStore;
   locations: LocationStore;
   usage: UsageStore;
+  people: PeopleStore;
   designImport: DesignImportProvider;
   /** "supabase" or "local" — surfaced in the dev switcher so it's obvious
    * which backend is active. */

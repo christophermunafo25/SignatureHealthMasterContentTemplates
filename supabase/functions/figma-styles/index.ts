@@ -3,6 +3,7 @@ import {
   getFigmaToken,
   handleOptions,
   json,
+  requireRole,
   serviceClient,
 } from "../_shared/figma.ts";
 
@@ -86,6 +87,9 @@ Deno.serve(async (req) => {
   try {
     const { companyId, url } = (await req.json()) as { companyId?: string; url?: string };
     if (!companyId || !url) return json({ error: "companyId and url required" }, 400);
+
+    const caller = await requireRole(req, companyId, "admin");
+    if ("error" in caller) return json({ error: caller.error }, caller.status);
     const fileKey = url.match(/figma\.com\/(?:file|design)\/([a-zA-Z0-9]+)/)?.[1];
     if (!fileKey) return json({ error: "Could not read a file key from that link." }, 400);
 

@@ -59,28 +59,34 @@ Every tenant-owned table carries `company_id` → `companies`. See
 
 The database ships **empty of tenant data**. Onboarding creates everything.
 
-## Multi-tenancy & RLS
+## Auth & multi-tenancy (LIVE as of migration 0006)
 
-`supabase/migrations/0002_rls.sql` enables RLS on every table and ships two
-policy sets:
+Real Supabase Auth is enabled. `0006_real_auth.sql` dropped the dev
+pass-through policies and activated production RLS:
 
-- **Dev (active)**: permissive `dev_all_*` policies, because v1 stubs auth
-  with a client-side tenant/role switcher.
-- **Real (commented, `TODO(auth)`)**: company-scoped via `memberships` +
-  `auth.uid()`. Members read published templates + brand data of their own
-  companies; admins write; usage events are insert-only for members and
-  readable by admins.
+- **Identity**: email/password via Supabase Auth. `auth.users` inserts mirror
+  into `public.users` via the `handle_new_user` trigger. `AuthPage` handles
+  sign in / sign up / forgot / recovery.
+- **Provider selection**: `SupabaseAuthProvider` (session → memberships →
+  company + role) when the Supabase backend is active; `DevAuthProvider`
+  (tenant/role switcher) on the localStorage dev backend. Both implement the
+  same `AuthState`, so components are identical.
+- **Company creation**: only via the security-definer RPC
+  `create_company_with_admin` — company + admin membership atomically.
+- **Invites**: the `invite-member` Edge Function (admin-verified from the
+  caller's JWT) sends Supabase's invite email and creates the membership.
+  People page: invite, change role, remove.
+- **RLS**: members read their companies' brand data + published templates;
+  admins write; usage events are insert-only for members, readable by admins;
+  Storage writes are tenant-scoped by the `{company_id}/` path prefix;
+  `integration_connections` has no client policies at all.
+- **Edge Functions**: every function calls `requireRole(req, companyId, …)` —
+  callers must be a member (status) or admin (connect/import/styles/invite)
+  of the company they name.
 
-### Enabling real RLS
-
-1. Enable Supabase Auth; map `users.id` to `auth.users.id` (create users on
-   signup via trigger or edge function; create `memberships` on invite).
-2. In `0002_rls.sql`: delete every `dev_all_*` policy, uncomment every
-   `TODO(auth)` block (also in `0003_storage.sql` for Storage).
-3. Replace `DevAuthProvider` internals in `src/lib/auth/AuthContext.tsx` with
-   Supabase Auth session handling. Components consume `AuthState` only, so no
-   component changes.
-4. Rotate the anon key.
+Dashboard checklist (Authentication → URL Configuration): set the Site URL to
+the production domain and add `http://localhost:5199` + the Vercel URL to
+additional redirect URLs so confirmation/invite/reset links land correctly.
 
 ## Theming
 

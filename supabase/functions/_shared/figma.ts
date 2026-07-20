@@ -28,6 +28,37 @@ export function serviceClient(): SupabaseClient {
   );
 }
 
+/** Authenticate the caller from their JWT and require a membership (or
+ * admin membership) in the company. Returns the caller's user id, or an
+ * error payload. Used by every function so nobody can act on a company
+ * they don't belong to. */
+export async function requireRole(
+  req: Request,
+  companyId: string,
+  minRole: "member" | "admin",
+): Promise<{ userId: string } | { error: string; status: number }> {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const userClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } },
+  );
+  const { data: userData, error: userErr } = await userClient.auth.getUser();
+  if (userErr || !userData.user) return { error: "Not signed in.", status: 401 };
+  const { data: membership } = await serviceClient()
+    .from("memberships")
+    .select("role")
+    .eq("user_id", userData.user.id)
+    .eq("company_id", companyId)
+    .maybeSingle();
+  const role = (membership as { role: string } | null)?.role;
+  if (!role) return { error: "You are not a member of this company.", status: 403 };
+  if (minRole === "admin" && role !== "admin") {
+    return { error: "Admin access required.", status: 403 };
+  }
+  return { userId: userData.user.id };
+}
+
 export async function getFigmaToken(db: SupabaseClient, companyId: string): Promise<string | null> {
   const { data } = await db
     .from("integration_connections")

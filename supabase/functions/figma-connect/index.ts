@@ -1,4 +1,4 @@
-import { figmaGet, handleOptions, json, serviceClient } from "../_shared/figma.ts";
+import { figmaGet, handleOptions, json, requireRole, serviceClient } from "../_shared/figma.ts";
 
 interface ConnectBody {
   companyId?: string;
@@ -18,6 +18,9 @@ Deno.serve(async (req) => {
   try {
     const { companyId, kind, value } = (await req.json()) as ConnectBody;
     if (!companyId || !kind || !value) return json({ error: "companyId, kind, value required" }, 400);
+
+    const caller = await requireRole(req, companyId, "admin");
+    if ("error" in caller) return json({ error: caller.error }, caller.status);
 
     let accessToken = value;
     let refreshToken: string | null = null;

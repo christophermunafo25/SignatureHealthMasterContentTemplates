@@ -3,29 +3,34 @@ import type { Company, Role } from "../types";
 import { stores } from "../stores";
 
 /**
- * Auth boundary. v1 backs this with a dev tenant/role switcher; real Supabase
- * Auth later replaces DevAuthProvider's internals (session → membership →
- * company/role) with NO component changes — consumers only see AuthState.
- * TODO(auth): swap the provider internals when enabling Supabase Auth.
+ * Auth boundary. Two providers implement the same AuthState:
+ *  - SupabaseAuthProvider (real): Supabase Auth session → memberships →
+ *    company + role. Used whenever the Supabase backend is active.
+ *  - DevAuthProvider (stub): tenant/role switcher for the zero-setup
+ *    localStorage backend.
+ * Components only ever consume AuthState.
  */
 export interface AuthState {
   loading: boolean;
-  /** null after loading completes → no company exists → route to onboarding. */
+  /** null after loading completes → no company for this identity → onboarding. */
   company: Company | null;
   role: Role;
-  user: { id: string; email: string } | null; // null while auth is stubbed
-  companies: Company[]; // dev switcher list
+  user: { id: string; email: string } | null; // null in dev mode / signed out
+  companies: Company[]; // dev: all companies; real: the user's companies
   isDevAuth: boolean;
   backend: "supabase" | "local";
   setCompany(companyId: string): Promise<void>;
+  /** Dev-only role toggle; no-op under real auth (role comes from membership). */
   setRole(role: Role): void;
-  /** Re-reads companies (e.g. after onboarding creates one). */
+  /** Re-reads companies/memberships (e.g. after onboarding creates one). */
   refresh(): Promise<void>;
+  /** Real auth only. */
+  signOut?(): Promise<void>;
 }
 
-const AuthContext = createContext<AuthState | null>(null);
+export const AuthContext = createContext<AuthState | null>(null);
 
-const LS_COMPANY = "brand-portal-dev-company";
+export const LS_COMPANY = "brand-portal-company";
 const LS_ROLE = "brand-portal-dev-role";
 
 export function DevAuthProvider({ children }: { children: React.ReactNode }) {
@@ -52,14 +57,11 @@ export function DevAuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false));
   }, [load]);
 
-  const setCompany = useCallback(
-    async (companyId: string) => {
-      const c = (await stores.companies.get(companyId)) ?? null;
-      setCompanyState(c);
-      if (c) localStorage.setItem(LS_COMPANY, c.id);
-    },
-    [],
-  );
+  const setCompany = useCallback(async (companyId: string) => {
+    const c = (await stores.companies.get(companyId)) ?? null;
+    setCompanyState(c);
+    if (c) localStorage.setItem(LS_COMPANY, c.id);
+  }, []);
 
   const setRole = useCallback((r: Role) => {
     setRoleState(r);
@@ -87,6 +89,6 @@ export function DevAuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth(): AuthState {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside DevAuthProvider");
+  if (!ctx) throw new Error("useAuth must be used inside an auth provider");
   return ctx;
 }

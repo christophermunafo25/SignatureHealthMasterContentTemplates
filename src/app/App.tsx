@@ -1,5 +1,9 @@
 import React from "react";
 import { DevAuthProvider, useAuth } from "@/lib/auth/AuthContext";
+import { SupabaseAuthProvider } from "@/lib/auth/SupabaseAuthProvider";
+import { stores } from "@/lib/stores";
+import { AuthPage } from "./components/auth/AuthPage";
+import { PeopleAdmin } from "./components/admin/PeopleAdmin";
 import { BrandProvider } from "@/lib/brand/BrandContext";
 import { RouterProvider, useRouter } from "./router";
 import { AppShell } from "./components/AppShell";
@@ -13,7 +17,7 @@ import { LocationsAdmin } from "./components/admin/LocationsAdmin";
 import { Dashboard } from "./components/admin/Dashboard";
 
 function Screen() {
-  const { loading, company, role } = useAuth();
+  const { loading, company, role, user, backend } = useAuth();
   const { route } = useRouter();
 
   if (loading) {
@@ -24,7 +28,12 @@ function Screen() {
     );
   }
 
-  // First-run: no company exists (or user chose "Create company") → onboarding.
+  // Real auth: no session → sign in / sign up.
+  if (backend === "supabase" && !user) {
+    return <AuthPage />;
+  }
+
+  // No company for this identity (or "Create company") → onboarding.
   if (!company || route.name === "onboarding") {
     return <OnboardingWizard firstRun={!company} />;
   }
@@ -41,18 +50,20 @@ function Screen() {
       {route.name === "brandStudio" && adminOnly(<BrandStudio />)}
       {route.name === "locations" && adminOnly(<LocationsAdmin />)}
       {route.name === "dashboard" && adminOnly(<Dashboard />)}
+      {route.name === "people" && adminOnly(<PeopleAdmin />)}
     </AppShell>
   );
 }
 
 export default function App() {
+  const AuthProvider = stores.backend === "supabase" ? SupabaseAuthProvider : DevAuthProvider;
   return (
-    <DevAuthProvider>
+    <AuthProvider>
       <BrandProvider>
         <RouterProvider>
           <Screen />
         </RouterProvider>
       </BrandProvider>
-    </DevAuthProvider>
+    </AuthProvider>
   );
 }

@@ -1,0 +1,446 @@
+import React, { useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight, Check, Plus, Trash2, Upload } from "lucide-react";
+import type { BrandColor, FontRef } from "@/lib/types";
+import { stores } from "@/lib/stores";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { useBrand } from "@/lib/brand/BrandContext";
+import { useRouter } from "../../router";
+import { DEFAULT_PALETTE } from "@/lib/theme";
+import { GOOGLE_FONTS, loadGoogleFonts } from "@/lib/render/fonts";
+import { FONT_ACCEPT, validateFontFile } from "@/lib/brand/fontUpload";
+
+/** First-run onboarding: walks a user from an empty database to a themed,
+ * ready-to-use company workspace. Also reachable any time via "Create
+ * company" — every new client starts from this identical blank slate.
+ * Everything set here is editable later in Brand Studio. */
+
+const STEPS = ["Company", "Colors", "Fonts", "Logo", "Locations"] as const;
+
+interface PendingFont {
+  file: File;
+  family: string;
+  use: "heading" | "body" | "none";
+}
+
+export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
+  const { setCompany, setRole, refresh } = useAuth();
+  const { refresh: refreshBrand } = useBrand();
+  const { navigate } = useRouter();
+
+  const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [companyName, setCompanyName] = useState("");
+  const [colors, setColors] = useState<BrandColor[]>(DEFAULT_PALETTE);
+  const [headingGoogle, setHeadingGoogle] = useState("Montserrat");
+  const [bodyGoogle, setBodyGoogle] = useState("Inter");
+  const [pendingFonts, setPendingFonts] = useState<PendingFont[]>([]);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [locationNames, setLocationNames] = useState<string[]>([]);
+  const [newLocation, setNewLocation] = useState("");
+
+  const slug = useMemo(
+    () => companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+    [companyName],
+  );
+
+  const canNext = step === 0 ? companyName.trim().length > 1 : true;
+
+  const finish = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const company = await stores.companies.create({ name: companyName.trim(), slug });
+
+      // Uploaded custom fonts become brand assets; chosen ones drive the kit.
+      let headingFont: FontRef = { source: "google", family: headingGoogle };
+      let bodyFont: FontRef = { source: "google", family: bodyGoogle };
+      for (const pf of pendingFonts) {
+        const check = validateFontFile(pf.file);
+        if (!check.ok) continue; // validated at add time; belt-and-braces
+        const asset = await stores.brandAssets.upload(company.id, "font", pf.file, {
+          ...check.metadata,
+          family: pf.family,
+        });
+        const ref: FontRef = { source: "custom", family: pf.family, assetId: asset.id };
+        if (pf.use === "heading") headingFont = ref;
+        if (pf.use === "body") bodyFont = ref;
+      }
+      loadGoogleFonts([headingFont, bodyFont].filter((f) => f.source === "google").map((f) => f.family));
+
+      let primaryLogoAssetId: string | undefined;
+      if (logoFile) {
+        const asset = await stores.brandAssets.upload(company.id, "logo", logoFile);
+        primaryLogoAssetId = asset.id;
+      }
+
+      await stores.brandKits.upsert(company.id, { colors, headingFont, bodyFont, primaryLogoAssetId });
+
+      for (const name of locationNames) {
+        await stores.locations.create(company.id, { name });
+      }
+
+      // TODO(auth): real auth creates the admin membership server-side; the
+      // dev switcher simply lands the creator in the Admin role.
+      await refresh();
+      await setCompany(company.id);
+      setRole("admin");
+      await refreshBrand();
+      navigate({ name: "adminTemplates" });
+    } catch (e) {
+      console.error("Onboarding failed", e);
+      setError(e instanceof Error ? e.message : "Something went wrong — please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--background)" }}>
+      <div className="w-full max-w-2xl bg-white rounded-3xl border shadow-xl overflow-hidden" style={{ borderColor: "var(--border)" }}>
+        {/* Header + progress */}
+        <div className="px-8 pt-8 pb-6" style={{ background: "var(--primary)" }}>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] mb-1" style={{ color: "var(--accent)" }}>
+            {firstRun ? "Welcome" : "New company"}
+          </p>
+          <h1 className="text-white font-extrabold text-2xl uppercase leading-tight">
+            {firstRun ? "Set up your brand portal" : "Create a company"}
+          </h1>
+          <div className="flex gap-1.5 mt-5">
+            {STEPS.map((label, i) => (
+              <div key={label} className="flex-1">
+                <div
+                  className="h-1 rounded-full"
+                  style={{ background: i <= step ? "var(--accent)" : "rgba(255,255,255,0.25)" }}
+                />
+                <p className="text-[9px] font-bold uppercase tracking-wider mt-1.5 text-white/70">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-8 py-7 space-y-5 min-h-[320px]">
+          {step === 0 && (
+            <StepCompany name={companyName} slug={slug} onChange={setCompanyName} />
+          )}
+          {step === 1 && <StepColors colors={colors} onChange={setColors} />}
+          {step === 2 && (
+            <StepFonts
+              headingGoogle={headingGoogle}
+              bodyGoogle={bodyGoogle}
+              setHeadingGoogle={setHeadingGoogle}
+              setBodyGoogle={setBodyGoogle}
+              pendingFonts={pendingFonts}
+              setPendingFonts={setPendingFonts}
+              onError={setError}
+            />
+          )}
+          {step === 3 && (
+            <StepLogo
+              preview={logoPreview}
+              onPick={(file) => {
+                setLogoFile(file);
+                const reader = new FileReader();
+                reader.onload = () => setLogoPreview(reader.result as string);
+                reader.readAsDataURL(file);
+              }}
+            />
+          )}
+          {step === 4 && (
+            <StepLocations
+              names={locationNames}
+              newName={newLocation}
+              setNewName={setNewLocation}
+              onAdd={() => {
+                if (newLocation.trim()) {
+                  setLocationNames((prev) => [...prev, newLocation.trim()]);
+                  setNewLocation("");
+                }
+              }}
+              onRemove={(i) => setLocationNames((prev) => prev.filter((_, j) => j !== i))}
+            />
+          )}
+          {error && (
+            <p className="text-sm rounded-xl px-4 py-3" style={{ background: "#FBE9E9", color: "var(--destructive)" }}>
+              {error}
+            </p>
+          )}
+        </div>
+
+        {/* Footer nav */}
+        <div className="px-8 pb-8 flex items-center justify-between">
+          <button
+            onClick={() => (step === 0 ? navigate({ name: "portal" }) : setStep(step - 1))}
+            disabled={firstRun && step === 0}
+            className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider disabled:opacity-0"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            {step === 0 ? "Cancel" : "Back"}
+          </button>
+          {step < STEPS.length - 1 ? (
+            <button
+              onClick={() => setStep(step + 1)}
+              disabled={!canNext}
+              className="flex items-center gap-2 font-bold uppercase text-xs tracking-[0.18em] px-6 py-3.5 rounded-xl shadow-md disabled:opacity-50"
+              style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+            >
+              Continue
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={() => void finish()}
+              disabled={saving}
+              className="flex items-center gap-2 font-bold uppercase text-xs tracking-[0.18em] px-6 py-3.5 rounded-xl shadow-md disabled:opacity-60"
+              style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+            >
+              <Check className="w-4 h-4" />
+              {saving ? "Creating…" : "Create workspace"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StepCompany({ name, slug, onChange }: { name: string; slug: string; onChange(v: string): void }) {
+  return (
+    <div className="space-y-3">
+      <h2 className="font-extrabold uppercase text-base" style={{ color: "var(--foreground)" }}>Company name</h2>
+      <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+        The tenant everything belongs to — templates, brand kit, locations, and usage stay private to it.
+      </p>
+      <input
+        autoFocus
+        type="text"
+        value={name}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="e.g. Acme Senior Living"
+        className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+        style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+      />
+      {slug && (
+        <p className="text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+          Workspace id: <span className="font-mono">{slug}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function StepColors({ colors, onChange }: { colors: BrandColor[]; onChange(c: BrandColor[]): void }) {
+  const set = (i: number, patch: Partial<BrandColor>) =>
+    onChange(colors.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  return (
+    <div className="space-y-3">
+      <h2 className="font-extrabold uppercase text-base" style={{ color: "var(--foreground)" }}>Brand colors</h2>
+      <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+        Sensible defaults — override them with your palette. Template text colors are always picked from these, keeping every graphic on-brand.
+      </p>
+      <div className="space-y-2">
+        {colors.map((c, i) => (
+          <div key={c.key} className="flex items-center gap-3">
+            <input
+              type="color"
+              value={c.hex}
+              onChange={(e) => set(i, { hex: e.target.value })}
+              className="w-10 h-10 rounded-lg border cursor-pointer"
+              style={{ borderColor: "var(--border)" }}
+              aria-label={`${c.name} color`}
+            />
+            <span className="text-sm font-semibold flex-1" style={{ color: "var(--foreground)" }}>{c.name}</span>
+            <span className="font-mono text-xs" style={{ color: "var(--muted-foreground)" }}>{c.hex}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FontSelect({ label, value, onChange }: { label: string; value: string; onChange(v: string): void }) {
+  return (
+    <label className="block">
+      <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>{label}</span>
+      <select
+        value={value}
+        onChange={(e) => {
+          loadGoogleFonts([e.target.value]);
+          onChange(e.target.value);
+        }}
+        className="mt-1 w-full rounded-xl border px-3 py-2.5 text-sm"
+        style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+      >
+        {GOOGLE_FONTS.map((f) => (
+          <option key={f} value={f}>{f}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+interface StepFontsProps {
+  headingGoogle: string;
+  bodyGoogle: string;
+  setHeadingGoogle(v: string): void;
+  setBodyGoogle(v: string): void;
+  pendingFonts: PendingFont[];
+  setPendingFonts: React.Dispatch<React.SetStateAction<PendingFont[]>>;
+  onError(e: string | null): void;
+}
+
+function StepFonts(props: StepFontsProps) {
+  return (
+    <div className="space-y-4">
+      <h2 className="font-extrabold uppercase text-base" style={{ color: "var(--foreground)" }}>Fonts</h2>
+      <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+        Pick from Google Fonts, or upload your own brand font files (.woff2, .woff, .ttf, .otf) and assign them.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <FontSelect label="Heading font" value={props.headingGoogle} onChange={props.setHeadingGoogle} />
+        <FontSelect label="Body font" value={props.bodyGoogle} onChange={props.setBodyGoogle} />
+      </div>
+      <div>
+        <label
+          className="flex items-center justify-center gap-2 border-2 border-dashed rounded-xl py-3.5 cursor-pointer text-[11px] font-bold uppercase tracking-wider"
+          style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
+        >
+          <Upload className="w-4 h-4" />
+          Upload custom font
+          <input
+            type="file"
+            accept={FONT_ACCEPT}
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              props.onError(null);
+              for (const file of Array.from(e.target.files ?? [])) {
+                const check = validateFontFile(file);
+                if (!check.ok) {
+                  props.onError(check.error);
+                  continue;
+                }
+                props.setPendingFonts((prev) => [
+                  ...prev,
+                  { file, family: check.metadata.family ?? file.name, use: "none" },
+                ]);
+              }
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {props.pendingFonts.map((pf, i) => (
+          <div key={`${pf.file.name}-${i}`} className="flex items-center gap-2 mt-2">
+            <span className="text-sm flex-1 truncate" style={{ color: "var(--foreground)" }}>{pf.family}</span>
+            <select
+              value={pf.use}
+              onChange={(e) =>
+                props.setPendingFonts((prev) =>
+                  prev.map((p, j) => (j === i ? { ...p, use: e.target.value as PendingFont["use"] } : p)),
+                )
+              }
+              className="text-xs rounded-lg border px-2 py-1.5"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <option value="none">Library only</option>
+              <option value="heading">Use as heading</option>
+              <option value="body">Use as body</option>
+            </select>
+            <button
+              onClick={() => props.setPendingFonts((prev) => prev.filter((_, j) => j !== i))}
+              aria-label="Remove font"
+            >
+              <Trash2 className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StepLogo({ preview, onPick }: { preview: string | null; onPick(f: File): void }) {
+  return (
+    <div className="space-y-3">
+      <h2 className="font-extrabold uppercase text-base" style={{ color: "var(--foreground)" }}>Logo</h2>
+      <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+        Optional now — you can add more logos later in Brand Studio.
+      </p>
+      <label
+        className="flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl py-8 cursor-pointer"
+        style={{ borderColor: "var(--border)" }}
+      >
+        {preview ? (
+          <img src={preview} alt="Logo preview" className="max-h-20 max-w-[240px] object-contain" />
+        ) : (
+          <Upload className="w-6 h-6" style={{ color: "var(--muted-foreground)" }} />
+        )}
+        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>
+          {preview ? "Replace logo" : "Upload logo (PNG or SVG)"}
+        </span>
+        <input
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onPick(f);
+          }}
+        />
+      </label>
+    </div>
+  );
+}
+
+interface StepLocationsProps {
+  names: string[];
+  newName: string;
+  setNewName(v: string): void;
+  onAdd(): void;
+  onRemove(i: number): void;
+}
+
+function StepLocations({ names, newName, setNewName, onAdd, onRemove }: StepLocationsProps) {
+  return (
+    <div className="space-y-3">
+      <h2 className="font-extrabold uppercase text-base" style={{ color: "var(--foreground)" }}>Locations</h2>
+      <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+        Optional: branches, facilities, or offices your templates can reference (each can carry its own logo — add those later in Locations).
+      </p>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && onAdd()}
+          placeholder="e.g. Downtown Chicago"
+          className="flex-1 rounded-xl border px-4 py-2.5 text-sm outline-none"
+          style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+        />
+        <button
+          onClick={onAdd}
+          className="px-4 rounded-xl"
+          style={{ background: "var(--secondary)", color: "var(--secondary-foreground)" }}
+          aria-label="Add location"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+      {names.map((n, i) => (
+        <div
+          key={`${n}-${i}`}
+          className="flex items-center justify-between rounded-xl px-4 py-2.5"
+          style={{ background: "var(--secondary)" }}
+        >
+          <span className="text-sm font-semibold" style={{ color: "var(--secondary-foreground)" }}>{n}</span>
+          <button onClick={() => onRemove(i)} aria-label={`Remove ${n}`}>
+            <Trash2 className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}

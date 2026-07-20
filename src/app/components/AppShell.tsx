@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen" style={{ background: "var(--background)" }}>
       <header className="border-b bg-white" style={{ borderColor: "var(--border)" }}>
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
           <button
             onClick={() => navigate({ name: role === "admin" ? "adminTemplates" : "portal" })}
             className="flex items-center gap-2.5"

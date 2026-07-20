@@ -1,4 +1,4 @@
-import type { DesignImportResult } from "../../types";
+import type { DesignImportResult, LayerRenderResult } from "../../types";
 import type { DesignImportProvider, StyleImportResult } from "../interfaces";
 import { isSupabaseConfigured, supabase } from "./client";
 
@@ -46,5 +46,17 @@ export class FigmaImporter implements DesignImportProvider {
     });
     if (error) throw new Error(`Figma style import failed: ${error.message}`);
     return data as StyleImportResult;
+  }
+
+  async renderLayers(
+    companyId: string,
+    url: string,
+    excludeNodeIds: string[],
+  ): Promise<LayerRenderResult> {
+    const { data, error } = await supabase().functions.invoke("figma-layers", {
+      body: { companyId, url, excludeNodeIds },
+    });
+    if (error) throw new Error(`Layered render failed: ${error.message}`);
+    return data as LayerRenderResult;
   }
 }

@@ -110,6 +110,8 @@ export interface TemplateFieldRow {
   rotation: number | null;
   anchor: TemplateField["anchor"] | null;
   font_family: string | null;
+  font_weight: number | null;
+  color_hex: string | null;
   font_size_px: number | null;
   min_font_size_px: number | null;
   color_key: string | null;
@@ -146,6 +148,8 @@ export const toTemplateField = (r: TemplateFieldRow): TemplateField => ({
   rotation: opt(r.rotation) === undefined ? undefined : Number(r.rotation),
   anchor: opt(r.anchor),
   fontFamily: opt(r.font_family),
+  fontWeight: opt(r.font_weight) === undefined ? undefined : Number(r.font_weight),
+  colorHex: opt(r.color_hex),
   fontSizePx: opt(r.font_size_px) === undefined ? undefined : Number(r.font_size_px),
   minFontSizePx: opt(r.min_font_size_px) === undefined ? undefined : Number(r.min_font_size_px),
   colorKey: opt(r.color_key),
@@ -180,6 +184,8 @@ export const fieldToRow = (
   rotation: f.rotation ?? null,
   anchor: f.anchor ?? null,
   font_family: f.fontFamily ?? null,
+  font_weight: f.fontWeight ?? null,
+  color_hex: f.colorHex ?? null,
   font_size_px: f.fontSizePx ?? null,
   min_font_size_px: f.minFontSizePx ?? null,
   color_key: f.colorKey ?? null,

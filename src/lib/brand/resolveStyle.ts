@@ -12,6 +12,7 @@ export interface ResolvedFieldStyle {
   letterSpacingPx?: number;
   lineHeight?: number;
   colorKey?: string;
+  colorHex?: string;
   maxLength?: number;
   autoFit?: boolean;
   /** The style that supplied the locked properties, if any. */
@@ -27,13 +28,14 @@ export function resolveFieldStyle(field: TemplateField, kit: BrandKit | null): R
   const style = getTypeStyle(kit, field.typeStyleKey);
   return {
     fontFamily: style?.font?.family ?? field.fontFamily,
-    fontWeight: style?.weight,
+    fontWeight: style?.weight ?? field.fontWeight,
     fontSizePx: style?.fontSizePx ?? field.fontSizePx,
     minFontSizePx: field.minFontSizePx,
     uppercase: style?.uppercase ?? field.uppercase,
     letterSpacingPx: style?.letterSpacingPx ?? field.letterSpacingPx,
     lineHeight: style?.lineHeight ?? field.lineHeight,
     colorKey: style?.colorKey ?? field.colorKey,
+    colorHex: field.colorHex,
     maxLength: style?.maxLength ?? field.maxLength,
     autoFit: style?.autoFit ?? field.autoFit,
     boundStyle: style,

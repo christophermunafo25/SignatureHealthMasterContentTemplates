@@ -101,6 +101,9 @@ export interface TemplateField {
   height: number;
   rotation?: number; // degrees, about the box center
   anchor?: "topLeft" | "center";
+  /** Figma node this field was imported from (transient import provenance —
+   * used to lift the element off the recomposed background). */
+  sourceNodeId?: string;
   /** Binding to a named brand type style. When set, every property that
    * style defines overrides the field-level values below and is locked by
    * the brand rules engine. */
@@ -108,9 +111,13 @@ export interface TemplateField {
   // Locked styling the member CANNOT change. colorKey references the brand
   // kit palette so a palette change propagates everywhere.
   fontFamily?: string;
+  fontWeight?: number; // exact weight from an import; type styles override
   fontSizePx?: number;
   minFontSizePx?: number; // autoFit floor
   colorKey?: string;
+  /** Literal color fallback (e.g. from a Figma import) — used only when no
+   * type style or palette colorKey applies. */
+  colorHex?: string;
   align?: "left" | "center" | "right";
   uppercase?: boolean;
   letterSpacingPx?: number;
@@ -172,5 +179,28 @@ export interface DesignImportResult {
   canvasWidth: number;
   canvasHeight: number;
   suggestedFields: TemplateField[];
+  warnings: string[];
+  /** Echo of the imported frame link — used for the layered re-render. */
+  sourceUrl?: string;
+}
+
+/** One paintable unit of a decomposed Figma frame (frame-relative, scale 1). */
+export interface FigmaLayerUnit {
+  kind: "node" | "solid" | "gradient" | "imageFill";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  url?: string; // node render / image fill (re-hosted in our Storage)
+  color?: string; // solid
+  opacity?: number;
+  stops?: Array<{ position: number; color: string }>; // gradient
+  handles?: Array<{ x: number; y: number }>; // gradient handle positions (normalized)
+}
+
+export interface LayerRenderResult {
+  canvasWidth: number;
+  canvasHeight: number;
+  units: FigmaLayerUnit[];
   warnings: string[];
 }

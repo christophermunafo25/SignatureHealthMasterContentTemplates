@@ -23,29 +23,46 @@ interface FigmaNode {
   absoluteBoundingBox?: { x: number; y: number; width: number; height: number };
   style?: {
     fontFamily?: string;
+    fontWeight?: number;
     fontSize?: number;
     textAlignHorizontal?: string;
     textCase?: string;
     letterSpacing?: number;
     lineHeightPercentFontSize?: number;
   };
-  fills?: Array<{ type: string; visible?: boolean }>;
+  fills?: Array<{
+    type: string;
+    visible?: boolean;
+    color?: { r: number; g: number; b: number; a?: number };
+  }>;
   children?: FigmaNode[];
 }
+
+const toHex = (c: { r: number; g: number; b: number }): string =>
+  "#" +
+  [c.r, c.g, c.b]
+    .map((v) => Math.round(v * 255).toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase();
 
 interface SuggestedField {
   id: string;
   label: string;
   fieldKey: string;
   type: "text" | "multiline" | "image";
+  sourceNodeId: string;
   x: number;
   y: number;
   width: number;
   height: number;
   fontFamily?: string;
+  fontWeight?: number;
   fontSizePx?: number;
+  colorHex?: string;
   align?: "left" | "center" | "right";
   uppercase?: boolean;
+  letterSpacingPx?: number;
+  lineHeight?: number;
   placeholder?: string;
   autoFit?: boolean;
   objectFit?: "cover";
@@ -85,19 +102,27 @@ function walk(
 
   if (box && node.type === "TEXT") {
     const isMultiline = (node.characters ?? "").includes("\n") || box.height > (node.style?.fontSize ?? 16) * 2.2;
+    const solidFill = node.fills?.find((f) => f.type === "SOLID" && f.visible !== false && f.color);
     out.push({
       id: crypto.randomUUID(),
       label: node.name,
       fieldKey: slug(node.name, taken),
       type: isMultiline ? "multiline" : "text",
+      sourceNodeId: node.id,
       x: Math.round(box.x - frame.x),
       y: Math.round(box.y - frame.y),
       width: Math.round(box.width),
       height: Math.round(box.height),
       fontFamily: node.style?.fontFamily,
+      fontWeight: node.style?.fontWeight,
       fontSizePx: node.style?.fontSize,
+      colorHex: solidFill?.color ? toHex(solidFill.color) : undefined,
       align: ALIGN[node.style?.textAlignHorizontal ?? ""] ?? "left",
       uppercase: node.style?.textCase === "UPPER" || undefined,
+      letterSpacingPx: node.style?.letterSpacing || undefined,
+      lineHeight: node.style?.lineHeightPercentFontSize
+        ? node.style.lineHeightPercentFontSize / 100
+        : undefined,
       placeholder: node.characters?.slice(0, 80),
       autoFit: true,
     });
@@ -111,6 +136,7 @@ function walk(
       label: node.name,
       fieldKey: slug(node.name, taken),
       type: "image",
+      sourceNodeId: node.id,
       x: Math.round(box.x - frame.x),
       y: Math.round(box.y - frame.y),
       width: Math.round(box.width),
@@ -196,6 +222,7 @@ Deno.serve(async (req) => {
       canvasHeight: Math.round(frame.height),
       suggestedFields,
       warnings,
+      sourceUrl: url,
     });
   } catch (e) {
     return json({ error: String(e) }, 500);

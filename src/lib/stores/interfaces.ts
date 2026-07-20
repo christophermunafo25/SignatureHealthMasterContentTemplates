@@ -89,6 +89,13 @@ export interface DesignImportProvider {
   /** Design-system import: pull the color + text styles of a Figma FILE into
    * palette entries + brand type styles (Feature 4 → design-system import). */
   importStylesFromUrl(companyId: string, url: string): Promise<StyleImportResult>;
+  /** Re-render a frame's layers EXCLUDING the given node ids so the client
+   * can recompose a background with the field elements lifted off. */
+  renderLayers(
+    companyId: string,
+    url: string,
+    excludeNodeIds: string[],
+  ): Promise<import("../types").LayerRenderResult>;
 }
 
 export interface StyleImportResult {

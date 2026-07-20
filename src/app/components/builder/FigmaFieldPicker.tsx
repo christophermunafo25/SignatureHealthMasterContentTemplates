@@ -57,8 +57,9 @@ export function FigmaFieldPicker({ result, kit, onConfirm, onBack }: FigmaFieldP
       <div className="lg:col-span-7">
         <div className="sp-card p-4">
           <p className="mb-3" style={{ fontSize: 12, color: "var(--fg-3)" }}>
-            {result.suggestedFields.length} elements detected. Toggle which become editable inputs —
-            everything unchecked stays part of the locked design.
+            {result.suggestedFields.length} elements detected. Checked elements become editable
+            inputs and are lifted off the background; everything unchecked stays baked into the
+            locked design.
           </p>
           <div
             ref={containerRef}

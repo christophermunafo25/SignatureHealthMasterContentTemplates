@@ -14,6 +14,7 @@ import { FieldInspector } from "./FieldInspector";
 import { CaptionEditor } from "./CaptionEditor";
 import { FigmaImportDialog } from "./FigmaImportDialog";
 import { FigmaFieldPicker } from "./FigmaFieldPicker";
+import { composeFigmaBackground } from "@/lib/figma/composeLayers";
 
 /** Admin Template Builder: upload a PNG background, draw guarded fields on
  * it, write the caption merge template, publish. The manual path is the
@@ -46,6 +47,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   const [uploading, setUploading] = useState(false);
   const [figmaOpen, setFigmaOpen] = useState(false);
   const [pendingImport, setPendingImport] = useState<DesignImportResult | null>(null);
+  const [recomposing, setRecomposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -198,6 +200,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           className="sp-eyebrow px-2 py-1 rounded-md" style={{ background: "rgba(35,31,35,0.04)" }}
         >
           {draft.canvasWidth}×{draft.canvasHeight} · {draft.status}
+          {recomposing ? " · lifting elements off background…" : ""}
         </span>
         <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--hairline-strong)" }}>
           {(["edit", "preview"] as const).map((m) => (
@@ -247,6 +250,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           kit={kit}
           onBack={() => setPendingImport(null)}
           onConfirm={(fields) => {
+            const importResult = pendingImport;
             setDraft((d) => {
               const existing = [...d.fields];
               const merged = fields.map((f) => {
@@ -257,14 +261,50 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
               });
               return {
                 ...d,
-                backgroundUrl: pendingImport.backgroundUrl,
-                canvasWidth: pendingImport.canvasWidth,
-                canvasHeight: pendingImport.canvasHeight,
+                backgroundUrl: importResult.backgroundUrl,
+                canvasWidth: importResult.canvasWidth,
+                canvasHeight: importResult.canvasHeight,
                 fields: [...d.fields, ...merged],
               };
             });
             setPendingImport(null);
             setMode("edit");
+            // Lift the chosen elements OFF the background: re-render the frame
+            // without them and swap in the recomposed PNG. On any failure the
+            // flat render stays (fields overlay their baked twins).
+            const excludeIds = fields
+              .map((f) => f.sourceNodeId)
+              .filter((id): id is string => Boolean(id));
+            if (company && importResult.sourceUrl && excludeIds.length) {
+              setRecomposing(true);
+              void (async () => {
+                try {
+                  const layers = await stores.designImport.renderLayers(
+                    company.id,
+                    importResult.sourceUrl!,
+                    excludeIds,
+                  );
+                  const blob = await composeFigmaBackground(layers);
+                  const bgUrl = await stores.templates.uploadBackground(
+                    company.id,
+                    blob,
+                    "figma-composed.png",
+                  );
+                  setDraft((d) => ({ ...d, backgroundUrl: bgUrl }));
+                  if (layers.warnings.length) {
+                    setError(layers.warnings.join(" "));
+                  }
+                } catch (e) {
+                  console.error("Background recomposition failed", e);
+                  setError(
+                    "Couldn't lift the selected elements off the background — the flat Figma render is in use, so fields may overlap their original artwork. " +
+                      (e instanceof Error ? e.message : ""),
+                  );
+                } finally {
+                  setRecomposing(false);
+                }
+              })();
+            }
           }}
         />
       ) : !draft.backgroundUrl ? (

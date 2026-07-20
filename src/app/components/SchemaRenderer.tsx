@@ -10,6 +10,7 @@ import type { BrandKit, FieldValues, Location, TemplateField, TemplateSchema } f
 import { useDataUrl } from "@/lib/render/useDataUrl";
 import { fittedFontSize } from "@/lib/render/autoFit";
 import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
+import { loadGoogleFonts, schemaFontFamilies } from "@/lib/render/fonts";
 import { exportSchemaPng, type ExportOutcome } from "@/lib/render/exportPng";
 import { stores } from "@/lib/stores";
 
@@ -53,6 +54,12 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
       observer.observe(el);
       return () => observer.disconnect();
     }, [schema.canvasWidth, schema.canvasHeight]);
+
+    // Best-effort load of every family the schema references (imported
+    // Figma fonts included) so fields render in their designed typeface.
+    useEffect(() => {
+      loadGoogleFonts(schemaFontFamilies(schema));
+    }, [schema]);
 
     // One instrumentation point covers every template (Feature 3).
     useEffect(() => {
@@ -125,12 +132,16 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
   },
 );
 
-function resolveColor(colorKey: string | undefined, brandKit: BrandKit | null): string {
+function resolveColor(
+  colorKey: string | undefined,
+  colorHex: string | undefined,
+  brandKit: BrandKit | null,
+): string {
   if (colorKey) {
     const entry = brandKit?.colors.find((c) => c.key === colorKey);
     if (entry) return entry.hex;
   }
-  return "#111111";
+  return colorHex ?? "#111111";
 }
 
 function boxStyle(field: TemplateField): React.CSSProperties {
@@ -181,7 +192,7 @@ function TextFieldBox({ field, value, brandKit }: Omit<FieldBoxProps, "locations
           fontFamily: style.fontFamily ? `"${style.fontFamily}", sans-serif` : "sans-serif",
           fontWeight: style.fontWeight,
           fontSize,
-          color: value ? resolveColor(style.colorKey, brandKit) : "rgba(120,120,120,0.55)",
+          color: value ? resolveColor(style.colorKey, style.colorHex, brandKit) : "rgba(120,120,120,0.55)",
           textAlign: field.align ?? "left",
           textTransform: style.uppercase ? "uppercase" : undefined,
           letterSpacing: style.letterSpacingPx ? `${style.letterSpacingPx}px` : undefined,

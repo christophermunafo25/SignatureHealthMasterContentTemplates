@@ -1,0 +1,228 @@
+// Postgres row shapes (snake_case) and mappers to domain types.
+
+import type {
+  BrandAsset,
+  BrandColor,
+  BrandKit,
+  CanvasPreset,
+  Company,
+  FontRef,
+  Location,
+  TemplateField,
+  TemplateSchema,
+  TemplateStatus,
+} from "../../types";
+import { BUCKETS, publicUrl } from "./client";
+
+export interface CompanyRow {
+  id: string;
+  name: string;
+  slug: string;
+  created_at: string;
+}
+
+export const toCompany = (r: CompanyRow): Company => ({
+  id: r.id,
+  name: r.name,
+  slug: r.slug,
+  createdAt: r.created_at,
+});
+
+export interface CanvasPresetRow {
+  id: string;
+  label: string;
+  width: number;
+  height: number;
+  enabled: boolean;
+}
+
+export const toCanvasPreset = (r: CanvasPresetRow): CanvasPreset => ({ ...r });
+
+export interface BrandKitRow {
+  id: string;
+  company_id: string;
+  colors: BrandColor[];
+  heading_font: FontRef | null;
+  body_font: FontRef | null;
+  primary_logo_asset_id: string | null;
+}
+
+export const toBrandKit = (r: BrandKitRow): BrandKit => ({
+  id: r.id,
+  companyId: r.company_id,
+  colors: r.colors ?? [],
+  headingFont: r.heading_font ?? undefined,
+  bodyFont: r.body_font ?? undefined,
+  primaryLogoAssetId: r.primary_logo_asset_id ?? undefined,
+});
+
+export interface BrandAssetRow {
+  id: string;
+  company_id: string;
+  kind: BrandAsset["kind"];
+  name: string;
+  storage_path: string;
+  metadata: BrandAsset["metadata"];
+  created_at: string;
+}
+
+export const toBrandAsset = (r: BrandAssetRow): BrandAsset => ({
+  id: r.id,
+  companyId: r.company_id,
+  kind: r.kind,
+  name: r.name,
+  url: resolveUrl(BUCKETS.brandAssets, r.storage_path),
+  metadata: r.metadata ?? {},
+  createdAt: r.created_at,
+});
+
+export interface LocationRow {
+  id: string;
+  company_id: string;
+  name: string;
+  logo_storage_path: string | null;
+}
+
+export const toLocation = (r: LocationRow): Location => ({
+  id: r.id,
+  companyId: r.company_id,
+  name: r.name,
+  logoUrl: r.logo_storage_path ? resolveUrl(BUCKETS.brandAssets, r.logo_storage_path) : undefined,
+});
+
+export interface TemplateFieldRow {
+  id: string;
+  template_id: string;
+  sort_order: number;
+  field_key: string;
+  label: string;
+  type: TemplateField["type"];
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number | null;
+  anchor: TemplateField["anchor"] | null;
+  font_family: string | null;
+  font_size_px: number | null;
+  min_font_size_px: number | null;
+  color_key: string | null;
+  align: TemplateField["align"] | null;
+  uppercase: boolean | null;
+  letter_spacing_px: number | null;
+  line_height: number | null;
+  max_length: number | null;
+  auto_fit: boolean | null;
+  object_fit: TemplateField["objectFit"] | null;
+  aspect_ratio: number | null;
+  options: string[] | null;
+  placeholder: string | null;
+  required: boolean;
+}
+
+const opt = <T,>(v: T | null): T | undefined => (v === null ? undefined : v);
+
+/** storage_path columns normally hold bucket-relative paths, but may hold a
+ * full URL (e.g. a Figma-rendered background re-hosted elsewhere). */
+export const resolveUrl = (bucket: string, path: string): string =>
+  /^https?:\/\//.test(path) ? path : publicUrl(bucket, path);
+
+export const toTemplateField = (r: TemplateFieldRow): TemplateField => ({
+  id: r.id,
+  fieldKey: r.field_key,
+  label: r.label,
+  type: r.type,
+  x: Number(r.x),
+  y: Number(r.y),
+  width: Number(r.width),
+  height: Number(r.height),
+  rotation: opt(r.rotation) === undefined ? undefined : Number(r.rotation),
+  anchor: opt(r.anchor),
+  fontFamily: opt(r.font_family),
+  fontSizePx: opt(r.font_size_px) === undefined ? undefined : Number(r.font_size_px),
+  minFontSizePx: opt(r.min_font_size_px) === undefined ? undefined : Number(r.min_font_size_px),
+  colorKey: opt(r.color_key),
+  align: opt(r.align),
+  uppercase: opt(r.uppercase),
+  letterSpacingPx: opt(r.letter_spacing_px) === undefined ? undefined : Number(r.letter_spacing_px),
+  lineHeight: opt(r.line_height) === undefined ? undefined : Number(r.line_height),
+  maxLength: opt(r.max_length),
+  autoFit: opt(r.auto_fit),
+  objectFit: opt(r.object_fit),
+  aspectRatio: opt(r.aspect_ratio) === undefined ? undefined : Number(r.aspect_ratio),
+  options: opt(r.options),
+  placeholder: opt(r.placeholder),
+  required: r.required,
+});
+
+export const fieldToRow = (
+  templateId: string,
+  f: TemplateField,
+  sortOrder: number,
+): Omit<TemplateFieldRow, "id"> => ({
+  template_id: templateId,
+  sort_order: sortOrder,
+  field_key: f.fieldKey,
+  label: f.label,
+  type: f.type,
+  x: f.x,
+  y: f.y,
+  width: f.width,
+  height: f.height,
+  rotation: f.rotation ?? null,
+  anchor: f.anchor ?? null,
+  font_family: f.fontFamily ?? null,
+  font_size_px: f.fontSizePx ?? null,
+  min_font_size_px: f.minFontSizePx ?? null,
+  color_key: f.colorKey ?? null,
+  align: f.align ?? null,
+  uppercase: f.uppercase ?? null,
+  letter_spacing_px: f.letterSpacingPx ?? null,
+  line_height: f.lineHeight ?? null,
+  max_length: f.maxLength ?? null,
+  auto_fit: f.autoFit ?? null,
+  object_fit: f.objectFit ?? null,
+  aspect_ratio: f.aspectRatio ?? null,
+  options: f.options ?? null,
+  placeholder: f.placeholder ?? null,
+  required: f.required ?? false,
+});
+
+export interface TemplateRow {
+  id: string;
+  company_id: string;
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  status: TemplateStatus;
+  canvas_width: number;
+  canvas_height: number;
+  background_storage_path: string | null;
+  caption_template: string;
+  created_at: string;
+  updated_at: string;
+  template_fields?: TemplateFieldRow[];
+}
+
+export const toTemplate = (r: TemplateRow): TemplateSchema => ({
+  id: r.id,
+  companyId: r.company_id,
+  name: r.name,
+  description: r.description,
+  category: r.category,
+  tags: r.tags ?? [],
+  status: r.status,
+  canvasWidth: r.canvas_width,
+  canvasHeight: r.canvas_height,
+  backgroundUrl: r.background_storage_path
+    ? resolveUrl(BUCKETS.templateBackgrounds, r.background_storage_path)
+    : "",
+  fields: (r.template_fields ?? [])
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map(toTemplateField),
+  captionTemplate: r.caption_template,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+});

@@ -47,8 +47,21 @@ Deno.serve(async (req) => {
       refreshToken = tokens.refresh_token ?? null;
       scope = "files:read";
     } else {
+      // Validate the PAT. Figma's new scoped tokens can't call /v1/me unless
+      // they carry the current-user scope, and a missing-scope 403 looks
+      // different from an invalid-token 403 — accept scope errors as "token
+      // works, just narrowly scoped" (file access is checked at import time).
       const me = await figmaGet("/v1/me", accessToken);
-      if (!me.ok) return json({ error: "Figma rejected that token — check it has file-read access." }, 400);
+      if (!me.ok) {
+        const body = (await me.text()).toLowerCase();
+        const scopeOnly = me.status === 403 && body.includes("scope");
+        if (!scopeOnly) {
+          return json(
+            { error: "Figma rejected that token — generate a personal access token with File content read access and try again." },
+            400,
+          );
+        }
+      }
     }
 
     const db = serviceClient();

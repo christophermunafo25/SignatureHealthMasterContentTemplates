@@ -6,9 +6,9 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "../router";
 import { TemplateThumbnail } from "./TemplateThumbnail";
 
-/** Member-facing, company-scoped searchable template grid. Generalized from
- * the reference LandingPage: same card-grid design language, driven by the
- * tenant's published templates instead of a hardcoded array. */
+/** Member-facing, company-scoped searchable template grid. SocialPaint
+ * platform chrome: signature warm mesh hero, lift cards on hairlines,
+ * sentence case, mono metadata. Tenant brand lives in the thumbnails. */
 export function Portal() {
   const { company, role } = useAuth();
   const { navigate } = useRouter();
@@ -40,36 +40,44 @@ export function Portal() {
 
   return (
     <div>
-      {/* Hero */}
-      <div
-        className="relative overflow-hidden"
-        style={{ background: "linear-gradient(160deg, var(--primary) 0%, var(--secondary-foreground) 130%)" }}
-      >
+      {/* Hero — signature warm mesh with film grain */}
+      <div className="sp-mesh relative overflow-hidden">
         <div className="relative max-w-7xl mx-auto px-4 py-12">
-          <p
-            className="text-[10px] font-semibold uppercase tracking-[0.22em] mb-2.5"
-            style={{ color: "var(--accent)" }}
-          >
+          <p className="sp-eyebrow mb-3" style={{ color: "rgba(255,255,255,0.85)" }}>
             {company?.name}
           </p>
-          <h1 className="font-extrabold text-white uppercase tracking-tight leading-tight mb-3" style={{ fontSize: "clamp(28px, 5vw, 44px)" }}>
-            Choose a Template
+          <h1
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 400,
+              fontSize: "clamp(30px, 4.6vw, 48px)",
+              letterSpacing: "-1px",
+              lineHeight: 1.1,
+              color: "#fff",
+              marginBottom: 10,
+            }}
+          >
+            Choose a template
           </h1>
-          <p className="text-white/75 text-[15px] leading-relaxed mb-8 max-w-md">
-            Select a template, fill in the details, and download a ready-to-post on-brand graphic.
+          <p style={{ fontFamily: "var(--font-body)", fontWeight: 300, color: "rgba(255,255,255,0.82)", fontSize: 15, maxWidth: 420, marginBottom: 28 }}>
+            Pick a template, fill in the details, and download a ready-to-post on-brand graphic.
           </p>
           <div className="relative max-w-md">
-            <Search className="absolute w-[18px] h-[18px] text-white/50" style={{ left: 16, top: "50%", transform: "translateY(-50%)" }} />
+            <Search className="absolute" style={{ left: 14, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "rgba(255,255,255,0.6)" }} />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search templates…"
-              className="w-full text-sm text-white rounded-xl outline-none transition-colors"
+              className="w-full outline-none"
               style={{
-                background: "rgba(255,255,255,0.1)",
-                border: "1.5px solid rgba(255,255,255,0.15)",
-                padding: "12px 16px 12px 46px",
+                fontFamily: "var(--font-ui)",
+                fontSize: 13,
+                color: "#fff",
+                background: "rgba(255,255,255,0.14)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                borderRadius: "var(--radius-input)",
+                padding: "10px 14px 10px 38px",
               }}
             />
           </div>
@@ -79,82 +87,82 @@ export function Portal() {
       {/* Grid */}
       <div className="max-w-7xl mx-auto px-4 py-10">
         {loading ? (
-          <p className="text-center py-20 text-sm" style={{ color: "var(--muted-foreground)" }}>
+          <p className="text-center py-20" style={{ fontSize: 13, color: "var(--fg-3)" }}>
             Loading templates…
           </p>
         ) : templates.length === 0 ? (
           <div className="text-center py-20 space-y-3">
-            <p className="font-bold uppercase tracking-[0.12em] text-[13px]" style={{ color: "var(--muted-foreground)" }}>
-              No templates published yet
-            </p>
+            <p style={{ fontSize: 14, color: "var(--fg-2)" }}>No templates published yet.</p>
             {role === "admin" && (
-              <button
-                onClick={() => navigate({ name: "adminTemplates" })}
-                className="text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl"
-                style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
-              >
+              <button className="sp-btn sp-btn-primary" onClick={() => navigate({ name: "adminTemplates" })}>
                 Create your first template
               </button>
             )}
           </div>
         ) : filtered.length === 0 ? (
-          <p className="text-center py-20 font-bold uppercase tracking-[0.12em] text-[13px]" style={{ color: "var(--muted-foreground)" }}>
-            No templates match “{query}”
+          <p className="text-center py-20" style={{ fontSize: 14, color: "var(--fg-2)" }}>
+            No templates match “{query}”.
           </p>
         ) : (
           <>
             <div className="flex items-center justify-between mb-6">
-              <p className="font-extrabold uppercase tracking-[0.16em] text-xs" style={{ color: "var(--foreground)" }}>
-                {filtered.length} Template{filtered.length !== 1 ? "s" : ""}
+              <p className="sp-eyebrow">
+                {filtered.length} template{filtered.length !== 1 ? "s" : ""}
               </p>
-              <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                Click a template to get started
-              </p>
+              <p style={{ fontSize: 12, color: "var(--fg-3)" }}>Click a template to get started</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {filtered.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => navigate({ name: "template", templateId: t.id })}
-                  className="group text-left rounded-2xl overflow-hidden transition-all flex flex-col bg-white hover:-translate-y-0.5"
-                  style={{ border: "1.5px solid var(--border)", boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}
+                  className="group text-left overflow-hidden transition-all flex flex-col"
+                  style={{
+                    background: "var(--lift)",
+                    border: "1px solid var(--hairline)",
+                    borderRadius: "var(--radius-card-sm)",
+                    boxShadow: "var(--shadow-e1)",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "var(--shadow-e3)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "var(--shadow-e1)"; }}
                 >
                   <div
                     className="w-full overflow-hidden"
-                    style={{ aspectRatio: `${t.canvasWidth} / ${t.canvasHeight}`, background: "var(--secondary)" }}
+                    style={{ aspectRatio: `${t.canvasWidth} / ${t.canvasHeight}`, background: "var(--paper-warm)" }}
                   >
                     <TemplateThumbnail template={t} />
                   </div>
-                  <div className="p-5">
-                    <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3 mb-1.5">
                       <div>
-                        {t.category && (
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-1" style={{ color: "var(--primary)" }}>
-                            {t.category}
-                          </p>
-                        )}
-                        <h2 className="font-extrabold uppercase text-[17px] leading-tight" style={{ color: "var(--foreground)" }}>
+                        {t.category && <p className="sp-eyebrow mb-1">{t.category}</p>}
+                        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 16, letterSpacing: "-0.2px", color: "var(--ink)" }}>
                           {t.name}
                         </h2>
                       </div>
-                      <div
-                        className="flex items-center justify-center flex-shrink-0 rounded-full transition-transform group-hover:translate-x-0.5 w-9 h-9"
-                        style={{ background: "var(--accent)" }}
+                      <span
+                        className="flex items-center justify-center flex-shrink-0 rounded-full transition-transform group-hover:translate-x-0.5"
+                        style={{ width: 30, height: 30, background: "var(--peach)" }}
                       >
-                        <ArrowRight className="w-4 h-4" style={{ color: "var(--accent-foreground)" }} />
-                      </div>
+                        <ArrowRight style={{ width: 14, height: 14, color: "var(--ink)" }} />
+                      </span>
                     </div>
                     {t.description && (
-                      <p className="text-[13px] leading-relaxed mb-3" style={{ color: "var(--muted-foreground)" }}>
-                        {t.description}
-                      </p>
+                      <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--fg-2)", marginBottom: 10 }}>{t.description}</p>
                     )}
                     <div className="flex flex-wrap gap-1.5">
                       {t.fields.map((f) => (
                         <span
                           key={f.id}
-                          className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md"
-                          style={{ background: "var(--secondary)", color: "var(--secondary-foreground)" }}
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: 10,
+                            letterSpacing: "0.3px",
+                            color: "var(--fg-2)",
+                            background: "rgba(35,31,35,0.05)",
+                            padding: "2px 7px",
+                            borderRadius: 5,
+                          }}
                         >
                           {f.label}
                         </span>

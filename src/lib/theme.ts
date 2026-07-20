@@ -1,30 +1,21 @@
 import type { BrandKit } from "./types";
 
-/** Map well-known brand palette keys onto the app's CSS variables so the
- * whole UI themes itself from the active tenant's brand kit. Custom-named
- * palette entries are exposed as --brand-<key> for template chrome. */
-const VAR_MAP: Record<string, string[]> = {
-  primary: ["--primary", "--ring"],
-  secondary: ["--secondary"],
-  accent: ["--accent"],
-  text: ["--foreground"],
-  background: ["--background"],
-};
-
+/** Expose the active tenant's brand kit as --brand-* CSS variables.
+ *
+ * The platform chrome is styled by the SocialPaint design system
+ * (src/styles/socialpaint.css) and is NOT re-themed per tenant — tenant
+ * brand expression lives in the template graphics, the brand-kit pickers,
+ * and --brand-* accents on template-adjacent surfaces. */
 const touched = new Set<string>();
 
 export function applyBrandTheme(kit: BrandKit | null): void {
   const root = document.documentElement;
-  // Reset anything a previously selected tenant set (neutral default returns).
+  // Reset anything a previously selected tenant set.
   for (const name of touched) root.style.removeProperty(name);
   touched.clear();
   if (!kit) return;
 
   for (const color of kit.colors) {
-    for (const varName of VAR_MAP[color.key] ?? []) {
-      root.style.setProperty(varName, color.hex);
-      touched.add(varName);
-    }
     const brandVar = `--brand-${color.key}`;
     root.style.setProperty(brandVar, color.hex);
     touched.add(brandVar);

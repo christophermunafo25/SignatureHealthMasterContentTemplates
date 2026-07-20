@@ -66,11 +66,11 @@ export function FigmaImportDialog({ onClose, onImported }: FigmaImportDialogProp
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-7 space-y-4"
+        className="w-full max-w-lg p-6 space-y-4" style={{ background: "var(--lift)", borderRadius: "var(--radius-card)", boxShadow: "var(--shadow-e4)" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 font-extrabold uppercase text-base" style={{ color: "var(--foreground)" }}>
+          <h2 className="flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 17, letterSpacing: "-0.3px", color: "var(--ink)" }}>
             <Figma className="w-5 h-5" />
             Import from Figma
           </h2>
@@ -93,14 +93,12 @@ export function FigmaImportDialog({ onClose, onImported }: FigmaImportDialogProp
               value={pat}
               onChange={(e) => setPat(e.target.value)}
               placeholder="figd_…"
-              className="w-full rounded-xl border px-4 py-3 text-sm outline-none font-mono"
-              style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+              className="sp-input" style={{ fontFamily: "var(--font-mono)" }}
             />
             <button
               onClick={() => void connect()}
               disabled={busy || !pat.trim()}
-              className="w-full font-bold uppercase text-xs tracking-[0.18em] py-3.5 rounded-xl disabled:opacity-50"
-              style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+              className="sp-btn sp-btn-primary w-full"
             >
               {busy ? "Connecting…" : "Connect Figma"}
             </button>
@@ -116,14 +114,12 @@ export function FigmaImportDialog({ onClose, onImported }: FigmaImportDialogProp
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://www.figma.com/design/…?node-id=…"
-              className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
-              style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+              className="sp-input"
             />
             <button
               onClick={() => void runImport()}
               disabled={busy || !url.trim()}
-              className="w-full flex items-center justify-center gap-2 font-bold uppercase text-xs tracking-[0.18em] py-3.5 rounded-xl disabled:opacity-50"
-              style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+              className="sp-btn sp-btn-primary w-full"
             >
               {busy && <RefreshCw className="w-4 h-4 animate-spin" />}
               {busy ? "Importing…" : "Import frame"}
@@ -137,7 +133,7 @@ export function FigmaImportDialog({ onClose, onImported }: FigmaImportDialogProp
           </p>
         )}
         {warnings.map((w) => (
-          <p key={w} className="text-xs rounded-lg px-3 py-2" style={{ background: "var(--secondary)", color: "var(--secondary-foreground)" }}>
+          <p key={w} className="rounded-lg px-3 py-2" style={{ fontSize: 12, background: "var(--paper-warm)", color: "var(--fg-2)" }}>
             {w}
           </p>
         ))}

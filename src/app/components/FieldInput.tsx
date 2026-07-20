@@ -11,14 +11,6 @@ interface FieldInputProps {
   locations: Location[];
 }
 
-const inputClass =
-  "w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2 transition";
-const inputStyle: React.CSSProperties = {
-  borderColor: "var(--border)",
-  background: "var(--input-background)",
-  color: "var(--foreground)",
-};
-
 /** Member input for one template field. Enforces the field's guardrails
  * (maxLength, aspect-ratio crop, fixed options) — content only, never style. */
 export function FieldInput({ field, value, onChange, locations }: FieldInputProps) {
@@ -31,8 +23,7 @@ export function FieldInput({ field, value, onChange, locations }: FieldInputProp
           maxLength={field.maxLength}
           placeholder={field.placeholder ?? field.label}
           onChange={(e) => onChange(e.target.value)}
-          className={inputClass}
-          style={inputStyle}
+          className="sp-input"
         />
       );
     case "multiline":
@@ -43,13 +34,13 @@ export function FieldInput({ field, value, onChange, locations }: FieldInputProp
           placeholder={field.placeholder ?? field.label}
           onChange={(e) => onChange(e.target.value)}
           rows={3}
-          className={inputClass}
-          style={inputStyle}
+          className="sp-input"
+          style={{ resize: "vertical" }}
         />
       );
     case "select":
       return (
-        <select value={value} onChange={(e) => onChange(e.target.value)} className={inputClass} style={inputStyle}>
+        <select value={value} onChange={(e) => onChange(e.target.value)} className="sp-input">
           <option value="">Select…</option>
           {(field.options ?? []).map((o) => (
             <option key={o} value={o}>
@@ -60,7 +51,7 @@ export function FieldInput({ field, value, onChange, locations }: FieldInputProp
       );
     case "location":
       return (
-        <select value={value} onChange={(e) => onChange(e.target.value)} className={inputClass} style={inputStyle}>
+        <select value={value} onChange={(e) => onChange(e.target.value)} className="sp-input">
           <option value="">Select a location…</option>
           {locations.map((l) => (
             <option key={l.id} value={l.id}>
@@ -112,26 +103,34 @@ function ImageFieldInput({ field, value, onChange }: Omit<FieldInputProps, "loca
       )}
       <div
         {...getRootProps()}
-        className="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2.5 group"
+        className="text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
         style={{
-          borderColor: isDragActive ? "var(--primary)" : "var(--border)",
-          background: isDragActive ? "var(--secondary)" : undefined,
+          border: `1.5px dashed ${isDragActive ? "var(--solar)" : "var(--hairline-strong)"}`,
+          borderRadius: "var(--radius-input)",
+          background: isDragActive ? "rgba(255,63,0,0.05)" : "var(--lift)",
+          padding: 14,
         }}
       >
         <input {...getInputProps()} />
         {value ? (
-          <div className="relative w-16 h-16 rounded-lg overflow-hidden border-2 shadow" style={{ borderColor: "var(--border)" }}>
+          <div
+            className="relative w-16 h-16 overflow-hidden"
+            style={{ borderRadius: 8, border: "1px solid var(--hairline)", boxShadow: "var(--shadow-e1)" }}
+          >
             <img src={value} alt="Preview" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <RefreshCw className="w-4 h-4 text-white" />
             </div>
           </div>
         ) : (
-          <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "var(--secondary)" }}>
-            <Upload className="w-4 h-4" style={{ color: "var(--primary)" }} />
-          </div>
+          <span
+            className="flex items-center justify-center"
+            style={{ width: 36, height: 36, borderRadius: "var(--radius-icon)", background: "var(--peach)" }}
+          >
+            <Upload style={{ width: 15, height: 15, color: "var(--ink)" }} />
+          </span>
         )}
-        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--muted-foreground)" }}>
+        <p style={{ fontSize: 12, color: "var(--fg-2)" }}>
           {value ? "Replace image" : "Click or drag to upload"}
         </p>
       </div>

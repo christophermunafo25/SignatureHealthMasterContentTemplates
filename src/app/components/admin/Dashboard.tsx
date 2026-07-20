@@ -6,8 +6,8 @@ import { stores } from "@/lib/stores";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 /** Admin usage dashboard: most-used templates (downloads primary, opens
- * secondary), per-template table, total exports. Data via
- * UsageStore.getUsageSummary — events are recorded inside SchemaRenderer. */
+ * secondary), per-template table, total exports. Events are recorded inside
+ * SchemaRenderer. */
 export function Dashboard() {
   const { company } = useAuth();
   const [summary, setSummary] = useState<UsageSummary | null>(null);
@@ -21,7 +21,7 @@ export function Dashboard() {
   }, [company]);
 
   if (!summary) {
-    return <p className="text-center py-24 text-sm" style={{ color: "var(--muted-foreground)" }}>Loading usage…</p>;
+    return <p className="text-center py-24" style={{ fontSize: 13, color: "var(--fg-3)" }}>Loading usage…</p>;
   }
 
   const chartData = summary.rows.slice(0, 10).map((r) => ({
@@ -31,57 +31,69 @@ export function Dashboard() {
   }));
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
-      <div className="flex items-center justify-between mb-8">
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="flex items-end justify-between mb-6">
         <div>
-          <h1 className="font-extrabold uppercase text-xl" style={{ color: "var(--foreground)" }}>Usage</h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+          <h1 className="sp-page-title">Usage</h1>
+          <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
             Which templates your team actually uses.
           </p>
         </div>
-        <div
-          className="flex items-center gap-3 rounded-2xl px-5 py-3"
-          style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
-        >
-          <Download className="w-5 h-5" />
+        <div className="sp-card flex items-center gap-3 px-4 py-3">
+          <span
+            className="flex items-center justify-center"
+            style={{ width: 34, height: 34, borderRadius: "var(--radius-icon)", background: "var(--sand)" }}
+          >
+            <Download style={{ width: 15, height: 15, color: "var(--ink)" }} />
+          </span>
           <div>
-            <p className="font-extrabold text-xl leading-none">{summary.totalDownloads}</p>
-            <p className="text-[9px] font-bold uppercase tracking-widest opacity-80 mt-0.5">Total exports</p>
+            <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 24, letterSpacing: "-0.5px", color: "var(--ink)", lineHeight: 1 }}>
+              {summary.totalDownloads}
+            </p>
+            <p className="sp-eyebrow" style={{ marginTop: 3 }}>Total exports</p>
           </div>
         </div>
       </div>
 
       {summary.rows.length === 0 ? (
-        <p className="text-center py-20 text-sm rounded-3xl border-2 border-dashed" style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}>
+        <p
+          className="text-center py-20"
+          style={{ fontSize: 13, color: "var(--fg-2)", border: "1.5px dashed var(--hairline-strong)", borderRadius: "var(--radius-card)" }}
+        >
           No usage yet — events appear as soon as members open and download templates.
         </p>
       ) : (
         <>
-          <div className="bg-white rounded-2xl border p-6 mb-6" style={{ borderColor: "var(--border)" }}>
-            <h2 className="font-extrabold uppercase text-sm mb-4" style={{ color: "var(--foreground)" }}>
-              Most-used templates
-            </h2>
+          <div className="sp-card p-5 mb-5">
+            <h2 className="sp-panel-title mb-4">Most-used templates</h2>
             <div style={{ width: "100%", height: 300 }}>
               <ResponsiveContainer>
                 <BarChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-14} height={50} textAnchor="end" />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="Downloads" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Opens" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline)" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11, fontFamily: "var(--font-ui)" }}
+                    interval={0}
+                    angle={-14}
+                    height={50}
+                    textAnchor="end"
+                  />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fontFamily: "var(--font-ui)" }} />
+                  <Tooltip contentStyle={{ fontFamily: "var(--font-ui)", fontSize: 12, borderRadius: 8, border: "1px solid var(--hairline)" }} />
+                  <Legend wrapperStyle={{ fontSize: 12, fontFamily: "var(--font-ui)" }} />
+                  <Bar dataKey="Downloads" fill="var(--solar)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Opens" fill="var(--amber)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
-            <table className="w-full text-sm">
+          <div className="sp-card overflow-hidden">
+            <table className="w-full" style={{ fontSize: 13 }}>
               <thead>
-                <tr className="text-left" style={{ background: "var(--secondary)" }}>
+                <tr className="text-left" style={{ borderBottom: "1px solid var(--hairline)" }}>
                   {["Template", "Opens", "Downloads", "Last used"].map((h) => (
-                    <th key={h} className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--secondary-foreground)" }}>
+                    <th key={h} className="sp-eyebrow px-4 py-2.5" style={{ fontWeight: 400 }}>
                       {h}
                     </th>
                   ))}
@@ -89,11 +101,11 @@ export function Dashboard() {
               </thead>
               <tbody>
                 {summary.rows.map((r) => (
-                  <tr key={r.templateId} className="border-t" style={{ borderColor: "var(--border)" }}>
-                    <td className="px-5 py-3 font-semibold" style={{ color: "var(--foreground)" }}>{r.templateName}</td>
-                    <td className="px-5 py-3" style={{ color: "var(--muted-foreground)" }}>{r.opens}</td>
-                    <td className="px-5 py-3 font-semibold" style={{ color: "var(--foreground)" }}>{r.downloads}</td>
-                    <td className="px-5 py-3" style={{ color: "var(--muted-foreground)" }}>
+                  <tr key={r.templateId} style={{ borderTop: "1px solid var(--hairline)" }}>
+                    <td className="px-4 py-2.5" style={{ color: "var(--ink)", fontWeight: 500 }}>{r.templateName}</td>
+                    <td className="px-4 py-2.5" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--fg-2)" }}>{r.opens}</td>
+                    <td className="px-4 py-2.5" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink)" }}>{r.downloads}</td>
+                    <td className="px-4 py-2.5" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--fg-3)" }}>
                       {r.lastUsedAt ? new Date(r.lastUsedAt).toLocaleDateString() : "—"}
                     </td>
                   </tr>

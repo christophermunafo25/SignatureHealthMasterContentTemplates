@@ -98,14 +98,14 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--background)" }}>
-      <div className="w-full max-w-2xl bg-white rounded-3xl border shadow-xl overflow-hidden" style={{ borderColor: "var(--border)" }}>
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--linen)" }}>
+      <div className="w-full max-w-2xl overflow-hidden" style={{ background: "var(--lift)", border: "1px solid var(--hairline)", borderRadius: "var(--radius-card)", boxShadow: "var(--shadow-e4)" }}>
         {/* Header + progress */}
-        <div className="px-8 pt-8 pb-6" style={{ background: "var(--primary)" }}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] mb-1" style={{ color: "var(--accent)" }}>
+        <div className="sp-mesh px-8 pt-8 pb-6">
+          <p className="sp-eyebrow mb-1" style={{ color: "rgba(255,255,255,0.85)" }}>
             {firstRun ? "Welcome" : "New company"}
           </p>
-          <h1 className="text-white font-extrabold text-2xl uppercase leading-tight">
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 26, letterSpacing: "-0.5px", lineHeight: 1.15, color: "#fff" }}>
             {firstRun ? "Set up your brand portal" : "Create a company"}
           </h1>
           <div className="flex gap-1.5 mt-5">
@@ -113,9 +113,9 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
               <div key={label} className="flex-1">
                 <div
                   className="h-1 rounded-full"
-                  style={{ background: i <= step ? "var(--accent)" : "rgba(255,255,255,0.25)" }}
+                  style={{ background: i <= step ? "#fff" : "rgba(255,255,255,0.3)" }}
                 />
-                <p className="text-[9px] font-bold uppercase tracking-wider mt-1.5 text-white/70">{label}</p>
+                <p className="sp-eyebrow mt-1.5" style={{ fontSize: 9, color: "rgba(255,255,255,0.75)" }}>{label}</p>
               </div>
             ))}
           </div>
@@ -174,8 +174,7 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
           <button
             onClick={() => (step === 0 ? navigate({ name: "portal" }) : setStep(step - 1))}
             disabled={firstRun && step === 0}
-            className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider disabled:opacity-0"
-            style={{ color: "var(--muted-foreground)" }}
+            className="flex items-center gap-1.5 disabled:opacity-0" style={{ fontSize: 13, color: "var(--fg-2)" }}
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             {step === 0 ? "Cancel" : "Back"}
@@ -184,8 +183,7 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
             <button
               onClick={() => setStep(step + 1)}
               disabled={!canNext}
-              className="flex items-center gap-2 font-bold uppercase text-xs tracking-[0.18em] px-6 py-3.5 rounded-xl shadow-md disabled:opacity-50"
-              style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+              className="sp-btn sp-btn-primary" style={{ padding: "10px 20px" }}
             >
               Continue
               <ArrowRight className="w-4 h-4" />
@@ -194,8 +192,7 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
             <button
               onClick={() => void finish()}
               disabled={saving}
-              className="flex items-center gap-2 font-bold uppercase text-xs tracking-[0.18em] px-6 py-3.5 rounded-xl shadow-md disabled:opacity-60"
-              style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+              className="sp-btn sp-btn-primary" style={{ padding: "10px 20px" }}
             >
               <Check className="w-4 h-4" />
               {saving ? "Creating…" : "Create workspace"}
@@ -210,7 +207,7 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
 function StepCompany({ name, slug, onChange }: { name: string; slug: string; onChange(v: string): void }) {
   return (
     <div className="space-y-3">
-      <h2 className="font-extrabold uppercase text-base" style={{ color: "var(--foreground)" }}>Company name</h2>
+      <h2 className="sp-panel-title" style={{ fontSize: 16 }}>Company name</h2>
       <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
         The tenant everything belongs to — templates, brand kit, locations, and usage stay private to it.
       </p>
@@ -220,8 +217,7 @@ function StepCompany({ name, slug, onChange }: { name: string; slug: string; onC
         value={name}
         onChange={(e) => onChange(e.target.value)}
         placeholder="e.g. Acme Senior Living"
-        className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
-        style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+        className="sp-input"
       />
       {slug && (
         <p className="text-[11px]" style={{ color: "var(--muted-foreground)" }}>
@@ -237,7 +233,7 @@ function StepColors({ colors, onChange }: { colors: BrandColor[]; onChange(c: Br
     onChange(colors.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   return (
     <div className="space-y-3">
-      <h2 className="font-extrabold uppercase text-base" style={{ color: "var(--foreground)" }}>Brand colors</h2>
+      <h2 className="sp-panel-title" style={{ fontSize: 16 }}>Brand colors</h2>
       <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
         Sensible defaults — override them with your palette. Template text colors are always picked from these, keeping every graphic on-brand.
       </p>
@@ -264,15 +260,14 @@ function StepColors({ colors, onChange }: { colors: BrandColor[]; onChange(c: Br
 function FontSelect({ label, value, onChange }: { label: string; value: string; onChange(v: string): void }) {
   return (
     <label className="block">
-      <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>{label}</span>
+      <span className="sp-eyebrow">{label}</span>
       <select
         value={value}
         onChange={(e) => {
           loadGoogleFonts([e.target.value]);
           onChange(e.target.value);
         }}
-        className="mt-1 w-full rounded-xl border px-3 py-2.5 text-sm"
-        style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+        className="sp-input mt-1"
       >
         {GOOGLE_FONTS.map((f) => (
           <option key={f} value={f}>{f}</option>
@@ -295,7 +290,7 @@ interface StepFontsProps {
 function StepFonts(props: StepFontsProps) {
   return (
     <div className="space-y-4">
-      <h2 className="font-extrabold uppercase text-base" style={{ color: "var(--foreground)" }}>Fonts</h2>
+      <h2 className="sp-panel-title" style={{ fontSize: 16 }}>Fonts</h2>
       <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
         Pick from Google Fonts, or upload your own brand font files (.woff2, .woff, .ttf, .otf) and assign them.
       </p>
@@ -305,8 +300,8 @@ function StepFonts(props: StepFontsProps) {
       </div>
       <div>
         <label
-          className="flex items-center justify-center gap-2 border-2 border-dashed rounded-xl py-3.5 cursor-pointer text-[11px] font-bold uppercase tracking-wider"
-          style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
+          className="flex items-center justify-center gap-2 py-3.5 cursor-pointer"
+          style={{ border: "1.5px dashed var(--hairline-strong)", borderRadius: "var(--radius-input)", fontSize: 13, color: "var(--fg-2)" }}
         >
           <Upload className="w-4 h-4" />
           Upload custom font
@@ -342,8 +337,7 @@ function StepFonts(props: StepFontsProps) {
                   prev.map((p, j) => (j === i ? { ...p, use: e.target.value as PendingFont["use"] } : p)),
                 )
               }
-              className="text-xs rounded-lg border px-2 py-1.5"
-              style={{ borderColor: "var(--border)" }}
+              className="sp-input" style={{ width: "auto", padding: "5px 8px", fontSize: 12 }}
             >
               <option value="none">Library only</option>
               <option value="heading">Use as heading</option>
@@ -365,20 +359,20 @@ function StepFonts(props: StepFontsProps) {
 function StepLogo({ preview, onPick }: { preview: string | null; onPick(f: File): void }) {
   return (
     <div className="space-y-3">
-      <h2 className="font-extrabold uppercase text-base" style={{ color: "var(--foreground)" }}>Logo</h2>
+      <h2 className="sp-panel-title" style={{ fontSize: 16 }}>Logo</h2>
       <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
         Optional now — you can add more logos later in Brand Studio.
       </p>
       <label
-        className="flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl py-8 cursor-pointer"
-        style={{ borderColor: "var(--border)" }}
+        className="flex flex-col items-center justify-center gap-3 py-8 cursor-pointer"
+        style={{ border: "1.5px dashed var(--hairline-strong)", borderRadius: "var(--radius-card-sm)" }}
       >
         {preview ? (
           <img src={preview} alt="Logo preview" className="max-h-20 max-w-[240px] object-contain" />
         ) : (
           <Upload className="w-6 h-6" style={{ color: "var(--muted-foreground)" }} />
         )}
-        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>
+        <span style={{ fontSize: 13, color: "var(--fg-2)" }}>
           {preview ? "Replace logo" : "Upload logo (PNG or SVG)"}
         </span>
         <input
@@ -406,7 +400,7 @@ interface StepLocationsProps {
 function StepLocations({ names, newName, setNewName, onAdd, onRemove }: StepLocationsProps) {
   return (
     <div className="space-y-3">
-      <h2 className="font-extrabold uppercase text-base" style={{ color: "var(--foreground)" }}>Locations</h2>
+      <h2 className="sp-panel-title" style={{ fontSize: 16 }}>Locations</h2>
       <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
         Optional: branches, facilities, or offices your templates can reference (each can carry its own logo — add those later in Locations).
       </p>
@@ -417,13 +411,11 @@ function StepLocations({ names, newName, setNewName, onAdd, onRemove }: StepLoca
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onAdd()}
           placeholder="e.g. Downtown Chicago"
-          className="flex-1 rounded-xl border px-4 py-2.5 text-sm outline-none"
-          style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+          className="sp-input flex-1"
         />
         <button
           onClick={onAdd}
-          className="px-4 rounded-xl"
-          style={{ background: "var(--secondary)", color: "var(--secondary-foreground)" }}
+          className="sp-btn sp-btn-ghost px-4"
           aria-label="Add location"
         >
           <Plus className="w-4 h-4" />
@@ -432,10 +424,10 @@ function StepLocations({ names, newName, setNewName, onAdd, onRemove }: StepLoca
       {names.map((n, i) => (
         <div
           key={`${n}-${i}`}
-          className="flex items-center justify-between rounded-xl px-4 py-2.5"
-          style={{ background: "var(--secondary)" }}
+          className="flex items-center justify-between px-4 py-2.5"
+          style={{ background: "var(--paper)", border: "1px solid var(--hairline)", borderRadius: "var(--radius-input)" }}
         >
-          <span className="text-sm font-semibold" style={{ color: "var(--secondary-foreground)" }}>{n}</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{n}</span>
           <button onClick={() => onRemove(i)} aria-label={`Remove ${n}`}>
             <Trash2 className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
           </button>

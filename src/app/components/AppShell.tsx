@@ -12,41 +12,55 @@ const ADMIN_NAV: Array<{ label: string; route: Route }> = [
   { label: "Portal", route: { name: "portal" } },
 ];
 
+/** Platform chrome — SocialPaint design system (topbar on lift, hairline
+ * borders, Inter UI type, solar active tint). The tenant appears as a
+ * workspace identity chip; their brand styles the graphics, not the chrome. */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { company, role } = useAuth();
   const { primaryLogoUrl } = useBrand();
   const { route, navigate } = useRouter();
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--background)" }}>
-      <header className="border-b bg-white" style={{ borderColor: "var(--border)" }}>
-        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+    <div className="min-h-screen" style={{ background: "var(--linen)", fontFamily: "var(--font-ui)" }}>
+      <header style={{ background: "var(--lift)", borderBottom: "1px solid var(--hairline)" }}>
+        <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
           <button
             onClick={() => navigate({ name: role === "admin" ? "adminTemplates" : "portal" })}
             className="flex items-center gap-2.5"
           >
             {primaryLogoUrl ? (
-              <img src={primaryLogoUrl} alt="" style={{ height: 30, width: "auto", display: "block" }} />
+              <img src={primaryLogoUrl} alt="" style={{ height: 26, width: "auto", display: "block" }} />
             ) : (
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center font-extrabold text-sm"
-                style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+              <span
+                className="sp-mesh"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  display: "grid",
+                  placeItems: "center",
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 500,
+                  fontSize: 12,
+                  color: "#fff",
+                  overflow: "hidden",
+                }}
               >
-                {(company?.name ?? "?").slice(0, 1).toUpperCase()}
-              </div>
+                <span>{(company?.name ?? "?").slice(0, 1).toUpperCase()}</span>
+              </span>
             )}
-            <div className="text-left">
-              <p className="font-extrabold text-sm leading-tight" style={{ color: "var(--foreground)" }}>
-                {company?.name ?? "Brand Portal"}
-              </p>
-              <p className="text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--muted-foreground)" }}>
-                Template Portal
-              </p>
-            </div>
+            <span className="text-left">
+              <span className="block" style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.2 }}>
+                {company?.name ?? "Brand portal"}
+              </span>
+              <span className="sp-eyebrow block" style={{ fontSize: 9 }}>
+                {role === "admin" ? "Workspace · Admin" : "Workspace"}
+              </span>
+            </span>
           </button>
 
           {role === "admin" && (
-            <nav className="hidden sm:flex items-center gap-1 ml-4">
+            <nav className="hidden sm:flex items-center gap-0.5 ml-3">
               {ADMIN_NAV.map((item) => {
                 const active =
                   route.name === item.route.name ||
@@ -56,12 +70,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <button
                     key={item.label}
                     onClick={() => navigate(item.route)}
-                    className="text-[11px] font-bold uppercase tracking-wider px-3 py-2 rounded-lg transition-colors"
-                    style={
-                      active
-                        ? { background: "var(--secondary)", color: "var(--secondary-foreground)" }
-                        : { color: "var(--muted-foreground)" }
-                    }
+                    className="px-3 py-1.5 rounded-lg transition-colors"
+                    style={{
+                      fontSize: 13,
+                      ...(active
+                        ? { background: "rgba(255,63,0,0.10)", color: "var(--solar)" }
+                        : { color: "var(--fg-2)" }),
+                    }}
                   >
                     {item.label}
                   </button>

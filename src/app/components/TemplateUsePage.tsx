@@ -8,9 +8,14 @@ import { useRouter } from "../router";
 import { SchemaRenderer, type SchemaRendererHandle } from "./SchemaRenderer";
 import { FieldInput } from "./FieldInput";
 
-/** Member self-service flow: fields on the left, live preview on the right
- * (the reference two-column layout), suggested caption, PNG download.
- * Members change field CONTENT only — layout and styling are locked. */
+const panel: React.CSSProperties = {
+  background: "var(--lift)",
+  border: "1px solid var(--hairline)",
+  borderRadius: 12,
+};
+
+/** Member self-service flow: fields on the left, live preview on the right,
+ * suggested caption, PNG download. Members change field CONTENT only. */
 export function TemplateUsePage({ templateId }: { templateId: string }) {
   const { kit, locations } = useBrand();
   const { navigate } = useRouter();
@@ -44,10 +49,10 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
   );
 
   if (loading) {
-    return <p className="text-center py-24 text-sm" style={{ color: "var(--muted-foreground)" }}>Loading template…</p>;
+    return <p className="text-center py-24" style={{ fontSize: 13, color: "var(--fg-3)" }}>Loading template…</p>;
   }
   if (!template) {
-    return <p className="text-center py-24 text-sm" style={{ color: "var(--muted-foreground)" }}>Template not found.</p>;
+    return <p className="text-center py-24" style={{ fontSize: 13, color: "var(--fg-3)" }}>Template not found.</p>;
   }
 
   const handleDownload = async () => {
@@ -69,43 +74,37 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8 lg:py-10">
+    <div className="max-w-6xl mx-auto px-6 py-8">
       <button
         onClick={() => navigate({ name: "portal" })}
-        className="flex items-center gap-1.5 mb-6 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors"
-        style={{ color: "var(--muted-foreground)" }}
+        className="flex items-center gap-1.5 mb-5"
+        style={{ fontSize: 13, color: "var(--fg-2)" }}
       >
-        <ArrowLeft className="w-3.5 h-3.5" />
-        All Templates
+        <ArrowLeft style={{ width: 14, height: 14 }} />
+        All templates
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left — field form */}
-        <div className="lg:col-span-5 space-y-5">
+        <div className="lg:col-span-5 space-y-4">
           <div>
-            <h1 className="font-extrabold uppercase text-xl" style={{ color: "var(--foreground)" }}>{template.name}</h1>
+            <h1 className="sp-page-title">{template.name}</h1>
             {template.description && (
-              <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>{template.description}</p>
+              <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>{template.description}</p>
             )}
           </div>
 
           {template.fields.map((field, i) => (
-            <div
-              key={field.id}
-              className="bg-white rounded-2xl border p-5 shadow-sm space-y-3"
-              style={{ borderColor: "var(--border)" }}
-            >
+            <div key={field.id} className="p-4 space-y-2.5" style={panel}>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--primary)" }}>
-                  Step {String(i + 1).padStart(2, "0")}
-                </p>
-                <h2 className="font-extrabold uppercase text-[15px] mt-0.5" style={{ color: "var(--foreground)" }}>
+                <p className="sp-eyebrow">Step {String(i + 1).padStart(2, "0")}</p>
+                <h2 style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", marginTop: 2 }}>
                   {field.label}
-                  {field.required && <span style={{ color: "var(--destructive)" }}> *</span>}
+                  {field.required && <span style={{ color: "var(--solar)" }}> *</span>}
                 </h2>
                 {field.maxLength && (
-                  <p className="text-[11px] mt-0.5" style={{ color: "var(--muted-foreground)" }}>
-                    {(values[field.fieldKey] ?? "").length}/{field.maxLength} characters
+                  <p style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--fg-3)", marginTop: 2 }}>
+                    {(values[field.fieldKey] ?? "").length}/{field.maxLength}
                   </p>
                 )}
               </div>
@@ -120,16 +119,13 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
 
           {/* Suggested caption */}
           {template.captionTemplate && (
-            <div className="bg-white rounded-2xl border p-5 shadow-sm space-y-3" style={{ borderColor: "var(--border)" }}>
+            <div className="p-4 space-y-2.5" style={panel}>
               <div className="flex items-center justify-between">
-                <h2 className="font-extrabold uppercase text-[15px]" style={{ color: "var(--foreground)" }}>
-                  Suggested Caption
-                </h2>
+                <h2 className="sp-panel-title">Suggested caption</h2>
                 {caption !== null && (
                   <button
                     onClick={() => setCaption(null)}
-                    className="text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: "var(--primary)" }}
+                    style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--solar)" }}
                   >
                     Reset to suggestion
                   </button>
@@ -139,33 +135,29 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
                 value={shownCaption}
                 onChange={(e) => setCaption(e.target.value)}
                 rows={4}
-                className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+                className="sp-input"
+                style={{ resize: "vertical" }}
               />
-              <button
-                onClick={handleCopy}
-                className="w-full flex items-center justify-center gap-2 border-2 font-bold uppercase text-xs tracking-[0.18em] py-3 rounded-xl transition-all"
-                style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? "Copied!" : "Copy Caption"}
+              <button onClick={handleCopy} className="sp-btn sp-btn-ghost w-full">
+                {copied ? <Check style={{ width: 14, height: 14 }} /> : <Copy style={{ width: 14, height: 14 }} />}
+                {copied ? "Copied" : "Copy caption"}
               </button>
             </div>
           )}
 
           {/* Download */}
-          <div className="bg-white rounded-2xl border p-5 shadow-sm space-y-2" style={{ borderColor: "var(--border)" }}>
+          <div className="p-4 space-y-2" style={panel}>
             <button
               onClick={handleDownload}
               disabled={exporting || missingRequired.length > 0}
-              className="w-full font-bold uppercase text-xs tracking-[0.18em] py-4 rounded-xl transition-all flex items-center justify-center gap-2.5 shadow-md disabled:opacity-50"
-              style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+              className="sp-btn sp-btn-primary w-full"
+              style={{ padding: "11px 14px" }}
             >
-              {exporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              {exporting ? "Generating…" : "Download Graphic"}
+              {exporting ? <RefreshCw className="animate-spin" style={{ width: 14, height: 14 }} /> : <Download style={{ width: 14, height: 14 }} />}
+              {exporting ? "Generating…" : "Download graphic"}
             </button>
             {missingRequired.length > 0 && (
-              <p className="text-[11px] text-center" style={{ color: "var(--muted-foreground)" }}>
+              <p className="text-center" style={{ fontSize: 12, color: "var(--fg-3)" }}>
                 Fill required: {missingRequired.map((f) => f.label).join(", ")}
               </p>
             )}
@@ -174,14 +166,14 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
 
         {/* Right — live preview */}
         <div className="lg:col-span-7 lg:sticky lg:top-8">
-          <div className="bg-white rounded-3xl border shadow-lg p-6" style={{ borderColor: "var(--border)" }}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-extrabold uppercase text-sm" style={{ color: "var(--foreground)" }}>Preview</h3>
-              <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--muted-foreground)" }}>
-                {template.canvasWidth}×{template.canvasHeight} · Live
+          <div className="p-5" style={{ ...panel, boxShadow: "var(--shadow-e2)" }}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="sp-panel-title">Preview</h3>
+              <span className="sp-eyebrow">
+                {template.canvasWidth}×{template.canvasHeight} · live
               </span>
             </div>
-            <div className="rounded-2xl overflow-hidden border-4 border-white shadow-inner" style={{ background: "var(--secondary)" }}>
+            <div className="rounded-xl overflow-hidden" style={{ background: "var(--paper-warm)", border: "1px solid var(--hairline)" }}>
               <SchemaRenderer
                 ref={rendererRef}
                 schema={template}

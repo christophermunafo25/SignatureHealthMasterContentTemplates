@@ -83,8 +83,7 @@ export function BrandStudio() {
           if (asset) set({ source: "custom", family: asset.metadata.family ?? asset.name, assetId: asset.id });
         }
       }}
-      className="w-full rounded-xl border px-3 py-2.5 text-sm"
-      style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+      className="sp-input"
     >
       {fontAssets.length > 0 && (
         <optgroup label="Your uploaded fonts">
@@ -105,16 +104,15 @@ export function BrandStudio() {
     <div className="max-w-5xl mx-auto px-4 py-10">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="font-extrabold uppercase text-xl" style={{ color: "var(--foreground)" }}>Brand Studio</h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+          <h1 className="sp-page-title">Brand Studio</h1>
+          <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
             Colors, fonts, and logos every template inherits.
           </p>
         </div>
         <button
           onClick={() => void save()}
           disabled={saving}
-          className="flex items-center gap-2 font-bold uppercase text-xs tracking-[0.18em] px-5 py-3 rounded-xl shadow-md disabled:opacity-60"
-          style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+          className="sp-btn sp-btn-primary"
         >
           {savedTick ? <Check className="w-4 h-4" /> : null}
           {savedTick ? "Saved" : saving ? "Saving…" : "Save brand"}
@@ -129,8 +127,8 @@ export function BrandStudio() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Colors */}
-        <section className="bg-white rounded-2xl border p-6 space-y-4" style={{ borderColor: "var(--border)" }}>
-          <h2 className="font-extrabold uppercase text-sm" style={{ color: "var(--foreground)" }}>Colors</h2>
+        <section className="sp-card p-5 space-y-4">
+          <h2 className="sp-panel-title">Colors</h2>
           <div className="space-y-2.5">
             {colors.map((c, i) => (
               <div key={c.key} className="flex items-center gap-3">
@@ -162,8 +160,7 @@ export function BrandStudio() {
               const n = colors.filter((c) => c.key.startsWith("custom")).length + 1;
               setColors([...colors, { key: `custom_${n}`, name: `Custom ${n}`, hex: "#888888" }]);
             }}
-            className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider"
-            style={{ color: "var(--primary)" }}
+            style={{ fontSize: 12, color: "var(--solar)", display: "flex", alignItems: "center", gap: 5 }}
           >
             <Plus className="w-3.5 h-3.5" />
             Add color
@@ -171,23 +168,19 @@ export function BrandStudio() {
         </section>
 
         {/* Fonts */}
-        <section className="bg-white rounded-2xl border p-6 space-y-4" style={{ borderColor: "var(--border)" }}>
-          <h2 className="font-extrabold uppercase text-sm" style={{ color: "var(--foreground)" }}>Fonts</h2>
+        <section className="sp-card p-5 space-y-4">
+          <h2 className="sp-panel-title">Fonts</h2>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--muted-foreground)" }}>
-              Heading
-            </label>
+            <label className="sp-eyebrow block mb-1">Heading</label>
             {fontOptions(headingFont, setHeadingFont)}
           </div>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--muted-foreground)" }}>
-              Body
-            </label>
+            <label className="sp-eyebrow block mb-1">Body</label>
             {fontOptions(bodyFont, setBodyFont)}
           </div>
           <label
-            className="flex items-center justify-center gap-2 border-2 border-dashed rounded-xl py-3 cursor-pointer text-[11px] font-bold uppercase tracking-wider"
-            style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
+            className="flex items-center justify-center gap-2 py-3 cursor-pointer"
+            style={{ border: "1.5px dashed var(--hairline-strong)", borderRadius: "var(--radius-input)", fontSize: 13, color: "var(--fg-2)" }}
           >
             <Upload className="w-4 h-4" />
             Upload font file
@@ -218,14 +211,14 @@ export function BrandStudio() {
         </section>
 
         {/* Logos */}
-        <section className="bg-white rounded-2xl border p-6 space-y-4" style={{ borderColor: "var(--border)" }}>
-          <h2 className="font-extrabold uppercase text-sm" style={{ color: "var(--foreground)" }}>Logos</h2>
+        <section className="sp-card p-5 space-y-4">
+          <h2 className="sp-panel-title">Logos</h2>
           <div className="grid grid-cols-3 gap-3">
             {logoAssets.map((a) => (
               <div
                 key={a.id}
                 className="relative rounded-xl border p-3 flex items-center justify-center aspect-square"
-                style={{ borderColor: a.id === primaryLogoAssetId ? "var(--primary)" : "var(--border)" }}
+                style={{ borderColor: a.id === primaryLogoAssetId ? "var(--solar)" : "var(--hairline)", borderRadius: "var(--radius-icon)" }}
               >
                 <img src={a.url} alt={a.name} className="max-w-full max-h-full object-contain" />
                 <button
@@ -235,7 +228,7 @@ export function BrandStudio() {
                 >
                   <Star
                     className="w-4 h-4"
-                    style={{ color: a.id === primaryLogoAssetId ? "var(--accent)" : "var(--border)" }}
+                    style={{ color: a.id === primaryLogoAssetId ? "var(--amber)" : "var(--hairline-strong)" }}
                     fill={a.id === primaryLogoAssetId ? "currentColor" : "none"}
                   />
                 </button>
@@ -253,7 +246,7 @@ export function BrandStudio() {
               style={{ borderColor: "var(--border)" }}
             >
               <Upload className="w-5 h-5" style={{ color: "var(--muted-foreground)" }} />
-              <span className="text-[9px] font-bold uppercase" style={{ color: "var(--muted-foreground)" }}>Add logo</span>
+              <span className="sp-eyebrow" style={{ fontSize: 9 }}>Add logo</span>
               <input
                 type="file"
                 accept="image/*"
@@ -269,16 +262,16 @@ export function BrandStudio() {
         </section>
 
         {/* Live preview */}
-        <section className="bg-white rounded-2xl border p-6 space-y-4" style={{ borderColor: "var(--border)" }}>
-          <h2 className="font-extrabold uppercase text-sm" style={{ color: "var(--foreground)" }}>Preview</h2>
+        <section className="sp-card p-5 space-y-4">
+          <h2 className="sp-panel-title">Preview</h2>
           <BrandPreviewCard
             colors={colors}
             headingFamily={headingFont.family}
             bodyFamily={bodyFont.family}
             logoUrl={logoAssets.find((a) => a.id === primaryLogoAssetId)?.url ?? logoAssets[0]?.url}
           />
-          <p className="text-[11px]" style={{ color: "var(--muted-foreground)" }}>
-            How your brand applies to portal chrome and template text. Save to apply everywhere.
+          <p style={{ fontSize: 12, color: "var(--fg-3)" }}>
+            How your brand applies to your templates and graphics. Save to apply everywhere.
           </p>
         </section>
       </div>
@@ -296,7 +289,7 @@ interface BrandPreviewCardProps {
 function BrandPreviewCard({ colors, headingFamily, bodyFamily, logoUrl }: BrandPreviewCardProps) {
   const hex = (key: string, fallback: string) => colors.find((c) => c.key === key)?.hex ?? fallback;
   return (
-    <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "var(--border)" }}>
+    <div className="overflow-hidden" style={{ border: "1px solid var(--hairline)", borderRadius: "var(--radius-card-sm)" }}>
       <div className="px-5 py-4 flex items-center gap-3" style={{ background: hex("primary", "#2F3B4C") }}>
         {logoUrl && <img src={logoUrl} alt="" className="h-6 w-auto" />}
         <span className="text-white font-extrabold uppercase text-sm" style={{ fontFamily: `"${headingFamily}", sans-serif` }}>

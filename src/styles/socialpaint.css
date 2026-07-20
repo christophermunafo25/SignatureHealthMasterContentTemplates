@@ -1,0 +1,218 @@
+/* ==========================================================================
+   SocialPaint Design System — platform UI tokens.
+   Adapted from the claude.ai/design "SocialPaint Design System" project
+   (colors_and_type.css + preview/app-shell.html recipes). PLATFORM UI ONLY:
+   these tokens style the product chrome. Tenant brand kits style the
+   template graphics themselves, never this chrome.
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Inter:wght@400;500;600&display=swap");
+
+@font-face {
+  font-family: "Stack Sans Headline";
+  src: url("../assets/fonts/socialpaint/StackSansHeadline-Variable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Stack Sans";
+  src: url("../assets/fonts/socialpaint/StackSansText-Variable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+/* Static fallbacks in case variable axes are unsupported */
+@font-face { font-family: "Stack Sans"; src: url("../assets/fonts/socialpaint/StackSansText-Light.woff2") format("woff2"); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: "Stack Sans"; src: url("../assets/fonts/socialpaint/StackSansText-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Stack Sans"; src: url("../assets/fonts/socialpaint/StackSansText-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Stack Sans Headline"; src: url("../assets/fonts/socialpaint/StackSansHeadline-Light.woff2") format("woff2"); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: "Stack Sans Headline"; src: url("../assets/fonts/socialpaint/StackSansHeadline-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+
+:root {
+  /* Surfaces */
+  --linen: #faf8f5;
+  --paper: #f7f6f5;
+  --paper-warm: #ececec;
+  --lift: #ffffff;
+  --ink: #231f23;
+  --obsidian: #1a171a;
+
+  /* Pastel accents (feature/category colors — chips and tiles only) */
+  --orchid: #cdbcff;
+  --mint: #a7ffac;
+  --sky: #a6ceff;
+  --sand: #ffed8c;
+  --peach: #ffc5b0; /* Brand Templates */
+
+  /* Warm spectrum — primary brand */
+  --amber: #ff8300;
+  --solar: #ff3f00;
+  --blush: #ff5a72;
+
+  /* Semantic state */
+  --success: #4a7c59;
+  --danger: #e94560;
+
+  /* Foreground opacities on light */
+  --fg-1: #231f23;
+  --fg-2: rgba(35, 31, 35, 0.64);
+  --fg-3: rgba(35, 31, 35, 0.48);
+  --fg-4: rgba(35, 31, 35, 0.32);
+  --fg-5: rgba(35, 31, 35, 0.08);
+  --hairline: rgba(35, 31, 35, 0.08);
+  --hairline-strong: rgba(35, 31, 35, 0.24);
+
+  /* Foreground on dark */
+  --fg-on-dark-1: #f7f6f5;
+  --fg-on-dark-2: rgba(247, 246, 245, 0.64);
+  --fg-on-dark-3: rgba(247, 246, 245, 0.48);
+
+  /* Typography families */
+  --font-display: "Stack Sans Headline", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Stack Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Fragment Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  /* Platform UI font — form fields, buttons, menus, tables, app chrome. */
+  --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Radii */
+  --radius-card: 20px;
+  --radius-card-sm: 16px;
+  --radius-icon: 12px;
+  --radius-input: 10px;
+  --radius-button: 8px;
+  --radius-pill: 999px;
+
+  /* Elevation shadows */
+  --shadow-e1: 0 1px 2px rgba(35, 31, 35, 0.04), 0 1px 1px rgba(35, 31, 35, 0.03);
+  --shadow-e2: 0 4px 16px rgba(35, 31, 35, 0.06);
+  --shadow-e3: 0 8px 32px rgba(35, 31, 35, 0.08);
+  --shadow-e4: 0 16px 48px rgba(35, 31, 35, 0.12);
+
+  /* Focus ring — solar */
+  --focus-ring: 0 0 0 3px rgba(255, 63, 0, 0.32);
+  --focus-ring-tight: 0 0 0 2px rgba(255, 63, 0, 0.4);
+
+  /* Signature warm mesh — identity chips, hero washes */
+  --mesh-warm:
+    radial-gradient(90% 75% at 82% 6%, rgba(255, 131, 0, 1) 0%, rgba(255, 131, 0, 0.55) 40%, rgba(255, 131, 0, 0) 100%),
+    radial-gradient(85% 70% at 22% 14%, rgba(255, 131, 0, 1) 0%, rgba(255, 131, 0, 0.55) 45%, rgba(255, 131, 0, 0) 100%),
+    radial-gradient(90% 75% at 58% 42%, rgba(255, 63, 0, 1) 0%, rgba(255, 63, 0, 0.55) 45%, rgba(255, 63, 0, 0) 100%),
+    radial-gradient(80% 65% at 8% 52%, rgba(255, 63, 0, 1) 0%, rgba(255, 63, 0, 0.55) 45%, rgba(255, 63, 0, 0) 100%),
+    radial-gradient(75% 65% at 92% 60%, rgba(255, 63, 0, 1) 0%, rgba(255, 63, 0, 0.55) 45%, rgba(255, 63, 0, 0) 100%),
+    radial-gradient(80% 65% at 28% 86%, rgba(255, 90, 114, 1) 0%, rgba(255, 90, 114, 0.55) 45%, rgba(255, 90, 114, 0) 100%),
+    radial-gradient(70% 60% at 82% 96%, rgba(255, 90, 114, 1) 0%, rgba(255, 90, 114, 0.55) 45%, rgba(255, 90, 114, 0) 100%),
+    linear-gradient(180deg, #ff8300 0%, #ff3f00 50%, #ff5a72 100%);
+  --mesh-soft:
+    radial-gradient(70% 60% at 80% 10%, rgba(255, 131, 0, 0.85) 0%, transparent 60%),
+    radial-gradient(60% 55% at 18% 35%, rgba(255, 63, 0, 0.8) 0%, transparent 65%),
+    radial-gradient(60% 55% at 78% 75%, rgba(255, 90, 114, 0.85) 0%, transparent 65%),
+    linear-gradient(170deg, #ff8300 0%, #ff3f00 55%, #ff5a72 100%);
+}
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
+
+html {
+  font-family: var(--font-ui);
+  color: var(--fg-1);
+  background: var(--linen);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+button, input, select, textarea, optgroup {
+  font-family: var(--font-ui);
+}
+
+/* ── Platform UI primitives (from preview/app-shell.html) ───────────────── */
+
+.sp-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  font-weight: 400;
+}
+
+.sp-page-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.4px;
+  color: var(--ink);
+}
+
+.sp-panel-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.sp-btn {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: var(--radius-button);
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.2s, background 0.2s;
+}
+.sp-btn:disabled { opacity: 0.45; cursor: default; }
+.sp-btn-primary { background: var(--ink); color: var(--fg-on-dark-1); }
+.sp-btn-primary:hover:not(:disabled) { background: var(--obsidian); }
+.sp-btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--hairline-strong); }
+.sp-btn-ghost:hover:not(:disabled) { background: rgba(35, 31, 35, 0.04); }
+.sp-btn-solar { background: var(--solar); color: #fff; }
+.sp-btn-solar:hover:not(:disabled) { opacity: 0.92; }
+
+.sp-input {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-input);
+  background: var(--lift);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  outline: none;
+  box-shadow: var(--shadow-e1);
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.sp-input::placeholder { color: var(--fg-4); }
+.sp-input:focus { border-color: transparent; box-shadow: var(--focus-ring-tight); }
+
+.sp-card {
+  background: var(--lift);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+}
+
+.sp-mesh {
+  background: var(--mesh-warm);
+  background-color: var(--solar);
+  position: relative;
+  isolation: isolate;
+  color: var(--fg-on-dark-1);
+}
+.sp-mesh::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 240px 240px;
+  background-repeat: repeat;
+  mix-blend-mode: overlay;
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 1;
+}
+.sp-mesh > * { position: relative; z-index: 2; }
+
+::selection { background: var(--orchid); color: var(--ink); }

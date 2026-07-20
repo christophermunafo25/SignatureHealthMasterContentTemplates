@@ -11,7 +11,6 @@ import { TemplateBuilder } from "./components/builder/TemplateBuilder";
 import { BrandStudio } from "./components/admin/BrandStudio";
 import { LocationsAdmin } from "./components/admin/LocationsAdmin";
 import { Dashboard } from "./components/admin/Dashboard";
-import "@/styles/fonts.css";
 
 function Screen() {
   const { loading, company, role } = useAuth();

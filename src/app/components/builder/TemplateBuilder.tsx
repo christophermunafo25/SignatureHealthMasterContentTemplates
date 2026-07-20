@@ -186,8 +186,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <button
           onClick={() => navigate({ name: "adminTemplates" })}
-          className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]"
-          style={{ color: "var(--muted-foreground)" }}
+          style={{ fontSize: 13, color: "var(--fg-2)", display: "flex", alignItems: "center", gap: 6 }}
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Templates
@@ -196,26 +195,26 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           value={draft.name}
           onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
           placeholder="Template name"
-          className="font-extrabold text-lg bg-transparent outline-none flex-1 min-w-[200px]"
-          style={{ color: "var(--foreground)" }}
+          className="bg-transparent outline-none flex-1 min-w-[200px]"
+          style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}
         />
         <span
-          className="text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-full"
-          style={{ background: "var(--secondary)", color: "var(--muted-foreground)" }}
+          className="sp-eyebrow px-2 py-1 rounded-md" style={{ background: "rgba(35,31,35,0.04)" }}
         >
           {draft.canvasWidth}×{draft.canvasHeight} · {draft.status}
         </span>
-        <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: "var(--border)" }}>
+        <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--hairline-strong)" }}>
           {(["edit", "preview"] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
-              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-2"
-              style={
-                mode === m
-                  ? { background: "var(--primary)", color: "var(--primary-foreground)" }
-                  : { background: "white", color: "var(--muted-foreground)" }
-              }
+              className="flex items-center gap-1.5 px-3 py-2 capitalize"
+              style={{
+                fontSize: 12,
+                ...(mode === m
+                  ? { background: "var(--ink)", color: "var(--fg-on-dark-1)" }
+                  : { background: "var(--lift)", color: "var(--fg-2)" }),
+              }}
             >
               {m === "edit" ? <Pencil className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
               {m}
@@ -225,8 +224,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         <button
           onClick={() => void save()}
           disabled={saving}
-          className="flex items-center gap-2 font-bold uppercase text-[11px] tracking-wider px-4 py-2.5 rounded-xl border-2 disabled:opacity-50"
-          style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
+          className="sp-btn sp-btn-ghost"
         >
           <Save className="w-3.5 h-3.5" />
           Save draft
@@ -234,8 +232,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         <button
           onClick={() => void save("published")}
           disabled={saving || !draft.backgroundUrl || draft.fields.length === 0}
-          className="flex items-center gap-2 font-bold uppercase text-[11px] tracking-wider px-4 py-2.5 rounded-xl shadow-md disabled:opacity-50"
-          style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+          className="sp-btn sp-btn-primary"
         >
           <Send className="w-3.5 h-3.5" />
           Publish
@@ -252,37 +249,37 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         /* Step 1: background */
         <div className="max-w-xl mx-auto py-10 space-y-4">
           <div className="text-center space-y-1 mb-2">
-            <h2 className="font-extrabold uppercase text-base" style={{ color: "var(--foreground)" }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}>
               Start with your design
             </h2>
-            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+            <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
               Upload a PNG of the finished design — you'll map the editable areas on top of it.
               {presets[0] && ` Canvas: ${presets[0].label}.`}
             </p>
           </div>
           <div
             {...getRootProps()}
-            className="border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all flex flex-col items-center gap-3"
+            className="border-dashed p-12 text-center cursor-pointer transition-all flex flex-col items-center gap-3"
             style={{
-              borderColor: isDragActive ? "var(--primary)" : "var(--border)",
-              background: isDragActive ? "var(--secondary)" : "white",
+              border: `1.5px dashed ${isDragActive ? "var(--solar)" : "var(--hairline-strong)"}`,
+              borderRadius: "var(--radius-card-sm)",
+              background: isDragActive ? "rgba(255,63,0,0.05)" : "var(--lift)",
             }}
           >
             <input {...getInputProps()} />
             {uploading ? (
-              <RefreshCw className="w-6 h-6 animate-spin" style={{ color: "var(--primary)" }} />
+              <RefreshCw className="w-6 h-6 animate-spin" style={{ color: "var(--solar)" }} />
             ) : (
-              <Upload className="w-6 h-6" style={{ color: "var(--primary)" }} />
+              <Upload className="w-6 h-6" style={{ color: "var(--solar)" }} />
             )}
-            <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--muted-foreground)" }}>
+            <p style={{ fontSize: 12, color: "var(--fg-2)" }}>
               {uploading ? "Uploading…" : "Click or drag a PNG here"}
             </p>
           </div>
           {stores.designImport.isConfigured() && (
             <button
               onClick={() => setFigmaOpen(true)}
-              className="w-full flex items-center justify-center gap-2 border-2 font-bold uppercase text-xs tracking-[0.18em] py-3.5 rounded-xl"
-              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              className="sp-btn sp-btn-ghost w-full"
             >
               <Figma className="w-4 h-4" />
               Import from Figma instead
@@ -293,10 +290,10 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         /* Step 2+: mapping, caption, details */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-7 space-y-4">
-            <div className="bg-white rounded-2xl border p-4" style={{ borderColor: "var(--border)" }}>
+            <div className="sp-card p-4">
               {mode === "edit" ? (
                 <>
-                  <p className="text-[11px] mb-3" style={{ color: "var(--muted-foreground)" }}>
+                  <p className="mb-3" style={{ fontSize: 12, color: "var(--fg-3)" }}>
                     Drag on the image to draw a field box. Drag boxes to move; corner handle resizes.
                   </p>
                   <FieldOverlayEditor
@@ -323,8 +320,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
             {stores.designImport.isConfigured() && mode === "edit" && (
               <button
                 onClick={() => setFigmaOpen(true)}
-                className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider"
-                style={{ color: "var(--muted-foreground)" }}
+                style={{ fontSize: 12, color: "var(--fg-2)", display: "flex", alignItems: "center", gap: 6 }}
               >
                 <Figma className="w-3.5 h-3.5" />
                 Import fields from Figma
@@ -334,7 +330,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
 
           <div className="lg:col-span-5 space-y-4">
             {selectedField ? (
-              <div className="bg-white rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
+              <div className="sp-card p-4">
                 <FieldInspector
                   field={selectedField}
                   allFields={draft.fields}
@@ -349,8 +345,8 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
               </div>
             ) : (
               <div
-                className="rounded-2xl border-2 border-dashed p-6 text-center text-sm"
-                style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
+                className="p-6 text-center"
+                style={{ border: "1.5px dashed var(--hairline-strong)", borderRadius: 12, fontSize: 13, color: "var(--fg-3)" }}
               >
                 {draft.fields.length === 0
                   ? "Draw your first field box on the image."
@@ -358,10 +354,8 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
               </div>
             )}
 
-            <div className="bg-white rounded-2xl border p-5 space-y-3" style={{ borderColor: "var(--border)" }}>
-              <h3 className="font-extrabold uppercase text-sm" style={{ color: "var(--foreground)" }}>
-                Suggested caption
-              </h3>
+            <div className="sp-card p-4 space-y-3">
+              <h3 className="sp-panel-title">Suggested caption</h3>
               <CaptionEditor
                 value={draft.captionTemplate}
                 fields={draft.fields}
@@ -369,22 +363,20 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
               />
             </div>
 
-            <div className="bg-white rounded-2xl border p-5 space-y-3" style={{ borderColor: "var(--border)" }}>
-              <h3 className="font-extrabold uppercase text-sm" style={{ color: "var(--foreground)" }}>Details</h3>
+            <div className="sp-card p-4 space-y-3">
+              <h3 className="sp-panel-title">Details</h3>
               <input
                 value={draft.description}
                 onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
                 placeholder="Short description shown on the portal card"
-                className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none"
-                style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+                className="sp-input"
               />
               <div className="grid grid-cols-2 gap-3">
                 <input
                   value={draft.category}
                   onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
                   placeholder="Category"
-                  className="rounded-xl border px-4 py-2.5 text-sm outline-none"
-                  style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+                  className="sp-input"
                 />
                 <input
                   value={draft.tags.join(", ")}
@@ -395,13 +387,11 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                     }))
                   }
                   placeholder="Tags (comma-separated)"
-                  className="rounded-xl border px-4 py-2.5 text-sm outline-none"
-                  style={{ borderColor: "var(--border)", background: "var(--input-background)", color: "var(--foreground)" }}
+                  className="sp-input"
                 />
               </div>
               <label
-                className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider cursor-pointer"
-                style={{ color: "var(--muted-foreground)" }}
+                className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 12, color: "var(--fg-2)" }}
               >
                 <Upload className="w-3.5 h-3.5" />
                 Replace background PNG

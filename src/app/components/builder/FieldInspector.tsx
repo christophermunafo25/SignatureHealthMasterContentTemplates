@@ -20,14 +20,10 @@ const FIELD_TYPES: Array<{ value: FieldType; label: string }> = [
   { value: "location", label: "Location logo" },
 ];
 
-const labelClass = "text-[10px] font-bold uppercase tracking-wider block mb-1";
-const labelStyle: React.CSSProperties = { color: "var(--muted-foreground)" };
-const controlClass = "w-full rounded-lg border px-2.5 py-2 text-sm";
-const controlStyle: React.CSSProperties = {
-  borderColor: "var(--border)",
-  background: "var(--input-background)",
-  color: "var(--foreground)",
-};
+const labelClass = "sp-eyebrow block mb-1";
+const labelStyle: React.CSSProperties = {};
+const controlClass = "sp-input";
+const controlStyle: React.CSSProperties = {};
 
 /** Inspector for the selected field: label/type, locked styling (fonts and
  * colors come from the brand kit — never free values), and guardrails. */
@@ -38,7 +34,7 @@ export function FieldInspector({ field, allFields, onChange, onDelete }: FieldIn
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-extrabold uppercase text-sm" style={{ color: "var(--foreground)" }}>Field settings</h3>
+        <h3 className="sp-panel-title">Field settings</h3>
         <button onClick={onDelete} title="Delete field">
           <Trash2 className="w-4 h-4" style={{ color: "var(--destructive)" }} />
         </button>
@@ -120,7 +116,7 @@ export function FieldInspector({ field, allFields, onChange, onDelete }: FieldIn
 
       {/* Guardrails */}
       <div className="pt-2 border-t space-y-3" style={{ borderColor: "var(--border)" }}>
-        <h4 className="font-extrabold uppercase text-[11px]" style={{ color: "var(--foreground)" }}>Guardrails</h4>
+        <h4 className="sp-eyebrow">Guardrails</h4>
         {isText && field.type !== "select" && (
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -231,9 +227,7 @@ function TextStyling({ field, kit, customFamilies, onChange }: TextStylingProps)
 
   return (
     <div className="pt-2 border-t space-y-3" style={{ borderColor: "var(--border)" }}>
-      <h4 className="font-extrabold uppercase text-[11px]" style={{ color: "var(--foreground)" }}>
-        Locked styling
-      </h4>
+      <h4 className="sp-eyebrow">Locked styling</h4>
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
           <label className={labelClass} style={labelStyle}>Font</label>
@@ -287,7 +281,7 @@ function TextStyling({ field, kit, customFamilies, onChange }: TextStylingProps)
                 key={c.key}
                 title={c.name}
                 onClick={() => onChange({ colorKey: c.key })}
-                className="w-8 h-8 rounded-lg border-2 transition-transform hover:scale-105"
+                className="w-7 h-7 rounded-lg border-2 transition-transform hover:scale-105"
                 style={{
                   background: c.hex,
                   borderColor: field.colorKey === c.key ? "var(--ring)" : "transparent",

@@ -12,8 +12,8 @@ export function DevSwitcher() {
   return (
     <div className="flex items-center gap-2">
       <span
-        className="hidden md:inline text-[9px] font-semibold uppercase tracking-[0.16em] px-2 py-1 rounded-full"
-        style={{ background: "var(--secondary)", color: "var(--muted-foreground)" }}
+        className="sp-eyebrow hidden md:inline px-2 py-1 rounded-md"
+        style={{ background: "rgba(35,31,35,0.04)" }}
         title="Dev-mode auth stub — replaced by real login. Backend in use."
       >
         dev · {backend}
@@ -24,8 +24,8 @@ export function DevSwitcher() {
           if (e.target.value === "__new__") navigate({ name: "onboarding" });
           else void setCompany(e.target.value);
         }}
-        className="text-xs rounded-lg border px-2 py-1.5 bg-white"
-        style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+        className="sp-input"
+        style={{ width: "auto", padding: "6px 10px", fontSize: 12 }}
         aria-label="Company"
       >
         {companies.map((c) => (
@@ -36,8 +36,8 @@ export function DevSwitcher() {
         <option value="__new__">+ Create company…</option>
       </select>
       <div
-        className="flex rounded-lg overflow-hidden border"
-        style={{ borderColor: "var(--border)" }}
+        className="flex rounded-lg overflow-hidden"
+        style={{ border: "1px solid var(--hairline-strong)" }}
         role="group"
         aria-label="Role"
       >
@@ -48,12 +48,14 @@ export function DevSwitcher() {
               setRole(r);
               navigate({ name: r === "admin" ? "adminTemplates" : "portal" });
             }}
-            className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 transition-colors"
-            style={
-              role === r
-                ? { background: "var(--primary)", color: "var(--primary-foreground)" }
-                : { background: "white", color: "var(--muted-foreground)" }
-            }
+            className="px-2.5 py-1.5 transition-colors capitalize"
+            style={{
+              fontSize: 12,
+              fontFamily: "var(--font-ui)",
+              ...(role === r
+                ? { background: "var(--ink)", color: "var(--fg-on-dark-1)" }
+                : { background: "var(--lift)", color: "var(--fg-2)" }),
+            }}
           >
             {r}
           </button>

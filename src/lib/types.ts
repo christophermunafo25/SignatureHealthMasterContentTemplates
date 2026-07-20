@@ -21,10 +21,31 @@ export interface FontRef {
   assetId?: string; // brand_assets id when source === "custom"
 }
 
+/** A named brand type style ("role") — the unit of the brand rules engine.
+ * Every property a style DEFINES is locked: fields bound to the style render
+ * with it and the builder/end user cannot override it. Properties left
+ * undefined stay editable per field (e.g. layout-specific font size). */
+export interface BrandTypeStyle {
+  key: string; // stable slug, e.g. "heading"
+  name: string; // "Heading"
+  font?: FontRef;
+  weight?: number; // 100–900
+  uppercase?: boolean;
+  letterSpacingPx?: number;
+  lineHeight?: number;
+  colorKey?: string; // brand palette key
+  fontSizePx?: number; // set only when the brand fixes the size globally
+  maxLength?: number; // "never exceeds N characters"
+  autoFit?: boolean;
+}
+
 export interface BrandKit {
   id: string;
   companyId: string;
-  colors: BrandColor[];
+  colors: BrandColor[]; // unlimited
+  typeStyles: BrandTypeStyle[]; // unlimited
+  /** Accepted free-text brand rules (from guidelines.md import or typed in). */
+  guidelines: string[];
   headingFont?: FontRef;
   bodyFont?: FontRef;
   primaryLogoAssetId?: string;
@@ -80,6 +101,10 @@ export interface TemplateField {
   height: number;
   rotation?: number; // degrees, about the box center
   anchor?: "topLeft" | "center";
+  /** Binding to a named brand type style. When set, every property that
+   * style defines overrides the field-level values below and is locked by
+   * the brand rules engine. */
+  typeStyleKey?: string;
   // Locked styling the member CANNOT change. colorKey references the brand
   // kit palette so a palette change propagates everywhere.
   fontFamily?: string;

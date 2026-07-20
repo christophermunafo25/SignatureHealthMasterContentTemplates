@@ -5,6 +5,7 @@ import { stores } from "@/lib/stores";
 import { mergeCaption } from "@/lib/caption";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { useRouter } from "../router";
+import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
 import { SchemaRenderer, type SchemaRendererHandle } from "./SchemaRenderer";
 import { FieldInput } from "./FieldInput";
 
@@ -94,7 +95,9 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
             )}
           </div>
 
-          {template.fields.map((field, i) => (
+          {template.fields.map((field, i) => {
+            const maxLength = resolveFieldStyle(field, kit).maxLength;
+            return (
             <div key={field.id} className="p-4 space-y-2.5" style={panel}>
               <div>
                 <p className="sp-eyebrow">Step {String(i + 1).padStart(2, "0")}</p>
@@ -102,20 +105,21 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
                   {field.label}
                   {field.required && <span style={{ color: "var(--solar)" }}> *</span>}
                 </h2>
-                {field.maxLength && (
+                {maxLength && (
                   <p style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--fg-3)", marginTop: 2 }}>
-                    {(values[field.fieldKey] ?? "").length}/{field.maxLength}
+                    {(values[field.fieldKey] ?? "").length}/{maxLength}
                   </p>
                 )}
               </div>
               <FieldInput
-                field={field}
+                field={{ ...field, maxLength }}
                 value={values[field.fieldKey] ?? ""}
                 onChange={(v) => setValues((prev) => ({ ...prev, [field.fieldKey]: v }))}
                 locations={locations}
               />
             </div>
-          ))}
+            );
+          })}
 
           {/* Suggested caption */}
           {template.captionTemplate && (

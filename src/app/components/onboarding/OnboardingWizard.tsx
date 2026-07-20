@@ -5,7 +5,7 @@ import { stores } from "@/lib/stores";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { useRouter } from "../../router";
-import { DEFAULT_PALETTE } from "@/lib/theme";
+import { DEFAULT_PALETTE, DEFAULT_TYPE_STYLES } from "@/lib/theme";
 import { GOOGLE_FONTS, loadGoogleFonts } from "@/lib/render/fonts";
 import { FONT_ACCEPT, validateFontFile } from "@/lib/brand/fontUpload";
 
@@ -76,7 +76,14 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
         primaryLogoAssetId = asset.id;
       }
 
-      await stores.brandKits.upsert(company.id, { colors, headingFont, bodyFont, primaryLogoAssetId });
+      await stores.brandKits.upsert(company.id, {
+        colors,
+        typeStyles: DEFAULT_TYPE_STYLES,
+        guidelines: [],
+        headingFont,
+        bodyFont,
+        primaryLogoAssetId,
+      });
 
       for (const name of locationNames) {
         await stores.locations.create(company.id, { name });

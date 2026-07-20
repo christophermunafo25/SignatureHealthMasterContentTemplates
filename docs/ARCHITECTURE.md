@@ -41,8 +41,10 @@ Every tenant-owned table carries `company_id` → `companies`. See
 `supabase/migrations/0001_schema.sql` for full DDL.
 
 - `companies`, `users`, `memberships` (role: `admin` | `member`)
-- `brand_kits` (palette jsonb, heading/body font refs, primary logo) — one
-  active per company
+- `brand_kits` (palette jsonb, `type_styles` jsonb — the brand rules engine's
+  named roles, `guidelines` jsonb — accepted free-text rules, heading/body
+  font refs, primary logo) — one active per company. Unlimited colors, type
+  styles, and rules.
 - `brand_assets` (logo | font | image; Storage-backed)
 - `locations` — generic per-tenant branches/facilities with optional logos
 - `canvas_presets` — reference data; the ONLY seeded table. v1 enables just
@@ -82,10 +84,11 @@ policy sets:
 
 ## Theming
 
-`applyBrandTheme` (src/lib/theme.ts) maps the active brand kit's palette onto
-the app's CSS variables (`--primary`, `--accent`, …) plus `--brand-*` custom
-entries. With no kit (fresh install) the neutral default theme in
-`src/styles/theme.css` applies. Fonts load via the Google Fonts css2 API or
+The platform chrome is styled by the SocialPaint design system
+(`src/styles/socialpaint.css`) and is never re-themed per tenant.
+`applyBrandTheme` (src/lib/theme.ts) exposes the active kit's palette as
+`--brand-*` CSS variables for template-adjacent surfaces only; tenant brand
+expression lives in the template graphics. Fonts load via the Google Fonts css2 API or
 runtime `@font-face` with data URLs for uploads (export-safe — see
 `src/lib/render/fonts.ts`).
 
@@ -112,10 +115,36 @@ Every client starts from the identical blank slate:
 
 Everything set in onboarding is editable later in Brand Studio.
 
+## Template creation paths
+
+Two co-equal ways to create a template, both ending in the same schema:
+
+1. **PNG upload** — drop a finished design, draw editable field boxes on it.
+2. **Figma link** — paste a frame link; the frame renders to the locked
+   background and every detected text layer / image placeholder becomes a
+   CANDIDATE in an interactive picker (`FigmaFieldPicker`). The admin decides
+   which candidates become editable input fields (label, type, brand
+   type-style binding); everything unchecked stays baked into the background.
+
+## Brand rules engine & design-system import
+
+Brand Studio defines unlimited **type styles** ("Heading", "Body", …). Every
+property a style defines is an enforced rule ("Heading is always UPPERCASE",
+"Body never exceeds 120 characters"): fields bind via `typeStyleKey`, the
+builder locks the bound controls, and `resolveFieldStyle` applies the style at
+render time so a Brand Studio change restyles every template instantly.
+
+**Design-system import** (file-based, not a live connector): a design-tokens
+JSON (e.g. a Claude Design `tokens.json` export — W3C or flat formats) fills
+the palette + type styles; a `guidelines.md` is mined for rule-like lines the
+admin reviews and accepts into `brand_kits.guidelines`; or the `figma-styles`
+Edge Function pulls a connected Figma file's published color/text styles
+(falling back to scanning the document). Parsers: `src/lib/brand/designSystemImport.ts`.
+
 ## Figma integration
 
-Additive convenience on top of the manual PNG builder (which must always work
-alone). Client code talks ONLY to our Edge Functions:
+Core creation path AND design-system source (see above); the manual PNG
+builder always works without it. Client code talks ONLY to our Edge Functions:
 
 - `figma-connect` — stores a credential in `integration_connections`.
   v1 primary path is a **personal access token** (validated against `/v1/me`),
@@ -123,6 +152,8 @@ alone). Client code talks ONLY to our Edge Functions:
   too: set `FIGMA_CLIENT_ID`, `FIGMA_CLIENT_SECRET`,
   `FIGMA_OAUTH_REDIRECT_URI` via `supabase secrets set` to enable it.
 - `figma-status` — is a token stored for this company?
+- `figma-styles` — design-system import: a file's published color/text styles
+  (or a document scan fallback) → palette entries + brand type styles.
 - `figma-import` — parses a frame URL, `GET /v1/files/:key/nodes`, renders the
   frame via `GET /v1/images` (scale 2), re-hosts the PNG in the
   `template-backgrounds` bucket (Figma render URLs expire), and walks the node

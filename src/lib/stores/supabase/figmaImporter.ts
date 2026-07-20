@@ -1,5 +1,5 @@
 import type { DesignImportResult } from "../../types";
-import type { DesignImportProvider } from "../interfaces";
+import type { DesignImportProvider, StyleImportResult } from "../interfaces";
 import { isSupabaseConfigured, supabase } from "./client";
 
 /**
@@ -38,5 +38,13 @@ export class FigmaImporter implements DesignImportProvider {
     });
     if (error) throw new Error(`Figma import failed: ${error.message}`);
     return data as DesignImportResult;
+  }
+
+  async importStylesFromUrl(companyId: string, url: string): Promise<StyleImportResult> {
+    const { data, error } = await supabase().functions.invoke("figma-styles", {
+      body: { companyId, url },
+    });
+    if (error) throw new Error(`Figma style import failed: ${error.message}`);
+    return data as StyleImportResult;
   }
 }

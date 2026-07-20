@@ -70,6 +70,14 @@ export interface DesignImportProvider {
   isConnected(companyId: string): Promise<boolean>;
   connect(companyId: string, credential: { kind: "oauth-code" | "pat"; value: string }): Promise<void>;
   importFromUrl(companyId: string, url: string): Promise<DesignImportResult>;
+  /** Design-system import: pull the color + text styles of a Figma FILE into
+   * palette entries + brand type styles (Feature 4 → design-system import). */
+  importStylesFromUrl(companyId: string, url: string): Promise<StyleImportResult>;
+}
+
+export interface StyleImportResult {
+  colors: import("../types").BrandColor[];
+  typeStyles: import("../types").BrandTypeStyle[];
 }
 
 /** Swappable hook for the Template Builder's "Suggest fields" button.

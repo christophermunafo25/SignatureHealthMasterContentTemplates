@@ -4,6 +4,7 @@ import type {
   BrandAsset,
   BrandColor,
   BrandKit,
+  BrandTypeStyle,
   CanvasPreset,
   Company,
   FontRef,
@@ -42,6 +43,8 @@ export interface BrandKitRow {
   id: string;
   company_id: string;
   colors: BrandColor[];
+  type_styles: BrandTypeStyle[] | null;
+  guidelines: string[] | null;
   heading_font: FontRef | null;
   body_font: FontRef | null;
   primary_logo_asset_id: string | null;
@@ -51,6 +54,8 @@ export const toBrandKit = (r: BrandKitRow): BrandKit => ({
   id: r.id,
   companyId: r.company_id,
   colors: r.colors ?? [],
+  typeStyles: r.type_styles ?? [],
+  guidelines: r.guidelines ?? [],
   headingFont: r.heading_font ?? undefined,
   bodyFont: r.body_font ?? undefined,
   primaryLogoAssetId: r.primary_logo_asset_id ?? undefined,
@@ -97,6 +102,7 @@ export interface TemplateFieldRow {
   field_key: string;
   label: string;
   type: TemplateField["type"];
+  type_style_key: string | null;
   x: number;
   y: number;
   width: number;
@@ -132,6 +138,7 @@ export const toTemplateField = (r: TemplateFieldRow): TemplateField => ({
   fieldKey: r.field_key,
   label: r.label,
   type: r.type,
+  typeStyleKey: opt(r.type_style_key),
   x: Number(r.x),
   y: Number(r.y),
   width: Number(r.width),
@@ -165,6 +172,7 @@ export const fieldToRow = (
   field_key: f.fieldKey,
   label: f.label,
   type: f.type,
+  type_style_key: f.typeStyleKey ?? null,
   x: f.x,
   y: f.y,
   width: f.width,

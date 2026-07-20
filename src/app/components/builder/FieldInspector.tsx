@@ -1,9 +1,10 @@
 import React from "react";
-import { Trash2 } from "lucide-react";
+import { Lock, Trash2 } from "lucide-react";
 import type { BrandKit, FieldType, TemplateField } from "@/lib/types";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { GOOGLE_FONTS } from "@/lib/render/fonts";
 import { suggestFieldKey } from "@/lib/caption";
+import { getTypeStyle, lockedProperties, ruleSentences } from "@/lib/brand/resolveStyle";
 
 interface FieldInspectorProps {
   field: TemplateField;
@@ -30,6 +31,8 @@ const controlStyle: React.CSSProperties = {};
 export function FieldInspector({ field, allFields, onChange, onDelete }: FieldInspectorProps) {
   const { kit, assets } = useBrand();
   const isText = field.type === "text" || field.type === "multiline" || field.type === "select";
+  const boundStyle = getTypeStyle(kit, field.typeStyleKey);
+  const locked = lockedProperties(boundStyle);
 
   return (
     <div className="space-y-4">
@@ -73,6 +76,36 @@ export function FieldInspector({ field, allFields, onChange, onDelete }: FieldIn
           </select>
         </div>
 
+        {isText && (
+          <div className="col-span-2">
+            <label className={labelClass} style={labelStyle}>Brand type style</label>
+            <select
+              className={controlClass}
+              style={controlStyle}
+              value={field.typeStyleKey ?? ""}
+              onChange={(e) => onChange({ typeStyleKey: e.target.value || undefined })}
+            >
+              <option value="">None — style this field manually</option>
+              {(kit?.typeStyles ?? []).map((ts) => (
+                <option key={ts.key} value={ts.key}>{ts.name}</option>
+              ))}
+            </select>
+            {boundStyle && (
+              <div
+                className="mt-2 rounded-lg px-3 py-2 space-y-0.5"
+                style={{ background: "rgba(255,63,0,0.06)", border: "1px solid rgba(255,63,0,0.18)" }}
+              >
+                {ruleSentences(boundStyle, kit).map((r) => (
+                  <p key={r} style={{ fontSize: 11, color: "var(--fg-2)" }}>
+                    <Lock style={{ width: 10, height: 10, display: "inline", marginRight: 5, verticalAlign: "-1px", color: "var(--solar)" }} />
+                    {r}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Placement (fine-tuning; boxes are usually dragged) */}
         {(["x", "y", "width", "height"] as const).map((k) => (
           <div key={k}>
@@ -110,7 +143,7 @@ export function FieldInspector({ field, allFields, onChange, onDelete }: FieldIn
         </div>
       </div>
 
-      {isText && <TextStyling field={field} kit={kit} onChange={onChange} customFamilies={
+      {isText && <TextStyling field={field} kit={kit} locked={locked} onChange={onChange} customFamilies={
         assets.filter((a) => a.kind === "font").map((a) => a.metadata.family ?? a.name)
       } />}
 
@@ -125,6 +158,7 @@ export function FieldInspector({ field, allFields, onChange, onDelete }: FieldIn
                 type="number"
                 className={controlClass}
                 style={controlStyle}
+                disabled={locked.has("maxLength")}
                 value={field.maxLength ?? ""}
                 placeholder="none"
                 onChange={(e) => onChange({ maxLength: e.target.value ? Number(e.target.value) : undefined })}
@@ -133,6 +167,7 @@ export function FieldInspector({ field, allFields, onChange, onDelete }: FieldIn
             <label className="flex items-end gap-2 pb-2 text-sm" style={{ color: "var(--foreground)" }}>
               <input
                 type="checkbox"
+                disabled={locked.has("autoFit")}
                 checked={field.autoFit ?? false}
                 onChange={(e) => onChange({ autoFit: e.target.checked || undefined })}
               />
@@ -210,12 +245,14 @@ interface TextStylingProps {
   field: TemplateField;
   kit: BrandKit | null;
   customFamilies: string[];
+  /** Properties fixed by the bound brand type style — rendered disabled. */
+  locked: Set<string>;
   onChange(patch: Partial<TemplateField>): void;
 }
 
 /** Locked styling: font family choices are the brand kit's fonts + custom
  * uploads + curated Google list; colors are ONLY brand palette keys. */
-function TextStyling({ field, kit, customFamilies, onChange }: TextStylingProps) {
+function TextStyling({ field, kit, customFamilies, locked, onChange }: TextStylingProps) {
   const brandFamilies = [
     ...new Set(
       [kit?.headingFont?.family, kit?.bodyFont?.family, ...customFamilies].filter(
@@ -234,6 +271,7 @@ function TextStyling({ field, kit, customFamilies, onChange }: TextStylingProps)
           <select
             className={controlClass}
             style={controlStyle}
+            disabled={locked.has("fontFamily")}
             value={field.fontFamily ?? ""}
             onChange={(e) => onChange({ fontFamily: e.target.value || undefined })}
           >
@@ -258,6 +296,7 @@ function TextStyling({ field, kit, customFamilies, onChange }: TextStylingProps)
             type="number"
             className={controlClass}
             style={controlStyle}
+            disabled={locked.has("fontSizePx")}
             value={field.fontSizePx ?? 45}
             onChange={(e) => onChange({ fontSizePx: Number(e.target.value) })}
           />
@@ -280,6 +319,7 @@ function TextStyling({ field, kit, customFamilies, onChange }: TextStylingProps)
               <button
                 key={c.key}
                 title={c.name}
+                disabled={locked.has("colorKey")}
                 onClick={() => onChange({ colorKey: c.key })}
                 className="w-7 h-7 rounded-lg border-2 transition-transform hover:scale-105"
                 style={{
@@ -312,6 +352,7 @@ function TextStyling({ field, kit, customFamilies, onChange }: TextStylingProps)
           <label className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground)" }}>
             <input
               type="checkbox"
+              disabled={locked.has("uppercase")}
               checked={field.uppercase ?? false}
               onChange={(e) => onChange({ uppercase: e.target.checked || undefined })}
             />
@@ -325,6 +366,7 @@ function TextStyling({ field, kit, customFamilies, onChange }: TextStylingProps)
             step="0.1"
             className={controlClass}
             style={controlStyle}
+            disabled={locked.has("letterSpacingPx")}
             value={field.letterSpacingPx ?? ""}
             placeholder="0"
             onChange={(e) => onChange({ letterSpacingPx: e.target.value ? Number(e.target.value) : undefined })}
@@ -337,6 +379,7 @@ function TextStyling({ field, kit, customFamilies, onChange }: TextStylingProps)
             step="0.05"
             className={controlClass}
             style={controlStyle}
+            disabled={locked.has("lineHeight")}
             value={field.lineHeight ?? ""}
             placeholder="1.1"
             onChange={(e) => onChange({ lineHeight: e.target.value ? Number(e.target.value) : undefined })}

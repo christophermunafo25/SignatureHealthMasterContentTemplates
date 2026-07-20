@@ -33,7 +33,19 @@ Types:
 - `location` — picker over the company's `locations`; renders the location's
   logo in the box.
 
-Locked styling (member can NEVER change these):
+Brand binding (the rules engine):
+
+- `typeStyleKey` — binds the field to a named brand type style ("role") from
+  the brand kit. Every property the style defines (font, weight, case, color,
+  letter spacing, line height, fixed size, max length, auto-fit) overrides the
+  field-level values below and is locked: the builder disables those controls
+  and shows the rule sentences; changing the style in Brand Studio restyles
+  every bound field across every template. Properties the style leaves
+  undefined stay field-editable. Resolution lives in
+  `src/lib/brand/resolveStyle.ts`.
+
+Locked styling (member can NEVER change these — used when no type style
+defines the property):
 
 - `fontFamily`, `fontSizePx`, `align`, `uppercase`, `letterSpacingPx`,
   `lineHeight`.

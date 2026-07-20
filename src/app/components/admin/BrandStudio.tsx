@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Check, Plus, Star, Trash2, Upload } from "lucide-react";
-import type { BrandColor, FontRef } from "@/lib/types";
+import type { BrandColor, BrandTypeStyle, FontRef } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { GOOGLE_FONTS, loadGoogleFonts, registerCustomFont } from "@/lib/render/fonts";
 import { FONT_ACCEPT, validateFontFile } from "@/lib/brand/fontUpload";
-import { DEFAULT_PALETTE } from "@/lib/theme";
+import { DEFAULT_PALETTE, DEFAULT_TYPE_STYLES } from "@/lib/theme";
+import { TypeStylesEditor } from "./TypeStylesEditor";
+import { DesignSystemImportPanel } from "./DesignSystemImportPanel";
 
 /** Brand Studio: the company's palette, fonts (Google + uploaded), and logos.
  * Every template field styles itself from here — nothing is hardcoded. */
@@ -15,6 +17,8 @@ export function BrandStudio() {
   const { kit, assets, refresh } = useBrand();
 
   const [colors, setColors] = useState<BrandColor[]>(kit?.colors ?? DEFAULT_PALETTE);
+  const [typeStyles, setTypeStyles] = useState<BrandTypeStyle[]>(kit?.typeStyles ?? DEFAULT_TYPE_STYLES);
+  const [guidelines, setGuidelines] = useState<string[]>(kit?.guidelines ?? []);
   const [headingFont, setHeadingFont] = useState<FontRef>(kit?.headingFont ?? { source: "google", family: "Montserrat" });
   const [bodyFont, setBodyFont] = useState<FontRef>(kit?.bodyFont ?? { source: "google", family: "Inter" });
   const [primaryLogoAssetId, setPrimaryLogoAssetId] = useState(kit?.primaryLogoAssetId);
@@ -22,13 +26,20 @@ export function BrandStudio() {
   const [savedTick, setSavedTick] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Sync the working copy from the kit ONLY when a different kit arrives
+  // (company switch / first load). Plain object-identity deps would wipe
+  // unsaved edits every time BrandContext refreshes (e.g. after an asset
+  // upload) — the working copy must survive background refreshes.
+  const syncedKitIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (kit) {
-      setColors(kit.colors);
-      if (kit.headingFont) setHeadingFont(kit.headingFont);
-      if (kit.bodyFont) setBodyFont(kit.bodyFont);
-      setPrimaryLogoAssetId(kit.primaryLogoAssetId);
-    }
+    if (!kit || syncedKitIdRef.current === kit.id) return;
+    syncedKitIdRef.current = kit.id;
+    setColors(kit.colors);
+    setTypeStyles(kit.typeStyles?.length ? kit.typeStyles : DEFAULT_TYPE_STYLES);
+    setGuidelines(kit.guidelines ?? []);
+    if (kit.headingFont) setHeadingFont(kit.headingFont);
+    if (kit.bodyFont) setBodyFont(kit.bodyFont);
+    setPrimaryLogoAssetId(kit.primaryLogoAssetId);
   }, [kit]);
 
   const fontAssets = assets.filter((a) => a.kind === "font");
@@ -39,7 +50,14 @@ export function BrandStudio() {
     setSaving(true);
     setError(null);
     try {
-      await stores.brandKits.upsert(company.id, { colors, headingFont, bodyFont, primaryLogoAssetId });
+      await stores.brandKits.upsert(company.id, {
+        colors,
+        typeStyles,
+        guidelines,
+        headingFont,
+        bodyFont,
+        primaryLogoAssetId,
+      });
       await refresh(); // re-theme the app + reload fonts immediately
       setSavedTick(true);
       setTimeout(() => setSavedTick(false), 1500);
@@ -69,6 +87,14 @@ export function BrandStudio() {
     if (!logoAssets.length) setPrimaryLogoAssetId(asset.id);
     await refresh();
   };
+
+  // Design-system import merges: existing keys win; new entries append.
+  const mergeColors = (incoming: BrandColor[]) =>
+    setColors((prev) => [...prev, ...incoming.filter((c) => !prev.some((p) => p.key === c.key))]);
+  const mergeTypeStyles = (incoming: BrandTypeStyle[]) =>
+    setTypeStyles((prev) => [...prev, ...incoming.filter((t) => !prev.some((p) => p.key === t.key))]);
+  const mergeGuidelines = (incoming: string[]) =>
+    setGuidelines((prev) => [...new Set([...prev, ...incoming])]);
 
   const fontOptions = (current: FontRef, set: (r: FontRef) => void) => (
     <select
@@ -259,6 +285,73 @@ export function BrandStudio() {
               />
             </label>
           </div>
+        </section>
+
+        {/* Type styles — the brand rules engine */}
+        <section className="sp-card p-5 space-y-4 lg:col-span-2">
+          <div>
+            <h2 className="sp-panel-title">Type styles &amp; rules</h2>
+            <p style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 3 }}>
+              Named roles fields bind to. Every property a style defines becomes an enforced rule —
+              it applies across all templates and end users can't change it. Unlimited styles.
+            </p>
+          </div>
+          <TypeStylesEditor
+            styles={typeStyles}
+            colors={colors}
+            customFamilies={fontAssets.map((a) => a.metadata.family ?? a.name)}
+            onChange={setTypeStyles}
+          />
+        </section>
+
+        {/* Design-system import */}
+        <section className="sp-card p-5 space-y-4">
+          <div>
+            <h2 className="sp-panel-title">Import design system</h2>
+            <p style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 3 }}>
+              Ingest a design-tokens JSON (colors, type scale) to populate the palette and type
+              styles, parse a guidelines.md into suggested rules, or pull styles from a Figma file.
+            </p>
+          </div>
+          <DesignSystemImportPanel
+            onImportColors={mergeColors}
+            onImportTypeStyles={mergeTypeStyles}
+            onImportGuidelines={mergeGuidelines}
+          />
+        </section>
+
+        {/* Brand guidelines (free-text rules) */}
+        <section className="sp-card p-5 space-y-3">
+          <div>
+            <h2 className="sp-panel-title">Brand guidelines</h2>
+            <p style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 3 }}>
+              Do/don't and voice rules for humans building templates. Imported from guidelines.md
+              or written here.
+            </p>
+          </div>
+          {guidelines.length === 0 && (
+            <p style={{ fontSize: 12, color: "var(--fg-3)" }}>No guidelines yet.</p>
+          )}
+          {guidelines.map((g, i) => (
+            <div key={`${g}-${i}`} className="flex items-start gap-2">
+              <span style={{ color: "var(--solar)", fontSize: 12, lineHeight: "1.5" }}>—</span>
+              <span className="flex-1" style={{ fontSize: 12, color: "var(--ink)", lineHeight: 1.5 }}>{g}</span>
+              <button onClick={() => setGuidelines(guidelines.filter((_, j) => j !== i))} aria-label="Remove rule">
+                <Trash2 style={{ width: 13, height: 13, color: "var(--fg-3)" }} />
+              </button>
+            </div>
+          ))}
+          <input
+            className="sp-input"
+            placeholder="Add a rule and press Enter…"
+            onKeyDown={(e) => {
+              const v = (e.target as HTMLInputElement).value.trim();
+              if (e.key === "Enter" && v) {
+                mergeGuidelines([v]);
+                (e.target as HTMLInputElement).value = "";
+              }
+            }}
+          />
         </section>
 
         {/* Live preview */}

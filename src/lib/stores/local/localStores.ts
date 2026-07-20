@@ -99,7 +99,12 @@ export class LocalTemplateStore implements TemplateStore {
 
 export class LocalBrandKitStore implements BrandKitStore {
   async getActive(companyId: string): Promise<BrandKit | null> {
-    return (readDb().brandKits as BrandKit[]).find((k) => k.companyId === companyId) ?? null;
+    const kit = (readDb().brandKits as Array<Partial<BrandKit> & BrandKit>).find(
+      (k) => k.companyId === companyId,
+    );
+    if (!kit) return null;
+    // Kits saved before the rules engine existed lack the new arrays.
+    return { ...kit, typeStyles: kit.typeStyles ?? [], guidelines: kit.guidelines ?? [] };
   }
   async upsert(companyId: string, kit: Omit<BrandKit, "id" | "companyId">): Promise<BrandKit> {
     return mutate((db) => {
@@ -228,6 +233,9 @@ export class LocalDesignImportProvider implements DesignImportProvider {
     throw new Error("Figma integration requires the Supabase backend (see .env.example).");
   }
   async importFromUrl(): Promise<DesignImportResult> {
+    throw new Error("Figma integration requires the Supabase backend (see .env.example).");
+  }
+  async importStylesFromUrl(): Promise<never> {
     throw new Error("Figma integration requires the Supabase backend (see .env.example).");
   }
 }

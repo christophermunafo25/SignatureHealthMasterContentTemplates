@@ -9,6 +9,7 @@ import React, {
 import type { BrandKit, FieldValues, Location, TemplateField, TemplateSchema } from "@/lib/types";
 import { useDataUrl } from "@/lib/render/useDataUrl";
 import { fittedFontSize } from "@/lib/render/autoFit";
+import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
 import { exportSchemaPng, type ExportOutcome } from "@/lib/render/exportPng";
 import { stores } from "@/lib/stores";
 
@@ -167,21 +168,24 @@ function FieldBox({ field, value, brandKit, locations }: FieldBoxProps) {
 }
 
 function TextFieldBox({ field, value, brandKit }: Omit<FieldBoxProps, "locations">) {
+  // Brand rules engine: properties defined by the bound type style win.
+  const style = resolveFieldStyle(field, brandKit);
   const text = value || field.placeholder || field.label;
-  const fontSize = fittedFontSize(field, text);
+  const fontSize = fittedFontSize({ width: field.width, ...style }, text);
   const justify =
     field.align === "center" ? "center" : field.align === "right" ? "flex-end" : "flex-start";
   return (
     <div style={{ ...boxStyle(field), display: "flex", alignItems: "center", justifyContent: justify }}>
       <p
         style={{
-          fontFamily: field.fontFamily ? `"${field.fontFamily}", sans-serif` : "sans-serif",
+          fontFamily: style.fontFamily ? `"${style.fontFamily}", sans-serif` : "sans-serif",
+          fontWeight: style.fontWeight,
           fontSize,
-          color: value ? resolveColor(field.colorKey, brandKit) : "rgba(120,120,120,0.55)",
+          color: value ? resolveColor(style.colorKey, brandKit) : "rgba(120,120,120,0.55)",
           textAlign: field.align ?? "left",
-          textTransform: field.uppercase ? "uppercase" : undefined,
-          letterSpacing: field.letterSpacingPx ? `${field.letterSpacingPx}px` : undefined,
-          lineHeight: field.lineHeight ?? 1.1,
+          textTransform: style.uppercase ? "uppercase" : undefined,
+          letterSpacing: style.letterSpacingPx ? `${style.letterSpacingPx}px` : undefined,
+          lineHeight: style.lineHeight ?? 1.1,
           whiteSpace: field.type === "multiline" ? "pre-wrap" : "nowrap",
           wordBreak: field.type === "multiline" ? "break-word" : undefined,
           width: field.type === "multiline" ? "100%" : undefined,

@@ -20,6 +20,8 @@ export class SupabaseBrandKitStore implements BrandKitStore {
     const row = {
       company_id: companyId,
       colors: kit.colors,
+      type_styles: kit.typeStyles,
+      guidelines: kit.guidelines,
       heading_font: kit.headingFont ?? null,
       body_font: kit.bodyFont ?? null,
       primary_logo_asset_id: kit.primaryLogoAssetId ?? null,

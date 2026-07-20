@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { ArrowLeft, Eye, Figma, Pencil, RefreshCw, Save, Send, Upload } from "lucide-react";
-import type { CanvasPreset, NewTemplateInput, TemplateField, TemplateSchema } from "@/lib/types";
+import type { CanvasPreset, DesignImportResult, NewTemplateInput, TemplateField, TemplateSchema } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBrand } from "@/lib/brand/BrandContext";
@@ -13,6 +13,7 @@ import { FieldOverlayEditor } from "./FieldOverlayEditor";
 import { FieldInspector } from "./FieldInspector";
 import { CaptionEditor } from "./CaptionEditor";
 import { FigmaImportDialog } from "./FigmaImportDialog";
+import { FigmaFieldPicker } from "./FigmaFieldPicker";
 
 /** Admin Template Builder: upload a PNG background, draw guarded fields on
  * it, write the caption merge template, publish. The manual path is the
@@ -44,6 +45,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [figmaOpen, setFigmaOpen] = useState(false);
+  const [pendingImport, setPendingImport] = useState<DesignImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -170,14 +172,8 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         <FigmaImportDialog
           onClose={() => setFigmaOpen(false)}
           onImported={(result) => {
-            setDraft((d) => ({
-              ...d,
-              backgroundUrl: result.backgroundUrl,
-              canvasWidth: result.canvasWidth,
-              canvasHeight: result.canvasHeight,
-              fields: [...d.fields, ...result.suggestedFields],
-            }));
             setFigmaOpen(false);
+            setPendingImport(result); // admin picks which elements become fields
           }}
         />
       )}
@@ -245,46 +241,92 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         </p>
       )}
 
-      {!draft.backgroundUrl ? (
-        /* Step 1: background */
-        <div className="max-w-xl mx-auto py-10 space-y-4">
+      {pendingImport ? (
+        <FigmaFieldPicker
+          result={pendingImport}
+          kit={kit}
+          onBack={() => setPendingImport(null)}
+          onConfirm={(fields) => {
+            setDraft((d) => {
+              const existing = [...d.fields];
+              const merged = fields.map((f) => {
+                const fieldKey = suggestFieldKey(f.label, existing);
+                const next = { ...f, fieldKey };
+                existing.push(next);
+                return next;
+              });
+              return {
+                ...d,
+                backgroundUrl: pendingImport.backgroundUrl,
+                canvasWidth: pendingImport.canvasWidth,
+                canvasHeight: pendingImport.canvasHeight,
+                fields: [...d.fields, ...merged],
+              };
+            });
+            setPendingImport(null);
+            setMode("edit");
+          }}
+        />
+      ) : !draft.backgroundUrl ? (
+        /* Step 1: two co-equal creation paths */
+        <div className="max-w-3xl mx-auto py-10 space-y-5">
           <div className="text-center space-y-1 mb-2">
             <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}>
               Start with your design
             </h2>
             <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
-              Upload a PNG of the finished design — you'll map the editable areas on top of it.
+              Two ways in — both end at the same place: locked design, editable fields.
               {presets[0] && ` Canvas: ${presets[0].label}.`}
             </p>
           </div>
-          <div
-            {...getRootProps()}
-            className="border-dashed p-12 text-center cursor-pointer transition-all flex flex-col items-center gap-3"
-            style={{
-              border: `1.5px dashed ${isDragActive ? "var(--solar)" : "var(--hairline-strong)"}`,
-              borderRadius: "var(--radius-card-sm)",
-              background: isDragActive ? "rgba(255,63,0,0.05)" : "var(--lift)",
-            }}
-          >
-            <input {...getInputProps()} />
-            {uploading ? (
-              <RefreshCw className="w-6 h-6 animate-spin" style={{ color: "var(--solar)" }} />
-            ) : (
-              <Upload className="w-6 h-6" style={{ color: "var(--solar)" }} />
-            )}
-            <p style={{ fontSize: 12, color: "var(--fg-2)" }}>
-              {uploading ? "Uploading…" : "Click or drag a PNG here"}
-            </p>
-          </div>
-          {stores.designImport.isConfigured() && (
-            <button
-              onClick={() => setFigmaOpen(true)}
-              className="sp-btn sp-btn-ghost w-full"
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
+            {/* Path A — PNG upload */}
+            <div
+              {...getRootProps()}
+              className="border-dashed p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3"
+              style={{
+                border: `1.5px dashed ${isDragActive ? "var(--solar)" : "var(--hairline-strong)"}`,
+                borderRadius: "var(--radius-card-sm)",
+                background: isDragActive ? "rgba(255,63,0,0.05)" : "var(--lift)",
+                minHeight: 220,
+              }}
             >
-              <Figma className="w-4 h-4" />
-              Import from Figma instead
+              <input {...getInputProps()} />
+              {uploading ? (
+                <RefreshCw className="w-6 h-6 animate-spin" style={{ color: "var(--solar)" }} />
+              ) : (
+                <Upload className="w-6 h-6" style={{ color: "var(--solar)" }} />
+              )}
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>Upload a PNG</p>
+              <p style={{ fontSize: 12, color: "var(--fg-2)", maxWidth: 240 }}>
+                {uploading
+                  ? "Uploading…"
+                  : "Drop a finished design here, then draw the editable areas on top of it."}
+              </p>
+            </div>
+            {/* Path B — Figma link */}
+            <button
+              onClick={() => stores.designImport.isConfigured() && setFigmaOpen(true)}
+              disabled={!stores.designImport.isConfigured()}
+              className="p-8 text-center transition-all flex flex-col items-center justify-center gap-3"
+              style={{
+                border: "1.5px dashed var(--hairline-strong)",
+                borderRadius: "var(--radius-card-sm)",
+                background: "var(--lift)",
+                minHeight: 220,
+                cursor: stores.designImport.isConfigured() ? "pointer" : "default",
+                opacity: stores.designImport.isConfigured() ? 1 : 0.55,
+              }}
+            >
+              <Figma className="w-6 h-6" style={{ color: "var(--solar)" }} />
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>Import from Figma</p>
+              <p style={{ fontSize: 12, color: "var(--fg-2)", maxWidth: 240 }}>
+                {stores.designImport.isConfigured()
+                  ? "Paste a frame link — pick which elements become editable fields; the rest is baked into the locked design."
+                  : "Requires the Supabase backend with the Figma connection configured (see docs/ARCHITECTURE.md)."}
+              </p>
             </button>
-          )}
+          </div>
         </div>
       ) : (
         /* Step 2+: mapping, caption, details */

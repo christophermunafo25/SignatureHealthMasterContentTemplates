@@ -1,0 +1,169 @@
+import React, { useState, useCallback } from 'react';
+import Cropper from 'react-easy-crop';
+
+// Helper to create the cropped image
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.setAttribute('crossOrigin', 'anonymous'); 
+    image.src = url;
+  });
+
+function getRadianAngle(degreeValue: number) {
+  return (degreeValue * Math.PI) / 180;
+}
+
+/**
+ * Returns the new bounding area of a rotated rectangle.
+ */
+function rotateSize(width: number, height: number, rotation: number) {
+  const rotRad = getRadianAngle(rotation);
+
+  return {
+    width:
+      Math.abs(Math.cos(rotRad) * width) + Math.abs(Math.sin(rotRad) * height),
+    height:
+      Math.abs(Math.sin(rotRad) * width) + Math.abs(Math.cos(rotRad) * height),
+  };
+}
+
+async function getCroppedImg(
+  imageSrc: string,
+  pixelCrop: { x: number; y: number; width: number; height: number },
+  rotation = 0,
+  flip = { horizontal: false, vertical: false }
+): Promise<string> {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    return '';
+  }
+
+  const rotRad = getRadianAngle(rotation);
+
+  // calculate bounding box of the rotated image
+  const { width: bBoxWidth, height: bBoxHeight } = rotateSize(
+    image.width,
+    image.height,
+    rotation
+  );
+
+  // set canvas size to match the bounding box
+  canvas.width = bBoxWidth;
+  canvas.height = bBoxHeight;
+
+  // translate canvas context to a central location to allow rotating and flipping around the center
+  ctx.translate(bBoxWidth / 2, bBoxHeight / 2);
+  ctx.rotate(rotRad);
+  ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1);
+  ctx.translate(-image.width / 2, -image.height / 2);
+
+  // draw image
+  ctx.drawImage(image, 0, 0);
+
+  // croppedAreaPixels values are bounding box relative
+  // extract the cropped image using these values
+  const data = ctx.getImageData(
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  // set canvas width to final desired crop size - this will clear existing context
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  // paste generated rotate image at the top left corner
+  ctx.putImageData(data, 0, 0);
+
+  // As Base64 string
+  return canvas.toDataURL('image/png');
+}
+
+interface ImageCropperProps {
+  imageSrc: string;
+  onCancel: () => void;
+  onCropComplete: (croppedImage: string) => void;
+}
+
+export function ImageCropper({ imageSrc, onCancel, onCropComplete }: ImageCropperProps) {
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+
+  const onCropChange = (crop: { x: number; y: number }) => {
+    setCrop(crop);
+  };
+
+  const onZoomChange = (zoom: number) => {
+    setZoom(zoom);
+  };
+
+  const onCropCompleteCallback = useCallback((croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const showCroppedImage = useCallback(async () => {
+    try {
+      const croppedImage = await getCroppedImg(
+        imageSrc,
+        croppedAreaPixels
+      );
+      onCropComplete(croppedImage);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [imageSrc, croppedAreaPixels, onCropComplete]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 p-4 animate-in fade-in duration-200">
+      <div className="relative w-full max-w-2xl h-[60vh] bg-neutral-900 rounded-xl overflow-hidden border border-white/10 shadow-2xl">
+        <Cropper
+          image={imageSrc}
+          crop={crop}
+          zoom={zoom}
+          aspect={1}
+          onCropChange={onCropChange}
+          onCropComplete={onCropCompleteCallback}
+          onZoomChange={onZoomChange}
+        />
+      </div>
+      
+      <div className="w-full max-w-2xl mt-6 space-y-6">
+        <div className="flex items-center gap-4 text-white">
+          <span className="text-sm font-medium text-neutral-400">Zoom</span>
+          <input
+            type="range"
+            value={zoom}
+            min={1}
+            max={3}
+            step={0.1}
+            aria-labelledby="Zoom"
+            onChange={(e) => setZoom(Number(e.target.value))}
+            className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+          />
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            className="px-6 py-2.5 text-sm font-medium text-white bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors border border-white/10"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={showCroppedImage}
+            className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20"
+          >
+            Apply Crop
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

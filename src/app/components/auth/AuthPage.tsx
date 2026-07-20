@@ -108,6 +108,40 @@ export function AuthPage() {
         </div>
 
         <div className="px-7 py-6 space-y-4">
+          {(view === "signin" || view === "signup") && (
+            <div
+              className="grid grid-cols-2 rounded-lg overflow-hidden"
+              style={{ border: "1px solid var(--hairline-strong)" }}
+              role="tablist"
+              aria-label="Sign in or create account"
+            >
+              {([
+                ["signin", "Sign in"],
+                ["signup", "Create account"],
+              ] as const).map(([v, label]) => (
+                <button
+                  key={v}
+                  role="tab"
+                  aria-selected={view === v}
+                  onClick={() => {
+                    setView(v);
+                    setError(null);
+                    setNotice(null);
+                  }}
+                  className="py-2 transition-colors"
+                  style={{
+                    fontSize: 13,
+                    fontFamily: "var(--font-ui)",
+                    ...(view === v
+                      ? { background: "var(--ink)", color: "var(--fg-on-dark-1)" }
+                      : { background: "var(--lift)", color: "var(--fg-2)" }),
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           {view === "checkEmail" ? (
             <p style={{ fontSize: 13, color: "var(--fg-2)", lineHeight: 1.6 }}>
               Almost there — we sent a confirmation link to <b style={{ color: "var(--ink)" }}>{email}</b>.
@@ -140,14 +174,13 @@ export function AuthPage() {
               <button className="sp-btn sp-btn-primary w-full" disabled={busy || !email || !password} onClick={() => void signIn()}>
                 {busy ? "Signing in…" : "Sign in"}
               </button>
-              <div className="flex items-center justify-between">
-                <button style={{ fontSize: 12, color: "var(--fg-2)" }} onClick={() => setView("signup")}>
-                  Create an account
-                </button>
-                <button style={{ fontSize: 12, color: "var(--fg-2)" }} onClick={() => setView("forgot")}>
-                  Forgot password?
-                </button>
-              </div>
+              <button
+                className="w-full text-center"
+                style={{ fontSize: 12, color: "var(--fg-2)" }}
+                onClick={() => setView("forgot")}
+              >
+                Forgot password?
+              </button>
             </>
           )}
           {view === "signup" && (
@@ -156,9 +189,6 @@ export function AuthPage() {
                 {busy ? "Creating…" : "Create account"}
               </button>
               <p style={{ fontSize: 11, color: "var(--fg-3)" }}>Password must be at least 8 characters.</p>
-              <button style={{ fontSize: 12, color: "var(--fg-2)" }} onClick={() => setView("signin")}>
-                Already have an account? Sign in
-              </button>
             </>
           )}
           {view === "forgot" && (

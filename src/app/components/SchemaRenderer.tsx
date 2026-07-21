@@ -192,7 +192,18 @@ function TextFieldBox({ field, value, brandKit }: Omit<FieldBoxProps, "locations
           fontFamily: style.fontFamily ? `"${style.fontFamily}", sans-serif` : "sans-serif",
           fontWeight: style.fontWeight,
           fontSize,
-          color: value ? resolveColor(style.colorKey, style.colorHex, brandKit) : "rgba(120,120,120,0.55)",
+          color: resolveColor(style.colorKey, style.colorHex, brandKit),
+          opacity: value ? 1 : 0.55, // placeholder shows the real styling, dimmed
+          ...(style.textGradient?.stops.length
+            ? {
+                backgroundImage: `linear-gradient(${style.textGradient.angle}deg, ${style.textGradient.stops
+                  .map((s) => `${s.color} ${Math.round(s.position * 100)}%`)
+                  .join(", ")})`,
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+              }
+            : {}),
           textAlign: field.align ?? "left",
           textTransform: style.uppercase ? "uppercase" : undefined,
           letterSpacing: style.letterSpacingPx ? `${style.letterSpacingPx}px` : undefined,

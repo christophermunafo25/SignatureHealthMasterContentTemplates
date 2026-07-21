@@ -85,6 +85,11 @@ export interface CanvasPreset {
   enabled: boolean;
 }
 
+export interface TextGradient {
+  angle: number; // degrees, CSS linear-gradient convention
+  stops: Array<{ position: number; color: string }>; // position 0..1, #RRGGBB
+}
+
 export type FieldType = "text" | "multiline" | "image" | "select" | "location";
 
 export interface TemplateField {
@@ -118,6 +123,8 @@ export interface TemplateField {
   /** Literal color fallback (e.g. from a Figma import) — used only when no
    * type style or palette colorKey applies. */
   colorHex?: string;
+  /** Optional text fill gradient (wins over solid color when set). */
+  textGradient?: TextGradient;
   align?: "left" | "center" | "right";
   uppercase?: boolean;
   letterSpacingPx?: number;

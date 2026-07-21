@@ -13,6 +13,7 @@ export interface ResolvedFieldStyle {
   lineHeight?: number;
   colorKey?: string;
   colorHex?: string;
+  textGradient?: import("../types").TextGradient;
   maxLength?: number;
   autoFit?: boolean;
   /** The style that supplied the locked properties, if any. */
@@ -36,6 +37,7 @@ export function resolveFieldStyle(field: TemplateField, kit: BrandKit | null): R
     lineHeight: style?.lineHeight ?? field.lineHeight,
     colorKey: style?.colorKey ?? field.colorKey,
     colorHex: field.colorHex,
+    textGradient: field.textGradient,
     maxLength: style?.maxLength ?? field.maxLength,
     autoFit: style?.autoFit ?? field.autoFit,
     boundStyle: style,

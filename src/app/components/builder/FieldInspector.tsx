@@ -1,10 +1,11 @@
 import React from "react";
 import { Lock, Trash2 } from "lucide-react";
-import type { BrandKit, FieldType, TemplateField } from "@/lib/types";
+import type { BrandKit, FieldType, TemplateField, TextGradient } from "@/lib/types";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { GOOGLE_FONTS } from "@/lib/render/fonts";
 import { suggestFieldKey } from "@/lib/caption";
 import { getTypeStyle, lockedProperties, ruleSentences } from "@/lib/brand/resolveStyle";
+import { ColorControl } from "../ColorControl";
 
 interface FieldInspectorProps {
   field: TemplateField;
@@ -78,14 +79,14 @@ export function FieldInspector({ field, allFields, onChange, onDelete }: FieldIn
 
         {isText && (
           <div className="col-span-2">
-            <label className={labelClass} style={labelStyle}>Brand type style</label>
+            <label className={labelClass} style={labelStyle}>Saved style (optional)</label>
             <select
               className={controlClass}
               style={controlStyle}
               value={field.typeStyleKey ?? ""}
               onChange={(e) => onChange({ typeStyleKey: e.target.value || undefined })}
             >
-              <option value="">None — style this field manually</option>
+              <option value="">None — style freely below</option>
               {(kit?.typeStyles ?? []).map((ts) => (
                 <option key={ts.key} value={ts.key}>{ts.name}</option>
               ))}
@@ -291,6 +292,21 @@ function TextStyling({ field, kit, customFamilies, locked, onChange }: TextStyli
           </select>
         </div>
         <div>
+          <label className={labelClass} style={labelStyle}>Weight</label>
+          <select
+            className={controlClass}
+            style={controlStyle}
+            disabled={locked.has("weight")}
+            value={field.fontWeight ?? ""}
+            onChange={(e) => onChange({ fontWeight: e.target.value ? Number(e.target.value) : undefined })}
+          >
+            <option value="">Default</option>
+            {[100, 200, 300, 400, 500, 600, 700, 800, 900].map((w) => (
+              <option key={w} value={w}>{w}</option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label className={labelClass} style={labelStyle}>Size (px)</label>
           <input
             type="number"
@@ -312,28 +328,39 @@ function TextStyling({ field, kit, customFamilies, locked, onChange }: TextStyli
             onChange={(e) => onChange({ minFontSizePx: e.target.value ? Number(e.target.value) : undefined })}
           />
         </div>
-        <div className="col-span-2">
-          <label className={labelClass} style={labelStyle}>Color (brand palette)</label>
-          <div className="flex flex-wrap gap-2">
-            {(kit?.colors ?? []).map((c) => (
-              <button
-                key={c.key}
-                title={c.name}
-                disabled={locked.has("colorKey")}
-                onClick={() => onChange({ colorKey: c.key })}
-                className="w-7 h-7 rounded-lg border-2 transition-transform hover:scale-105"
-                style={{
-                  background: c.hex,
-                  borderColor: field.colorKey === c.key ? "var(--ring)" : "transparent",
-                }}
-              />
-            ))}
-            {!kit?.colors.length && (
-              <p className="text-[11px]" style={{ color: "var(--muted-foreground)" }}>
-                No brand palette yet — set colors in Brand Studio.
-              </p>
-            )}
-          </div>
+        <div className="col-span-2 space-y-2">
+          <label className={labelClass} style={labelStyle}>Color</label>
+          <ColorControl
+            ariaLabel="Field text color"
+            value={field.colorHex ?? kit?.colors.find((c) => c.key === field.colorKey)?.hex}
+            onChange={(hex) =>
+              !locked.has("colorKey") &&
+              onChange({ colorHex: hex, colorKey: undefined, textGradient: undefined })
+            }
+          />
+          {(kit?.colors.length ?? 0) > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="sp-eyebrow" style={{ fontSize: 9 }}>Brand</span>
+              {(kit?.colors ?? []).map((c) => (
+                <button
+                  key={c.key}
+                  title={`${c.name} — click to use`}
+                  disabled={locked.has("colorKey")}
+                  onClick={() => onChange({ colorKey: c.key, colorHex: undefined, textGradient: undefined })}
+                  className="w-5 h-5 rounded-md border-2 transition-transform hover:scale-110 cursor-pointer"
+                  style={{
+                    background: c.hex,
+                    borderColor: field.colorKey === c.key ? "var(--ring)" : "var(--hairline)",
+                  }}
+                />
+              ))}
+            </div>
+          )}
+          <GradientEditor
+            gradient={field.textGradient}
+            disabled={locked.has("colorKey")}
+            onChange={(textGradient) => onChange({ textGradient })}
+          />
         </div>
         <div>
           <label className={labelClass} style={labelStyle}>Align</label>
@@ -386,6 +413,109 @@ function TextStyling({ field, kit, customFamilies, locked, onChange }: TextStyli
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+
+interface GradientEditorProps {
+  gradient: TextGradient | undefined;
+  disabled: boolean;
+  onChange(gradient: TextGradient | undefined): void;
+}
+
+/** Optional text-fill gradient: toggle, per-stop hex-first color controls,
+ * stop positions, and angle. Wins over the solid color when enabled. */
+function GradientEditor({ gradient, disabled, onChange }: GradientEditorProps) {
+  const enabled = Boolean(gradient);
+  return (
+    <div className="space-y-2">
+      <label className="flex items-center gap-2" style={{ fontSize: 13, color: "var(--ink)" }}>
+        <input
+          type="checkbox"
+          disabled={disabled}
+          checked={enabled}
+          onChange={(e) =>
+            onChange(
+              e.target.checked
+                ? {
+                    angle: 90,
+                    stops: [
+                      { position: 0, color: "#FF8300" },
+                      { position: 1, color: "#FF5A72" },
+                    ],
+                  }
+                : undefined,
+            )
+          }
+        />
+        Gradient fill
+      </label>
+      {gradient && (
+        <div className="space-y-1.5 pl-5">
+          {gradient.stops.map((stop, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <ColorControl
+                ariaLabel={`Gradient stop ${i + 1}`}
+                size={24}
+                value={stop.color}
+                onChange={(color) =>
+                  onChange({
+                    ...gradient,
+                    stops: gradient.stops.map((st, j) => (j === i ? { ...st, color } : st)),
+                  })
+                }
+              />
+              <input
+                type="number"
+                min={0}
+                max={100}
+                className="sp-input"
+                style={{ width: 62, padding: "4px 6px", fontSize: 11 }}
+                value={Math.round(stop.position * 100)}
+                title="Stop position (%)"
+                onChange={(e) =>
+                  onChange({
+                    ...gradient,
+                    stops: gradient.stops.map((st, j) =>
+                      j === i ? { ...st, position: Math.min(100, Math.max(0, Number(e.target.value))) / 100 } : st,
+                    ),
+                  })
+                }
+              />
+              {gradient.stops.length > 2 && (
+                <button
+                  onClick={() => onChange({ ...gradient, stops: gradient.stops.filter((_, j) => j !== i) })}
+                  style={{ fontSize: 11, color: "var(--fg-3)" }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() =>
+                onChange({ ...gradient, stops: [...gradient.stops, { position: 1, color: "#FFED8C" }] })
+              }
+              style={{ fontSize: 11, color: "var(--solar)" }}
+            >
+              + Add stop
+            </button>
+            <label className="flex items-center gap-1.5" style={{ fontSize: 11, color: "var(--fg-2)" }}>
+              Angle
+              <input
+                type="number"
+                className="sp-input"
+                style={{ width: 62, padding: "4px 6px", fontSize: 11 }}
+                value={gradient.angle}
+                onChange={(e) => onChange({ ...gradient, angle: Number(e.target.value) })}
+              />
+              °
+            </label>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

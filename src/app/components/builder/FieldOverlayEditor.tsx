@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Moveable from "react-moveable";
 import type { TemplateField } from "@/lib/types";
 import { useDataUrl } from "@/lib/render/useDataUrl";
 
@@ -14,21 +15,30 @@ interface FieldOverlayEditorProps {
   onDraw(rect: { x: number; y: number; width: number; height: number }): void;
 }
 
-type DragState =
-  | { kind: "draw"; startX: number; startY: number; x: number; y: number; w: number; h: number }
-  | { kind: "move"; id: string; offsetX: number; offsetY: number }
-  | { kind: "resize"; id: string };
+interface DrawState {
+  startX: number;
+  startY: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
-/** The Template Builder's mapping surface: the uploaded background rendered
- * at scale with draggable/resizable field boxes in canvas coordinate space.
- * Drag on empty canvas to draw a new field box; drag a box to move it; use
- * the corner handle to resize. All math happens in canvas pixels (divide by
- * scale), mirroring the SchemaRenderer coordinate system exactly. */
+const GRID = 10; // canvas px
+
+/** The Template Builder's design canvas. Figma-class editing via
+ * react-moveable: drag to move, 8 resize handles (corner drags scale a text
+ * field's font size with the box), rotation handle, snap-to-grid, and smart
+ * alignment guides against the canvas edges/center and every other field.
+ * Drag on empty canvas to draw a new field. All coordinates commit in canvas
+ * pixel space (screen px ÷ scale). */
 export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
   const { canvasWidth, canvasHeight, backgroundUrl, fields, selectedId, onSelect, onChange, onDraw } = props;
   const containerRef = useRef<HTMLDivElement>(null);
+  const boxRefs = useRef(new Map<string, HTMLDivElement>());
   const [scale, setScale] = useState(0.4);
-  const [drag, setDrag] = useState<DragState | null>(null);
+  const [draw, setDraw] = useState<DrawState | null>(null);
+  const resizeStart = useRef<{ height: number; fontSize?: number; corner: boolean }>({ height: 0, corner: false });
   const backgroundDataUrl = useDataUrl(backgroundUrl || undefined);
 
   useEffect(() => {
@@ -52,62 +62,98 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
     [scale, canvasWidth, canvasHeight],
   );
 
-  const updateField = (id: string, patch: Partial<TemplateField>) =>
-    onChange(fields.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  const patchField = useCallback(
+    (id: string, patch: Partial<TemplateField>) =>
+      onChange(fields.map((f) => (f.id === id ? { ...f, ...patch } : f))),
+    [fields, onChange],
+  );
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!drag) return;
-    const p = toCanvas(e);
-    if (drag.kind === "draw") {
-      setDrag({
-        ...drag,
-        x: Math.min(drag.startX, p.x),
-        y: Math.min(drag.startY, p.y),
-        w: Math.abs(p.x - drag.startX),
-        h: Math.abs(p.y - drag.startY),
-      });
-    } else if (drag.kind === "move") {
-      updateField(drag.id, {
-        x: Math.round(p.x - drag.offsetX),
-        y: Math.round(p.y - drag.offsetY),
-      });
-    } else {
-      const f = fields.find((f) => f.id === drag.id);
-      if (f) {
-        updateField(drag.id, {
-          width: Math.max(24, Math.round(p.x - f.x)),
-          height: Math.max(24, Math.round(p.y - f.y)),
-        });
-      }
-    }
-  };
-
-  const handlePointerUp = () => {
-    if (drag?.kind === "draw") {
-      if (drag.w > 24 && drag.h > 24) {
-        onDraw({ x: Math.round(drag.x), y: Math.round(drag.y), width: Math.round(drag.w), height: Math.round(drag.h) });
-      } else {
+  // Delete/Backspace removes the selected field (unless typing in an input).
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!selectedId) return;
+      const tag = (document.activeElement?.tagName ?? "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        onChange(fields.filter((f) => f.id !== selectedId));
         onSelect(null);
       }
-    }
-    setDrag(null);
-  };
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selectedId, fields, onChange, onSelect]);
+
+  const selected = fields.find((f) => f.id === selectedId) ?? null;
+  // Target element via state (not a render-time ref read): callback refs
+  // populate AFTER render, so a newly-drawn box needs this second pass for
+  // Moveable to mount on it.
+  const [selectedEl, setSelectedEl] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    setSelectedEl(selectedId ? (boxRefs.current.get(selectedId) ?? null) : null);
+  }, [selectedId, fields, scale]);
+
+  /** Editor always works in top-left space; center-anchored fields are
+   * normalized on display and denormalized on commit. */
+  const displayX = (f: TemplateField) => (f.anchor === "center" ? f.x - f.width / 2 : f.x);
+  const displayY = (f: TemplateField) => (f.anchor === "center" ? f.y - f.height / 2 : f.y);
+  const commitPos = (f: TemplateField, left: number, top: number, w = f.width, h = f.height) => ({
+    x: Math.round(f.anchor === "center" ? left / scale + w / 2 : left / scale),
+    y: Math.round(f.anchor === "center" ? top / scale + h / 2 : top / scale),
+  });
+
+  const guidelineElements = useMemo(
+    () =>
+      fields
+        .filter((f) => f.id !== selectedId)
+        .map((f) => boxRefs.current.get(f.id))
+        .filter((el): el is HTMLDivElement => Boolean(el)),
+    // Refs are stable per id; recompute when the set or selection changes.
+    [fields, selectedId, scale],
+  );
 
   return (
     <div
       ref={containerRef}
       data-overlay-root
-      className="relative w-full select-none touch-none"
+      className="relative w-full select-none touch-none overflow-hidden"
       style={{ aspectRatio: `${canvasWidth} / ${canvasHeight}`, cursor: "crosshair" }}
       onPointerDown={(e) => {
-        if (e.target !== e.currentTarget && (e.target as HTMLElement).dataset.role !== "bg") return;
+        const target = e.target as HTMLElement;
+        if (target !== e.currentTarget && target.dataset.role !== "bg") return;
         const p = toCanvas(e);
-        setDrag({ kind: "draw", startX: p.x, startY: p.y, x: p.x, y: p.y, w: 0, h: 0 });
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        setDraw({ startX: p.x, startY: p.y, x: p.x, y: p.y, w: 0, h: 0 });
+        onSelect(null);
+        try {
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        } catch {
+          // Pointer capture is best-effort (synthetic/secondary pointers).
+        }
       }}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
+      onPointerMove={(e) => {
+        if (!draw) return;
+        const p = toCanvas(e);
+        setDraw({
+          ...draw,
+          x: Math.min(draw.startX, p.x),
+          y: Math.min(draw.startY, p.y),
+          w: Math.abs(p.x - draw.startX),
+          h: Math.abs(p.y - draw.startY),
+        });
+      }}
+      onPointerUp={() => {
+        if (draw && draw.w > 24 && draw.h > 24) {
+          onDraw({
+            x: Math.round(draw.x),
+            y: Math.round(draw.y),
+            width: Math.round(draw.w),
+            height: Math.round(draw.h),
+          });
+        }
+        setDraw(null);
+      }}
     >
+      {/* Background at canvas scale */}
       <div
         style={{
           width: canvasWidth,
@@ -131,72 +177,124 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
         )}
       </div>
 
-      {/* Field boxes (screen space = canvas * scale) */}
+      {/* Field boxes (screen space = canvas × scale) */}
       {fields.map((f) => {
-        const selected = f.id === selectedId;
+        const isSelected = f.id === selectedId;
         return (
           <div
             key={f.id}
+            ref={(el) => {
+              if (el) boxRefs.current.set(f.id, el);
+              else boxRefs.current.delete(f.id);
+            }}
             onPointerDown={(e) => {
               e.stopPropagation();
               onSelect(f.id);
-              const p = toCanvas(e);
-              setDrag({ kind: "move", id: f.id, offsetX: p.x - f.x, offsetY: p.y - f.y });
-              (e.currentTarget.parentElement as HTMLElement).setPointerCapture(e.pointerId);
             }}
             style={{
               position: "absolute",
-              left: f.x * scale,
-              top: f.y * scale,
+              left: displayX(f) * scale,
+              top: displayY(f) * scale,
               width: f.width * scale,
               height: f.height * scale,
-              transform: [
-                f.anchor === "center" ? "translate(-50%, -50%)" : "",
-                f.rotation ? `rotate(${f.rotation}deg)` : "",
-              ].join(" "),
-              border: selected ? "2px solid #2563EB" : "1.5px dashed rgba(37,99,235,0.65)",
-              background: selected ? "rgba(37,99,235,0.12)" : "rgba(37,99,235,0.05)",
+              transform: f.rotation ? `rotate(${f.rotation}deg)` : undefined,
+              border: isSelected ? "1.5px solid #2563EB" : "1.5px dashed rgba(37,99,235,0.65)",
+              background: isSelected ? "rgba(37,99,235,0.08)" : "rgba(37,99,235,0.04)",
               cursor: "move",
             }}
           >
             <span
               className="absolute -top-5 left-0 text-[10px] font-bold px-1 rounded whitespace-nowrap"
-              style={{ background: "#2563EB", color: "white" }}
+              style={{ background: "#2563EB", color: "white", pointerEvents: "none" }}
             >
               {f.label} · {f.type}
             </span>
-            {selected && (
-              <div
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  setDrag({ kind: "resize", id: f.id });
-                  (e.currentTarget.closest("[data-overlay-root]") as HTMLElement).setPointerCapture(e.pointerId);
-                }}
-                style={{
-                  position: "absolute",
-                  right: -6,
-                  bottom: -6,
-                  width: 12,
-                  height: 12,
-                  background: "#2563EB",
-                  borderRadius: 3,
-                  cursor: "nwse-resize",
-                }}
-              />
-            )}
           </div>
         );
       })}
 
+      {/* Figma-class transform controls on the selected box */}
+      {selected && selectedEl && (
+        <Moveable
+          key={`${selected.id}-${scale}`}
+          target={selectedEl}
+          container={containerRef.current}
+          origin={false}
+          draggable
+          resizable
+          rotatable
+          throttleDrag={0}
+          throttleResize={0}
+          throttleRotate={0}
+          renderDirections={["nw", "n", "ne", "e", "se", "s", "sw", "w"]}
+          snappable
+          snapThreshold={6}
+          snapGridWidth={GRID * scale}
+          snapGridHeight={GRID * scale}
+          elementGuidelines={guidelineElements}
+          verticalGuidelines={[0, (canvasWidth * scale) / 2, canvasWidth * scale]}
+          horizontalGuidelines={[0, (canvasHeight * scale) / 2, canvasHeight * scale]}
+          elementSnapDirections={{ top: true, bottom: true, left: true, right: true, center: true, middle: true }}
+          snapDirections={{ top: true, bottom: true, left: true, right: true, center: true, middle: true }}
+          onDrag={(e) => {
+            e.target.style.left = `${e.left}px`;
+            e.target.style.top = `${e.top}px`;
+          }}
+          onDragEnd={(e) => {
+            if (!e.lastEvent) return;
+            patchField(selected.id, commitPos(selected, e.lastEvent.left, e.lastEvent.top));
+          }}
+          onResizeStart={(e) => {
+            resizeStart.current = {
+              height: selected.height,
+              fontSize: selected.fontSizePx,
+              corner: e.direction[0] !== 0 && e.direction[1] !== 0,
+            };
+          }}
+          onResize={(e) => {
+            e.target.style.width = `${e.width}px`;
+            e.target.style.height = `${e.height}px`;
+            e.target.style.left = `${e.drag.left}px`;
+            e.target.style.top = `${e.drag.top}px`;
+          }}
+          onResizeEnd={(e) => {
+            if (!e.lastEvent) return;
+            const w = Math.max(16, Math.round(e.lastEvent.width / scale));
+            const h = Math.max(16, Math.round(e.lastEvent.height / scale));
+            const patch: Partial<TemplateField> = {
+              width: w,
+              height: h,
+              ...commitPos(selected, e.lastEvent.drag.left, e.lastEvent.drag.top, w, h),
+            };
+            // Corner drags scale text like a design tool: font follows the box.
+            const start = resizeStart.current;
+            const isText = selected.type === "text" || selected.type === "multiline" || selected.type === "select";
+            if (start.corner && isText && start.height > 0) {
+              const base = start.fontSize ?? 45;
+              patch.fontSizePx = Math.max(6, Math.round(base * (h / start.height)));
+            }
+            patchField(selected.id, patch);
+          }}
+          onRotate={(e) => {
+            e.target.style.transform = `rotate(${e.rotation}deg)`;
+          }}
+          onRotateEnd={(e) => {
+            if (!e.lastEvent) return;
+            const deg = Math.round(e.lastEvent.rotation) % 360;
+            patchField(selected.id, { rotation: deg === 0 ? undefined : deg });
+          }}
+        />
+      )}
+
       {/* Draw preview */}
-      {drag?.kind === "draw" && drag.w > 4 && (
+      {draw && draw.w > 4 && (
         <div
           style={{
             position: "absolute",
-            left: drag.x * scale,
-            top: drag.y * scale,
-            width: drag.w * scale,
-            height: drag.h * scale,
+            left: draw.x * scale,
+            top: draw.y * scale,
+            width: draw.w * scale,
+            height: draw.h * scale,
             border: "2px dashed #2563EB",
             background: "rgba(37,99,235,0.08)",
             pointerEvents: "none",

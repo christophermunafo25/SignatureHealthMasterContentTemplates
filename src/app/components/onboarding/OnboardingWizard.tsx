@@ -8,6 +8,7 @@ import { useRouter } from "../../router";
 import { DEFAULT_PALETTE, DEFAULT_TYPE_STYLES } from "@/lib/theme";
 import { GOOGLE_FONTS, loadGoogleFonts } from "@/lib/render/fonts";
 import { FONT_ACCEPT, validateFontFile } from "@/lib/brand/fontUpload";
+import { ColorControl } from "../ColorControl";
 
 /** First-run onboarding: walks a user from an empty database to a themed,
  * ready-to-use company workspace. Also reachable any time via "Create
@@ -247,16 +248,12 @@ function StepColors({ colors, onChange }: { colors: BrandColor[]; onChange(c: Br
       <div className="space-y-2">
         {colors.map((c, i) => (
           <div key={c.key} className="flex items-center gap-3">
-            <input
-              type="color"
+            <ColorControl
+              ariaLabel={`${c.name} color`}
               value={c.hex}
-              onChange={(e) => set(i, { hex: e.target.value })}
-              className="w-10 h-10 rounded-lg border cursor-pointer"
-              style={{ borderColor: "var(--border)" }}
-              aria-label={`${c.name} color`}
+              onChange={(hex) => set(i, { hex })}
             />
             <span className="text-sm font-semibold flex-1" style={{ color: "var(--foreground)" }}>{c.name}</span>
-            <span className="font-mono text-xs" style={{ color: "var(--muted-foreground)" }}>{c.hex}</span>
           </div>
         ))}
       </div>

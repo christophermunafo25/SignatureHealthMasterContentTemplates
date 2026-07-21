@@ -33,7 +33,8 @@ Types:
 - `location` — picker over the company's `locations`; renders the location's
   logo in the box.
 
-Brand binding (the rules engine):
+Brand binding (the rules engine — OPTIONAL, an opt-in reuse convenience;
+admins style fields freely and directly by default):
 
 - `typeStyleKey` — binds the field to a named brand type style ("role") from
   the brand kit. Every property the style defines (font, weight, case, color,
@@ -49,9 +50,11 @@ defines the property):
 
 - `fontFamily`, `fontSizePx`, `align`, `uppercase`, `letterSpacingPx`,
   `lineHeight`.
-- `colorKey` — a **brand-kit palette key** (`primary`, `accent`, `text`, or a
-  custom entry), not a hex value. Resolved at render time, so re-branding in
-  Brand Studio restyles every existing template.
+- `colorKey` — a brand-kit palette key, resolved at render time so
+  re-branding restyles existing templates; `colorHex` — any exact color via
+  the full picker; `textGradient` — an optional text-fill gradient
+  (angle + stops). Precedence: type style → colorKey → colorHex; gradient
+  wins over solid when set. `fontWeight` is a free 100–900 value.
 
 Guardrails:
 

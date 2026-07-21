@@ -9,6 +9,7 @@ import { FONT_ACCEPT, validateFontFile } from "@/lib/brand/fontUpload";
 import { DEFAULT_PALETTE, DEFAULT_TYPE_STYLES } from "@/lib/theme";
 import { TypeStylesEditor } from "./TypeStylesEditor";
 import { DesignSystemImportPanel } from "./DesignSystemImportPanel";
+import { ColorControl } from "../ColorControl";
 
 /** Brand Studio: the company's palette, fonts (Google + uploaded), and logos.
  * Every template field styles itself from here — nothing is hardcoded. */
@@ -158,13 +159,10 @@ export function BrandStudio() {
           <div className="space-y-2.5">
             {colors.map((c, i) => (
               <div key={c.key} className="flex items-center gap-3">
-                <input
-                  type="color"
+                <ColorControl
+                  ariaLabel={`${c.name} color`}
                   value={c.hex}
-                  onChange={(e) => setColors(colors.map((x, j) => (j === i ? { ...x, hex: e.target.value } : x)))}
-                  className="w-10 h-10 rounded-lg border cursor-pointer"
-                  style={{ borderColor: "var(--border)" }}
-                  aria-label={`${c.name} color`}
+                  onChange={(hex) => setColors(colors.map((x, j) => (j === i ? { ...x, hex } : x)))}
                 />
                 <input
                   value={c.name}
@@ -172,7 +170,6 @@ export function BrandStudio() {
                   className="text-sm font-semibold flex-1 bg-transparent outline-none"
                   style={{ color: "var(--foreground)" }}
                 />
-                <span className="font-mono text-xs" style={{ color: "var(--muted-foreground)" }}>{c.hex}</span>
                 {!DEFAULT_PALETTE.some((d) => d.key === c.key) && (
                   <button onClick={() => setColors(colors.filter((_, j) => j !== i))} aria-label={`Remove ${c.name}`}>
                     <Trash2 className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
@@ -290,10 +287,11 @@ export function BrandStudio() {
         {/* Type styles — the brand rules engine */}
         <section className="sp-card p-5 space-y-4 lg:col-span-2">
           <div>
-            <h2 className="sp-panel-title">Type styles &amp; rules</h2>
+            <h2 className="sp-panel-title">Type styles &amp; rules (optional)</h2>
             <p style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 3 }}>
-              Named roles fields bind to. Every property a style defines becomes an enforced rule —
-              it applies across all templates and end users can't change it. Unlimited styles.
+              An opt-in convenience for reuse: apply a saved style to a field if you want, or style
+              every field by hand — both are fully locked for end users. Every property a style
+              defines follows it across all templates. Unlimited styles.
             </p>
           </div>
           <TypeStylesEditor

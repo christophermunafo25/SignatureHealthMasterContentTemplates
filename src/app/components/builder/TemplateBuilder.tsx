@@ -376,7 +376,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
               {mode === "edit" ? (
                 <>
                   <p className="mb-3" style={{ fontSize: 12, color: "var(--fg-3)" }}>
-                    Drag on the image to draw a field box. Drag boxes to move; corner handle resizes.
+                    Drag on the canvas to draw a field. Drag to move, handles resize (corners scale text), top handle rotates — with snapping and alignment guides. Delete removes the selected field.
                   </p>
                   <FieldOverlayEditor
                     canvasWidth={draft.canvasWidth}

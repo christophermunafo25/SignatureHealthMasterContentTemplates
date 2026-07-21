@@ -1,18 +1,17 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { BrandAsset, BrandKit, Location } from "../types";
+import type { BrandAsset, BrandKit } from "../types";
 import { stores } from "../stores";
 import { useAuth } from "../auth/AuthContext";
 import { applyBrandTheme } from "../theme";
 import { loadBrandFonts } from "../render/fonts";
 
-/** Loads the active company's brand kit, assets, and locations; applies the
+/** Loads the active company's brand kit and assets; applies the
  * CSS-variable theme and loads brand fonts. Everything brand-aware (renderer,
  * builder, studio, chrome) reads from here. */
 interface BrandState {
   loading: boolean;
   kit: BrandKit | null;
   assets: BrandAsset[];
-  locations: Location[];
   primaryLogoUrl: string | null;
   refresh(): Promise<void>;
 }
@@ -24,24 +23,20 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [kit, setKit] = useState<BrandKit | null>(null);
   const [assets, setAssets] = useState<BrandAsset[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
 
   const refresh = useCallback(async () => {
     if (!company) {
       setKit(null);
       setAssets([]);
-      setLocations([]);
       applyBrandTheme(null);
       return;
     }
-    const [nextKit, nextAssets, nextLocations] = await Promise.all([
+    const [nextKit, nextAssets] = await Promise.all([
       stores.brandKits.getActive(company.id),
       stores.brandAssets.list(company.id),
-      stores.locations.list(company.id),
     ]);
     setKit(nextKit);
     setAssets(nextAssets);
-    setLocations(nextLocations);
     applyBrandTheme(nextKit);
     if (nextKit) {
       await loadBrandFonts(
@@ -64,8 +59,8 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   }, [assets, kit]);
 
   const value = useMemo<BrandState>(
-    () => ({ loading, kit, assets, locations, primaryLogoUrl, refresh }),
-    [loading, kit, assets, locations, primaryLogoUrl, refresh],
+    () => ({ loading, kit, assets, primaryLogoUrl, refresh }),
+    [loading, kit, assets, primaryLogoUrl, refresh],
   );
 
   return <BrandContext.Provider value={value}>{children}</BrandContext.Provider>;

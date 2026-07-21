@@ -8,7 +8,6 @@ import { isSupabaseConfigured } from "./supabase/client";
 import { SupabaseCompanyStore } from "./supabase/companyStore";
 import { SupabaseTemplateStore } from "./supabase/templateStore";
 import { SupabaseBrandAssetStore, SupabaseBrandKitStore } from "./supabase/brandStore";
-import { SupabaseLocationStore } from "./supabase/locationStore";
 import { SupabaseUsageStore } from "./supabase/usageStore";
 import { SupabasePeopleStore } from "./supabase/peopleStore";
 import { FigmaImporter } from "./supabase/figmaImporter";
@@ -17,7 +16,6 @@ import {
   LocalBrandKitStore,
   LocalCompanyStore,
   LocalDesignImportProvider,
-  LocalLocationStore,
   LocalPeopleStore,
   LocalTemplateStore,
   LocalUsageStore,
@@ -30,7 +28,6 @@ function createStores(): Stores {
       templates: new SupabaseTemplateStore(),
       brandKits: new SupabaseBrandKitStore(),
       brandAssets: new SupabaseBrandAssetStore(),
-      locations: new SupabaseLocationStore(),
       usage: new SupabaseUsageStore(),
       people: new SupabasePeopleStore(),
       designImport: new FigmaImporter(),
@@ -42,7 +39,6 @@ function createStores(): Stores {
     templates: new LocalTemplateStore(),
     brandKits: new LocalBrandKitStore(),
     brandAssets: new LocalBrandAssetStore(),
-    locations: new LocalLocationStore(),
     usage: new LocalUsageStore(),
     people: new LocalPeopleStore(),
     designImport: new LocalDesignImportProvider(),

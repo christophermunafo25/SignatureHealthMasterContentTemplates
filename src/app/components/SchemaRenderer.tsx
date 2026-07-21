@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { BrandKit, FieldValues, Location, TemplateField, TemplateSchema } from "@/lib/types";
+import type { BrandKit, FieldValues, TemplateField, TemplateSchema } from "@/lib/types";
 import { useDataUrl } from "@/lib/render/useDataUrl";
 import { fittedFontSize } from "@/lib/render/autoFit";
 import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
@@ -24,7 +24,6 @@ interface SchemaRendererProps {
   schema: TemplateSchema;
   values: FieldValues;
   brandKit: BrandKit | null;
-  locations: Location[];
   /** Record open/download usage events (default true; builder previews pass false). */
   instrument?: boolean;
   /** Optional overlay painted in canvas space (Template Builder field boxes). */
@@ -36,7 +35,7 @@ interface SchemaRendererProps {
  * ported from the reference Signature generators. The ONLY thing member input
  * changes is field content — positions and styling are locked in the schema. */
 export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererProps>(
-  function SchemaRenderer({ schema, values, brandKit, locations, instrument = true, overlay }, ref) {
+  function SchemaRenderer({ schema, values, brandKit, instrument = true, overlay }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLDivElement>(null);
     const [scale, setScale] = useState(1);
@@ -119,7 +118,6 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
                 field={field}
                 value={values[field.fieldKey]}
                 brandKit={brandKit}
-                locations={locations}
               />
             ))}
           </div>
@@ -164,21 +162,16 @@ interface FieldBoxProps {
   field: TemplateField;
   value: string | undefined;
   brandKit: BrandKit | null;
-  locations: Location[];
 }
 
-function FieldBox({ field, value, brandKit, locations }: FieldBoxProps) {
+function FieldBox({ field, value, brandKit }: FieldBoxProps) {
   if (field.type === "image") {
     return <ImageFieldBox field={field} value={value} />;
-  }
-  if (field.type === "location") {
-    const location = locations.find((l) => l.id === value);
-    return <LocationFieldBox field={field} location={location} />;
   }
   return <TextFieldBox field={field} value={value} brandKit={brandKit} />;
 }
 
-function TextFieldBox({ field, value, brandKit }: Omit<FieldBoxProps, "locations">) {
+function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {
   // Brand rules engine: properties defined by the bound type style win.
   const style = resolveFieldStyle(field, brandKit);
   const text = value || field.placeholder || field.label;
@@ -248,30 +241,3 @@ function ImageFieldBox({ field, value }: { field: TemplateField; value: string |
   );
 }
 
-function LocationFieldBox({ field, location }: { field: TemplateField; location: Location | undefined }) {
-  const logoDataUrl = useDataUrl(location?.logoUrl);
-  return (
-    <div
-      style={{
-        ...boxStyle(field),
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-        border: logoDataUrl ? undefined : "1.5px dashed rgba(0,0,0,0.25)",
-      }}
-    >
-      {logoDataUrl ? (
-        <img
-          src={logoDataUrl}
-          alt={location?.name ?? field.label}
-          style={{ width: "100%", height: "100%", objectFit: field.objectFit ?? "contain" }}
-        />
-      ) : (
-        <span style={{ color: "rgba(0,0,0,0.35)", fontSize: Math.max(16, field.width / 18), textAlign: "center" }}>
-          {location ? location.name : field.label}
-        </span>
-      )}
-    </div>
-  );
-}

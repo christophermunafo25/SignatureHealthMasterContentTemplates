@@ -8,7 +8,6 @@ import type {
   CanvasPreset,
   Company,
   FontRef,
-  Location,
   TemplateField,
   TemplateSchema,
   TemplateStatus,
@@ -79,20 +78,6 @@ export const toBrandAsset = (r: BrandAssetRow): BrandAsset => ({
   url: resolveUrl(BUCKETS.brandAssets, r.storage_path),
   metadata: r.metadata ?? {},
   createdAt: r.created_at,
-});
-
-export interface LocationRow {
-  id: string;
-  company_id: string;
-  name: string;
-  logo_storage_path: string | null;
-}
-
-export const toLocation = (r: LocationRow): Location => ({
-  id: r.id,
-  companyId: r.company_id,
-  name: r.name,
-  logoUrl: r.logo_storage_path ? resolveUrl(BUCKETS.brandAssets, r.logo_storage_path) : undefined,
 });
 
 export interface TemplateFieldRow {

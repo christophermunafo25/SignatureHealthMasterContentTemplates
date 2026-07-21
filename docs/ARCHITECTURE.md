@@ -38,7 +38,8 @@ supabase/functions/          figma-status / figma-connect / figma-import (Deno)
 ## Data model
 
 Every tenant-owned table carries `company_id` → `companies`. See
-`supabase/migrations/0001_schema.sql` for full DDL.
+`supabase/migrations/0001_schema.sql` for full DDL. (Locations were removed
+from the platform in migration 0009.)
 
 - `companies`, `users`, `memberships` (role: `admin` | `member`)
 - `brand_kits` (palette jsonb, `type_styles` jsonb — the brand rules engine's
@@ -46,7 +47,6 @@ Every tenant-owned table carries `company_id` → `companies`. See
   font refs, primary logo) — one active per company. Unlimited colors, type
   styles, and rules.
 - `brand_assets` (logo | font | image; Storage-backed)
-- `locations` — generic per-tenant branches/facilities with optional logos
 - `canvas_presets` — reference data; the ONLY seeded table. v1 enables just
   `square-1440`. Adding Instagram/Story/etc. sizes is a data change, not code:
   flip/insert a row.
@@ -114,8 +114,7 @@ Every client starts from the identical blank slate:
 
 1. Header switcher → **+ Create company…** (or first run routes there
    automatically).
-2. Wizard: name → colors → fonts (Google or upload) → logo → optional
-   locations.
+2. Wizard: name → colors → fonts (Google or upload) → logo.
 3. Land in the empty admin Templates view → build or import the first
    template → publish.
 

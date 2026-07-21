@@ -18,7 +18,7 @@ const panel: React.CSSProperties = {
 /** Member self-service flow: fields on the left, live preview on the right,
  * suggested caption, PNG download. Members change field CONTENT only. */
 export function TemplateUsePage({ templateId }: { templateId: string }) {
-  const { kit, locations } = useBrand();
+  const { kit } = useBrand();
   const { navigate } = useRouter();
   const [template, setTemplate] = useState<TemplateSchema | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,11 +37,7 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
       .finally(() => setLoading(false));
   }, [templateId]);
 
-  const locationNames = useMemo(
-    () => Object.fromEntries(locations.map((l) => [l.id, l.name])),
-    [locations],
-  );
-  const suggestedCaption = template ? mergeCaption(template, values, locationNames) : "";
+  const suggestedCaption = template ? mergeCaption(template, values) : "";
   const shownCaption = caption ?? suggestedCaption;
 
   const missingRequired = useMemo(
@@ -115,7 +111,6 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
                 field={{ ...field, maxLength }}
                 value={values[field.fieldKey] ?? ""}
                 onChange={(v) => setValues((prev) => ({ ...prev, [field.fieldKey]: v }))}
-                locations={locations}
               />
             </div>
             );
@@ -183,7 +178,6 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
                 schema={template}
                 values={values}
                 brandKit={kit}
-                locations={locations}
               />
             </div>
           </div>

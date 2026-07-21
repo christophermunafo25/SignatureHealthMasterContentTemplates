@@ -13,7 +13,6 @@ import { OnboardingWizard } from "./components/onboarding/OnboardingWizard";
 import { AdminTemplates } from "./components/admin/AdminTemplates";
 import { TemplateBuilder } from "./components/builder/TemplateBuilder";
 import { BrandStudio } from "./components/admin/BrandStudio";
-import { LocationsAdmin } from "./components/admin/LocationsAdmin";
 import { Dashboard } from "./components/admin/Dashboard";
 
 function Screen() {
@@ -48,7 +47,6 @@ function Screen() {
       {route.name === "adminTemplates" && adminOnly(<AdminTemplates />)}
       {route.name === "builder" && adminOnly(<TemplateBuilder templateId={route.templateId} />)}
       {route.name === "brandStudio" && adminOnly(<BrandStudio />)}
-      {route.name === "locations" && adminOnly(<LocationsAdmin />)}
       {route.name === "dashboard" && adminOnly(<Dashboard />)}
       {route.name === "people" && adminOnly(<PeopleAdmin />)}
     </AppShell>

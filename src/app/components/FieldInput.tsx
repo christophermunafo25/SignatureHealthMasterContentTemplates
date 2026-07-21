@@ -1,19 +1,18 @@
 import React, { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { RefreshCw, Upload } from "lucide-react";
-import type { Location, TemplateField } from "@/lib/types";
+import type { TemplateField } from "@/lib/types";
 import { ImageCropper } from "./ImageCropper";
 
 interface FieldInputProps {
   field: TemplateField;
   value: string;
   onChange(value: string): void;
-  locations: Location[];
 }
 
 /** Member input for one template field. Enforces the field's guardrails
  * (maxLength, aspect-ratio crop, fixed options) — content only, never style. */
-export function FieldInput({ field, value, onChange, locations }: FieldInputProps) {
+export function FieldInput({ field, value, onChange }: FieldInputProps) {
   switch (field.type) {
     case "text":
       return (
@@ -49,23 +48,12 @@ export function FieldInput({ field, value, onChange, locations }: FieldInputProp
           ))}
         </select>
       );
-    case "location":
-      return (
-        <select value={value} onChange={(e) => onChange(e.target.value)} className="sp-input">
-          <option value="">Select a location…</option>
-          {locations.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
-      );
     case "image":
       return <ImageFieldInput field={field} value={value} onChange={onChange} />;
   }
 }
 
-function ImageFieldInput({ field, value, onChange }: Omit<FieldInputProps, "locations">) {
+function ImageFieldInput({ field, value, onChange }: FieldInputProps) {
   const [original, setOriginal] = useState<string | null>(null);
   const [cropping, setCropping] = useState(false);
 

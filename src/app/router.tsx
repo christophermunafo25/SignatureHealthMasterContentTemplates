@@ -9,7 +9,6 @@ export type Route =
   | { name: "adminTemplates" }
   | { name: "builder"; templateId: string | null }
   | { name: "brandStudio" }
-  | { name: "locations" }
   | { name: "dashboard" }
   | { name: "people" };
 

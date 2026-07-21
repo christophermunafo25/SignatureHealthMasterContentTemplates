@@ -15,7 +15,7 @@ import { ColorControl } from "../ColorControl";
  * company" — every new client starts from this identical blank slate.
  * Everything set here is editable later in Brand Studio. */
 
-const STEPS = ["Company", "Colors", "Fonts", "Logo", "Locations"] as const;
+const STEPS = ["Company", "Colors", "Fonts", "Logo"] as const;
 
 interface PendingFont {
   file: File;
@@ -39,8 +39,6 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
   const [pendingFonts, setPendingFonts] = useState<PendingFont[]>([]);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [locationNames, setLocationNames] = useState<string[]>([]);
-  const [newLocation, setNewLocation] = useState("");
 
   const slug = useMemo(
     () => companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
@@ -85,10 +83,6 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
         bodyFont,
         primaryLogoAssetId,
       });
-
-      for (const name of locationNames) {
-        await stores.locations.create(company.id, { name });
-      }
 
       // TODO(auth): real auth creates the admin membership server-side; the
       // dev switcher simply lands the creator in the Admin role.
@@ -156,20 +150,6 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
               }}
             />
           )}
-          {step === 4 && (
-            <StepLocations
-              names={locationNames}
-              newName={newLocation}
-              setNewName={setNewLocation}
-              onAdd={() => {
-                if (newLocation.trim()) {
-                  setLocationNames((prev) => [...prev, newLocation.trim()]);
-                  setNewLocation("");
-                }
-              }}
-              onRemove={(i) => setLocationNames((prev) => prev.filter((_, j) => j !== i))}
-            />
-          )}
           {error && (
             <p className="text-sm rounded-xl px-4 py-3" style={{ background: "#FBE9E9", color: "var(--destructive)" }}>
               {error}
@@ -217,7 +197,7 @@ function StepCompany({ name, slug, onChange }: { name: string; slug: string; onC
     <div className="space-y-3">
       <h2 className="sp-panel-title" style={{ fontSize: 16 }}>Company name</h2>
       <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-        The tenant everything belongs to — templates, brand kit, locations, and usage stay private to it.
+        The tenant everything belongs to — templates, brand kit, and usage stay private to it.
       </p>
       <input
         autoFocus
@@ -393,50 +373,3 @@ function StepLogo({ preview, onPick }: { preview: string | null; onPick(f: File)
   );
 }
 
-interface StepLocationsProps {
-  names: string[];
-  newName: string;
-  setNewName(v: string): void;
-  onAdd(): void;
-  onRemove(i: number): void;
-}
-
-function StepLocations({ names, newName, setNewName, onAdd, onRemove }: StepLocationsProps) {
-  return (
-    <div className="space-y-3">
-      <h2 className="sp-panel-title" style={{ fontSize: 16 }}>Locations</h2>
-      <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-        Optional: branches, facilities, or offices your templates can reference (each can carry its own logo — add those later in Locations).
-      </p>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && onAdd()}
-          placeholder="e.g. Downtown Chicago"
-          className="sp-input flex-1"
-        />
-        <button
-          onClick={onAdd}
-          className="sp-btn sp-btn-ghost px-4"
-          aria-label="Add location"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
-      </div>
-      {names.map((n, i) => (
-        <div
-          key={`${n}-${i}`}
-          className="flex items-center justify-between px-4 py-2.5"
-          style={{ background: "var(--paper)", border: "1px solid var(--hairline)", borderRadius: "var(--radius-input)" }}
-        >
-          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{n}</span>
-          <button onClick={() => onRemove(i)} aria-label={`Remove ${n}`}>
-            <Trash2 className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}

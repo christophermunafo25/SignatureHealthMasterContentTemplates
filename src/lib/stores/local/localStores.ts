@@ -4,7 +4,6 @@ import type {
   CanvasPreset,
   Company,
   DesignImportResult,
-  Location,
   NewTemplateInput,
   TemplateSchema,
   TemplateStatus,
@@ -17,7 +16,6 @@ import type {
   BrandKitStore,
   CompanyStore,
   DesignImportProvider,
-  LocationStore,
   TemplateStore,
   UsageStore,
 } from "../interfaces";
@@ -145,40 +143,6 @@ export class LocalBrandAssetStore implements BrandAssetStore {
   async remove(id: string): Promise<void> {
     mutate((db) => {
       db.brandAssets = (db.brandAssets as BrandAsset[]).filter((a) => a.id !== id);
-    });
-  }
-}
-
-export class LocalLocationStore implements LocationStore {
-  async list(companyId: string): Promise<Location[]> {
-    return (readDb().locations as Location[])
-      .filter((l) => l.companyId === companyId)
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }
-  async create(companyId: string, input: { name: string; logoFile?: File }): Promise<Location> {
-    const location: Location = {
-      id: newId(),
-      companyId,
-      name: input.name,
-      logoUrl: input.logoFile ? await fileToDataUrl(input.logoFile) : undefined,
-    };
-    mutate((db) => db.locations.push(location));
-    return location;
-  }
-  async update(id: string, patch: { name?: string; logoFile?: File }): Promise<Location> {
-    const logoUrl = patch.logoFile ? await fileToDataUrl(patch.logoFile) : undefined;
-    return mutate((db) => {
-      const locations = db.locations as Location[];
-      const i = locations.findIndex((l) => l.id === id);
-      if (i < 0) throw new Error(`Location ${id} not found`);
-      if (patch.name !== undefined) locations[i] = { ...locations[i], name: patch.name };
-      if (logoUrl) locations[i] = { ...locations[i], logoUrl };
-      return locations[i];
-    });
-  }
-  async remove(id: string): Promise<void> {
-    mutate((db) => {
-      db.locations = (db.locations as Location[]).filter((l) => l.id !== id);
     });
   }
 }

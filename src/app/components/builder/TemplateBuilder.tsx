@@ -22,7 +22,7 @@ import { composeFigmaBackground } from "@/lib/figma/composeLayers";
  * state for the admin to confirm. */
 export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   const { company } = useAuth();
-  const { kit, locations } = useBrand();
+  const { kit } = useBrand();
   const { navigate } = useRouter();
 
   const [presets, setPresets] = useState<CanvasPreset[]>([]);
@@ -394,7 +394,6 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                   schema={previewSchema}
                   values={{}}
                   brandKit={kit}
-                  locations={locations}
                   instrument={false}
                 />
               )}

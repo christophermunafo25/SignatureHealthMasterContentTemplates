@@ -36,7 +36,7 @@ export function CaptionEditor({ value, fields, onChange }: CaptionEditorProps) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={4}
-        placeholder="e.g. Join us in congratulating {name} on {years} incredible years at {location}!"
+        placeholder="e.g. Join us in congratulating {name} on {years} incredible years!"
         className="sp-input"
         style={{ resize: "vertical" }}
       />

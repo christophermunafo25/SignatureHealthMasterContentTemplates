@@ -12,7 +12,7 @@ exists anywhere. Source of truth: `src/lib/types.ts` (`TemplateSchema`,
 | `canvasWidth` / `canvasHeight` | Pixel size of the canvas. v1 creation is locked to the `square-1440` preset (1440×1440) but **every consumer reads from here** — renderer scale math, builder overlay, `toPng` export. New sizes = new `canvas_presets` rows, zero code changes. |
 | `backgroundUrl` | Storage URL of the uploaded/imported PNG. Converted to a data URL before render/export. |
 | `fields` | Ordered `TemplateField[]`. |
-| `captionTemplate` | Merge string with `{field_key}` placeholders, e.g. `"{name} celebrated {years} years at {location}!"`. Members see the merged result, can edit it, and copy it. Location fields merge as the location's display name; image fields have no caption value. |
+| `captionTemplate` | Merge string with `{field_key}` placeholders, e.g. `"{name} celebrated {years} incredible years!"`. Members see the merged result, can edit it, and copy it. Image fields have no caption value. |
 | `status` | `draft` \| `published`. Only published templates appear in the member portal. |
 
 ## TemplateField
@@ -30,8 +30,6 @@ Types:
 - `image` — member uploads a photo; cropped to `aspectRatio` (falls back to
   the box's own ratio); `objectFit` cover/contain.
 - `select` — fixed `options` list.
-- `location` — picker over the company's `locations`; renders the location's
-  logo in the box.
 
 Brand binding (the rules engine — OPTIONAL, an opt-in reuse convenience;
 admins style fields freely and directly by default):

@@ -160,7 +160,6 @@ export function FigmaFieldPicker({ result, kit, onConfirm, onBack }: FigmaFieldP
                 <option value="multiline">Multiline</option>
                 <option value="image">Image</option>
                 <option value="select">Dropdown</option>
-                <option value="location">Location</option>
               </select>
               {(field.type === "text" || field.type === "multiline") && (
                 <select

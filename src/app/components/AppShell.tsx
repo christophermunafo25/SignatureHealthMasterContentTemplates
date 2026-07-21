@@ -7,7 +7,6 @@ import { DevSwitcher } from "./DevSwitcher";
 const ADMIN_NAV: Array<{ label: string; route: Route }> = [
   { label: "Templates", route: { name: "adminTemplates" } },
   { label: "Brand Studio", route: { name: "brandStudio" } },
-  { label: "Locations", route: { name: "locations" } },
   { label: "Dashboard", route: { name: "dashboard" } },
   { label: "People", route: { name: "people" } },
   { label: "Portal", route: { name: "portal" } },

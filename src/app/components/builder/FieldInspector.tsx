@@ -19,7 +19,6 @@ const FIELD_TYPES: Array<{ value: FieldType; label: string }> = [
   { value: "multiline", label: "Text (multi-line)" },
   { value: "image", label: "Image" },
   { value: "select", label: "Dropdown" },
-  { value: "location", label: "Location logo" },
 ];
 
 const labelClass = "sp-eyebrow block mb-1";

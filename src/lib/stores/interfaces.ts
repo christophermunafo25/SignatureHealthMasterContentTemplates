@@ -7,7 +7,6 @@ import type {
   CanvasPreset,
   Company,
   DesignImportResult,
-  Location,
   NewTemplateInput,
   TemplateSchema,
   TemplateStatus,
@@ -48,13 +47,6 @@ export interface BrandAssetStore {
     file: File,
     metadata?: BrandAsset["metadata"],
   ): Promise<BrandAsset>;
-  remove(id: string): Promise<void>;
-}
-
-export interface LocationStore {
-  list(companyId: string): Promise<Location[]>;
-  create(companyId: string, input: { name: string; logoFile?: File }): Promise<Location>;
-  update(id: string, patch: { name?: string; logoFile?: File }): Promise<Location>;
   remove(id: string): Promise<void>;
 }
 
@@ -112,7 +104,6 @@ export interface Stores {
   templates: TemplateStore;
   brandKits: BrandKitStore;
   brandAssets: BrandAssetStore;
-  locations: LocationStore;
   usage: UsageStore;
   people: PeopleStore;
   designImport: DesignImportProvider;

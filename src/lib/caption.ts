@@ -2,20 +2,14 @@ import type { FieldValues, TemplateField, TemplateSchema } from "./types";
 
 /**
  * Fill a caption template's {field_key} placeholders from entered values.
- * Location fields resolve through locationNames (id → display name).
  * Unfilled placeholders render as a readable blank ("____") rather than
  * leaking the raw tag.
  */
-export function mergeCaption(
-  template: TemplateSchema,
-  values: FieldValues,
-  locationNames: Record<string, string> = {},
-): string {
+export function mergeCaption(template: TemplateSchema, values: FieldValues): string {
   return template.captionTemplate.replace(/\{([a-zA-Z0-9_]+)\}/g, (raw, key: string) => {
     const field = template.fields.find((f) => f.fieldKey === key);
     const value = values[key];
     if (!value) return "____";
-    if (field?.type === "location") return locationNames[value] ?? "____";
     if (field?.type === "image") return raw; // images have no caption text
     return value;
   });

@@ -70,13 +70,6 @@ export interface BrandAsset {
   createdAt: string;
 }
 
-export interface Location {
-  id: string;
-  companyId: string;
-  name: string;
-  logoUrl?: string;
-}
-
 export interface CanvasPreset {
   id: string;
   label: string;
@@ -90,7 +83,7 @@ export interface TextGradient {
   stops: Array<{ position: number; color: string }>; // position 0..1, #RRGGBB
 }
 
-export type FieldType = "text" | "multiline" | "image" | "select" | "location";
+export type FieldType = "text" | "multiline" | "image" | "select";
 
 export interface TemplateField {
   id: string;
@@ -155,7 +148,7 @@ export interface TemplateSchema {
   canvasHeight: number;
   backgroundUrl: string;
   fields: TemplateField[];
-  captionTemplate: string; // "{name} celebrated {years} years at {location}!"
+  captionTemplate: string; // "{name} celebrated {years} incredible years!"
   createdAt: string;
   updatedAt: string;
 }
@@ -178,7 +171,7 @@ export interface UsageSummary {
 }
 
 /** The values a member has entered for a template's fields, keyed by fieldKey.
- * Image fields hold a data URL; location fields hold a location id. */
+ * Image fields hold a data URL. */
 export type FieldValues = Record<string, string>;
 
 export interface DesignImportResult {

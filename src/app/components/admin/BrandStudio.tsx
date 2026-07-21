@@ -10,6 +10,7 @@ import { DEFAULT_PALETTE, DEFAULT_TYPE_STYLES } from "@/lib/theme";
 import { TypeStylesEditor } from "./TypeStylesEditor";
 import { DesignSystemImportPanel } from "./DesignSystemImportPanel";
 import { ColorControl } from "../ColorControl";
+import { useUnsavedChangesWarning } from "@/lib/useUnsavedChangesWarning";
 
 /** Brand Studio: the company's palette, fonts (Google + uploaded), and logos.
  * Every template field styles itself from here — nothing is hardcoded. */
@@ -45,6 +46,25 @@ export function BrandStudio() {
 
   const fontAssets = assets.filter((a) => a.kind === "font");
   const logoAssets = assets.filter((a) => a.kind === "logo");
+
+  // Warn on close/reload while the working copy differs from the saved kit.
+  const savedShape = JSON.stringify({
+    colors: kit?.colors ?? [],
+    typeStyles: kit?.typeStyles ?? [],
+    guidelines: kit?.guidelines ?? [],
+    headingFont: kit?.headingFont,
+    bodyFont: kit?.bodyFont,
+    primaryLogoAssetId: kit?.primaryLogoAssetId,
+  });
+  const workingShape = JSON.stringify({
+    colors,
+    typeStyles,
+    guidelines,
+    headingFont,
+    bodyFont,
+    primaryLogoAssetId,
+  });
+  useUnsavedChangesWarning(Boolean(kit) && savedShape !== workingShape);
 
   const save = async () => {
     if (!company) return;

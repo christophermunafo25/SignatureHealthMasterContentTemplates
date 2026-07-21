@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { Company, Role } from "../types";
 import { stores } from "../stores";
@@ -12,15 +12,25 @@ interface MembershipRow {
 }
 
 /** Real auth: Supabase Auth session → memberships → company + role.
- * Role comes from the membership row — there is no client-side toggle. */
+ *
+ * IMPORTANT: supabase-js re-emits auth events on tab refocus (token refresh,
+ * repeated SIGNED_IN). Those are NO-OPS for us — reacting to them flipped the
+ * app into its loading gate, unmounting the builder/Brand Studio and wiping
+ * unsaved work. We therefore key everything on the USER ID, ignore
+ * same-user session churn, and only show the loading gate before the first
+ * load (or on an actual account switch). */
 export function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
-  const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [membershipsReady, setMembershipsReady] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [roleByCompany, setRoleByCompany] = useState<Record<string, Role>>({});
   const [selectedId, setSelectedId] = useState<string | null>(
     () => localStorage.getItem(LS_COMPANY),
   );
+  const prevUserIdRef = useRef<string | null>(null);
+
+  const userId = session?.user?.id ?? null;
 
   // Derived, never stored: immune to stale-closure ordering (e.g. onboarding
   // calling refresh() then setCompany() back-to-back).
@@ -58,10 +68,15 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         if (!cancelled) setSession(data.session);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setAuthReady(true);
       });
     const { data: sub } = supabase().auth.onAuthStateChange((_event, next) => {
-      setSession(next);
+      // Ignore same-user churn (TOKEN_REFRESHED / focus re-emits): keeping the
+      // previous object identity means no downstream effects re-run.
+      setSession((prev) => {
+        if (prev && next && prev.user.id === next.user.id) return prev;
+        return next;
+      });
     });
     return () => {
       cancelled = true;
@@ -70,16 +85,26 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   }, []);
 
   useEffect(() => {
-    if (!session) {
+    const prevUserId = prevUserIdRef.current;
+    prevUserIdRef.current = userId;
+    if (!userId) {
       setCompanies([]);
       setRoleByCompany({});
+      setMembershipsReady(false);
       return;
     }
-    setLoading(true);
+    // Only re-gate the UI when the ACCOUNT actually changed.
+    if (prevUserId !== userId) setMembershipsReady(false);
+    let cancelled = false;
     loadMemberships()
       .catch((e) => console.error("Membership load failed", e))
-      .finally(() => setLoading(false));
-  }, [session, loadMemberships]);
+      .finally(() => {
+        if (!cancelled) setMembershipsReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, loadMemberships]);
 
   const setCompany = useCallback(async (companyId: string) => {
     setSelectedId(companyId);
@@ -90,6 +115,8 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     await supabase().auth.signOut();
     localStorage.removeItem(LS_COMPANY);
   }, []);
+
+  const loading = !authReady || (userId !== null && !membershipsReady);
 
   const value = useMemo<AuthState>(
     () => ({

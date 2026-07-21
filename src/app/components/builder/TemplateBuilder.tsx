@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { ArrowLeft, Eye, Figma, Pencil, RefreshCw, Save, Send, Upload } from "lucide-react";
 import type { CanvasPreset, DesignImportResult, NewTemplateInput, TemplateField, TemplateSchema } from "@/lib/types";
@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { newId } from "@/lib/stores/local/db";
 import { suggestFieldKey } from "@/lib/caption";
+import { useUnsavedChangesWarning } from "@/lib/useUnsavedChangesWarning";
 import { useRouter } from "../../router";
 import { SchemaRenderer } from "../SchemaRenderer";
 import { FieldOverlayEditor } from "./FieldOverlayEditor";
@@ -46,6 +47,8 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [figmaOpen, setFigmaOpen] = useState(false);
+  /** Snapshot of the last loaded/saved draft — anything else is unsaved. */
+  const savedSnapshotRef = useRef<string>("");
   const [pendingImport, setPendingImport] = useState<DesignImportResult | null>(null);
   const [recomposing, setRecomposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +75,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         if (t) {
           const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = t;
           setDraft(rest);
+          savedSnapshotRef.current = JSON.stringify(rest);
         }
       })
       .catch((e) => console.error("Template load failed", e))
@@ -143,7 +147,11 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         ? await stores.templates.update(savedId, payload)
         : await stores.templates.create(payload);
       setSavedId(saved.id);
-      setDraft((d) => ({ ...d, status: saved.status }));
+      setDraft((d) => {
+        const next = { ...d, status: saved.status };
+        savedSnapshotRef.current = JSON.stringify(next);
+        return next;
+      });
       return saved;
     } catch (e) {
       console.error("Save failed", e);
@@ -153,6 +161,12 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       setSaving(false);
     }
   };
+
+  // Warn on close/reload while the draft differs from what's saved.
+  const dirty =
+    Boolean(draft.backgroundUrl || draft.fields.length || draft.name.trim()) &&
+    JSON.stringify(draft) !== savedSnapshotRef.current;
+  useUnsavedChangesWarning(dirty);
 
   const previewSchema: TemplateSchema = useMemo(
     () => ({

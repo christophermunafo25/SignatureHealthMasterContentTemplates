@@ -187,7 +187,11 @@ export function FieldBox({ field, value, brandKit }: FieldBoxProps) {
 function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {
   // Brand rules engine: properties defined by the bound type style win.
   const style = resolveFieldStyle(field, brandKit);
-  const text = value || field.placeholder || field.label;
+  // Fixed elements ARE the graphic: their content (falling back to the label)
+  // always paints at full strength — the dimmed treatment is only for
+  // placeholders a member has yet to fill.
+  const text = value || (field.static ? field.label : field.placeholder || field.label);
+  const atFullStrength = Boolean(value) || Boolean(field.static);
   const fontSize = fittedFontSize({ width: field.width, ...style }, text);
   const justify =
     field.align === "center" ? "center" : field.align === "right" ? "flex-end" : "flex-start";
@@ -199,7 +203,7 @@ function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {
           fontWeight: style.fontWeight,
           fontSize,
           color: resolveColor(style.colorKey, style.colorHex, brandKit),
-          opacity: value ? 1 : 0.55, // placeholder shows the real styling, dimmed
+          opacity: atFullStrength ? 1 : 0.55, // placeholder shows the real styling, dimmed
           ...(style.textGradient?.stops.length
             ? {
                 backgroundImage: `linear-gradient(${style.textGradient.angle}deg, ${style.textGradient.stops

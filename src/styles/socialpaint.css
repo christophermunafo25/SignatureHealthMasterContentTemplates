@@ -108,6 +108,19 @@
     radial-gradient(60% 55% at 18% 35%, rgba(255, 63, 0, 0.8) 0%, transparent 65%),
     radial-gradient(60% 55% at 78% 75%, rgba(255, 90, 114, 0.85) 0%, transparent 65%),
     linear-gradient(170deg, #ff8300 0%, #ff3f00 55%, #ff5a72 100%);
+
+  /* Sidebar (Figma KFBFgZBs7Tl9LXovzNUaNP node 13:28 — dark variant; the
+     light values are derived from the same roles). SocialPaint product UI:
+     NEVER re-colored by a tenant brand kit. */
+  --sb-width: 264px;
+  --sb-width-collapsed: 76px;
+  --sb-bg: rgba(255, 255, 255, 0.55);
+  --sb-border: rgba(35, 31, 35, 0.14);
+  --sb-shadow: -5px 4px 10px rgba(35, 31, 35, 0.08);
+  --sb-fg: rgba(35, 31, 35, 0.78);
+  --sb-fg-active: var(--ink);
+  --sb-active-bg: #ffffff;
+  --sb-active-border: rgba(35, 31, 35, 0.3);
 }
 
 /* ── Dark mode ──────────────────────────────────────────────────────────────
@@ -145,6 +158,15 @@
   --shadow-e2: 0 4px 16px rgba(0, 0, 0, 0.4);
   --shadow-e3: 0 8px 32px rgba(0, 0, 0, 0.45);
   --shadow-e4: 0 16px 48px rgba(0, 0, 0, 0.55);
+
+  /* Sidebar — the Figma-specced dark variant */
+  --sb-bg: rgba(53, 48, 53, 0.25);
+  --sb-border: rgba(255, 255, 255, 0.4);
+  --sb-shadow: -5px 4px 10px rgba(0, 0, 0, 0.25);
+  --sb-fg: rgba(255, 255, 255, 0.9);
+  --sb-fg-active: #ffffff;
+  --sb-active-bg: #2c282c;
+  --sb-active-border: rgba(255, 255, 255, 0.75);
 }
 /* The warm mesh stays warm — text on it stays light in both modes. */
 .dark .sp-mesh { color: #f7f6f5; }
@@ -255,5 +277,40 @@ button, input, select, textarea, optgroup {
   z-index: 1;
 }
 .sp-mesh > * { position: relative; z-index: 2; }
+
+/* Persistent left sidebar — glass panel pinned to the viewport's left edge,
+   rounded on its RIGHT corners only (Figma node 13:28). */
+.sp-sidebar {
+  background: var(--sb-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid var(--sb-border);
+  border-right: 1px solid var(--sb-border);
+  border-bottom: 1px solid var(--sb-border);
+  border-radius: 0 35px 35px 0;
+  box-shadow: var(--sb-shadow);
+}
+.sp-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 0.5px solid transparent;
+  font-size: 15px;
+  color: var(--sb-fg);
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sp-sidebar-item:hover { background: color-mix(in srgb, var(--sb-active-bg) 45%, transparent); }
+.sp-sidebar-item[data-active="true"] {
+  background: var(--sb-active-bg);
+  border-color: var(--sb-active-border);
+  color: var(--sb-fg-active);
+  font-weight: 500;
+}
 
 ::selection { background: var(--orchid); color: var(--ink); }

@@ -10,7 +10,8 @@ export type Route =
   | { name: "builder"; templateId: string | null }
   | { name: "brandStudio" }
   | { name: "dashboard" }
-  | { name: "people" };
+  | { name: "people" }
+  | { name: "settings" };
 
 interface RouterState {
   route: Route;

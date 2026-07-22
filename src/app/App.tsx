@@ -15,6 +15,7 @@ import { AdminTemplates } from "./components/admin/AdminTemplates";
 import { TemplateBuilder } from "./components/builder/TemplateBuilder";
 import { BrandStudio } from "./components/admin/BrandStudio";
 import { Dashboard } from "./components/admin/Dashboard";
+import { SettingsAdmin } from "./components/admin/SettingsAdmin";
 
 function Screen() {
   const { loading, company, role, user, backend } = useAuth();
@@ -50,6 +51,7 @@ function Screen() {
       {route.name === "brandStudio" && adminOnly(<BrandStudio />)}
       {route.name === "dashboard" && adminOnly(<Dashboard />)}
       {route.name === "people" && adminOnly(<PeopleAdmin />)}
+      {route.name === "settings" && adminOnly(<SettingsAdmin />)}
     </AppShell>
   );
 }

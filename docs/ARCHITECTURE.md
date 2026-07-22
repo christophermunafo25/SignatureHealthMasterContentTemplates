@@ -94,6 +94,18 @@ Dashboard checklist (Authentication → URL Configuration): set the Site URL to
 the production domain and add `http://localhost:5199` + the Vercel URL to
 additional redirect URLs so confirmation/invite/reset links land correctly.
 
+## App shell
+
+Navigation is a persistent left sidebar (`src/app/components/Sidebar.tsx`,
+from Figma `KFBFgZBs7Tl9LXovzNUaNP` node 13:28): a glass panel pinned to the
+left edge, rounded on its right corners, with logo + collapse toggle, six
+role-gated destinations (Brand Templates · Template Builder · Insights &
+Analytics · Brand Studio · People · Settings & Admin — members see only the
+first), and a user block pinned to the bottom (theme toggle, sign out, and —
+on the dev backend — the tenant/role switcher). Every sidebar color is a
+`--sb-*` token themed for light AND dark in `socialpaint.css`; tenant brand
+kits never re-color the shell.
+
 ## Theming
 
 The platform chrome is styled by the SocialPaint design system

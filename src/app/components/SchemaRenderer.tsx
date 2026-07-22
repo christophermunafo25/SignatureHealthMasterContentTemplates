@@ -173,7 +173,9 @@ interface FieldBoxProps {
   brandKit: BrandKit | null;
 }
 
-function FieldBox({ field, value, brandKit }: FieldBoxProps) {
+/** Exported for the builder's edit canvas, which paints the same placeholder
+ * content underneath its transform boxes so fields are never empty outlines. */
+export function FieldBox({ field, value, brandKit }: FieldBoxProps) {
   if (field.type === "image") {
     return <ImageFieldBox field={field} value={value} />;
   }

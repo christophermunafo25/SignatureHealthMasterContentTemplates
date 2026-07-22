@@ -2,7 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Moveable from "react-moveable";
 import type { FieldType, TemplateField } from "@/lib/types";
 import { useDataUrl } from "@/lib/render/useDataUrl";
-import { cornerRadiusCss } from "../SchemaRenderer";
+import { useBrand } from "@/lib/brand/BrandContext";
+import { loadGoogleFonts } from "@/lib/render/fonts";
+import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
+import { cornerRadiusCss, FieldBox } from "../SchemaRenderer";
 import { PALETTE_MIME } from "./fieldOps";
 
 interface FieldOverlayEditorProps {
@@ -51,6 +54,7 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
     onDropElement,
     onContextMenu,
   } = props;
+  const { kit } = useBrand();
   const containerRef = useRef<HTMLDivElement>(null);
   const boxRefs = useRef(new Map<string, HTMLDivElement>());
   const [scale, setScale] = useState(0.4);
@@ -67,6 +71,17 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
     observer.observe(el);
     return () => observer.disconnect();
   }, [canvasWidth]);
+
+  // The edit canvas shows real field content (name/placeholder in the real
+  // styling), so the designed typefaces must load here too, not just in
+  // preview mode.
+  useEffect(() => {
+    loadGoogleFonts(
+      fields
+        .map((f) => resolveFieldStyle(f, kit).fontFamily)
+        .filter((f): f is string => Boolean(f)),
+    );
+  }, [fields, kit]);
 
   const toCanvas = useCallback(
     (e: { clientX: number; clientY: number }) => {
@@ -229,6 +244,13 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
           />
         )}
+        {/* Real field content (name/placeholder, real styling, dimmed) — the
+            same FieldBox the preview/member page/export renders, so the edit
+            canvas always matches. Lives in the scaled canvas layer, so it
+            tracks the boxes exactly. */}
+        {fields.map((f) => (
+          <FieldBox key={f.id} field={f} value={undefined} brandKit={kit} />
+        ))}
       </div>
 
       {/* Field boxes (screen space = canvas × scale; z = canvas layer order) */}
@@ -268,7 +290,9 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
               transform: f.rotation ? `rotate(${f.rotation}deg)` : undefined,
               border: isSelected ? "1.5px solid #2563EB" : "1.5px dashed rgba(37,99,235,0.65)",
               borderRadius: f.type === "image" ? cornerRadiusCss(f) : undefined,
-              background: isSelected ? "rgba(37,99,235,0.08)" : "rgba(37,99,235,0.04)",
+              // Content renders beneath in the canvas layer — keep the
+              // interactive box a near-transparent outline so text stays legible.
+              background: isSelected ? "rgba(37,99,235,0.06)" : "transparent",
               cursor: "move",
             }}
           >

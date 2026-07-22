@@ -85,6 +85,16 @@ export interface TextGradient {
 
 export type FieldType = "text" | "multiline" | "image" | "select";
 
+/** Per-corner radius for image fields (px, canvas space). Uniform radius is
+ * simply all four corners equal — the builder's link toggle edits them
+ * together. */
+export interface CornerRadius {
+  tl: number;
+  tr: number;
+  br: number;
+  bl: number;
+}
+
 export interface TemplateField {
   id: string;
   label: string;
@@ -99,6 +109,12 @@ export interface TemplateField {
   height: number;
   rotation?: number; // degrees, about the box center
   anchor?: "topLeft" | "center";
+  /** Canvas paint (layer) order — higher paints on top. This is a SEPARATE
+   * concern from the fields array order, which is the member form order. */
+  zIndex?: number;
+  /** Image fields only: rounded corners, rendered identically in the
+   * builder, member preview, and PNG export. */
+  cornerRadius?: CornerRadius;
   /** Figma node this field was imported from (transient import provenance —
    * used to lift the element off the recomposed background). */
   sourceNodeId?: string;

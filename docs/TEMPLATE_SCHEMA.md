@@ -11,7 +11,7 @@ exists anywhere. Source of truth: `src/lib/types.ts` (`TemplateSchema`,
 |---|---|
 | `canvasWidth` / `canvasHeight` | Pixel size of the canvas. v1 creation is locked to the `square-1440` preset (1440×1440) but **every consumer reads from here** — renderer scale math, builder overlay, `toPng` export. New sizes = new `canvas_presets` rows, zero code changes. |
 | `backgroundUrl` | Storage URL of the uploaded/imported PNG. Converted to a data URL before render/export. |
-| `fields` | Ordered `TemplateField[]`. |
+| `fields` | Ordered `TemplateField[]`. **Array order is the member FORM order** (the sequence fields appear in the end-user's form — reordered by dragging in the builder's field list). Canvas paint order is the separate per-field `zIndex`. |
 | `captionTemplate` | Merge string with `{field_key}` placeholders, e.g. `"{name} celebrated {years} incredible years!"`. Members see the merged result, can edit it, and copy it. Image fields have no caption value. |
 | `status` | `draft` \| `published`. Only published templates appear in the member portal. |
 
@@ -23,12 +23,19 @@ Placement (canvas pixel space):
   unless `anchor: "center"` (then they're the box center — for center-anchored
   text à la the original name banner).
 - `rotation` — degrees about the box center.
+- `zIndex` — canvas paint (layer) order, higher on top; controlled by the
+  builder's "To front / To back". Deliberately decoupled from the fields
+  array order (= form order). Never negative — layer moves renormalize all
+  fields to 0..n-1 so nothing paints behind the background image.
 
 Types:
 
 - `text` / `multiline` — single/multi-line text.
 - `image` — member uploads a photo; cropped to `aspectRatio` (falls back to
-  the box's own ratio); `objectFit` cover/contain.
+  the box's own ratio); `objectFit` cover/contain; `cornerRadius`
+  (`{tl, tr, br, bl}` px, uniform = all equal via the builder's link toggle)
+  renders identically in the builder, member preview, and PNG export because
+  all three go through `SchemaRenderer`.
 - `select` — fixed `options` list.
 
 Brand binding (the rules engine — OPTIONAL, an opt-in reuse convenience;
@@ -67,9 +74,12 @@ Guardrails:
 Identity:
 
 - `fieldKey` — stable human slug (`team_name`) used by caption merge tags.
-  Unique per template; auto-suggested from the label. Field rows are replaced
-  wholesale on each builder save, and `fieldKey` is what keeps captions valid
-  across edits.
+  Unique per template; derived from the label (never an auto index), so a
+  field named "Employee name" tags as `{employee_name}`. Renaming a field
+  re-derives the key AND rewrites existing tags inside `captionTemplate`
+  (`retagCaption` in `src/lib/caption.ts`). Copy/paste/duplicate always mints
+  a fresh unique key. Field rows are replaced wholesale on each builder save,
+  and `fieldKey` is what keeps captions valid across edits.
 
 ## Rendering contract
 

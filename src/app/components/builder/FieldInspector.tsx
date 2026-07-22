@@ -1,6 +1,6 @@
-import React from "react";
-import { Lock, Trash2 } from "lucide-react";
-import type { BrandKit, FieldType, TemplateField, TextGradient } from "@/lib/types";
+import React, { useEffect, useRef, useState } from "react";
+import { ArrowDownToLine, ArrowUpToLine, Link as LinkIcon, Lock, Trash2, Unlink } from "lucide-react";
+import type { BrandKit, CornerRadius, FieldType, TemplateField, TextGradient } from "@/lib/types";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { GOOGLE_FONTS } from "@/lib/render/fonts";
 import { suggestFieldKey } from "@/lib/caption";
@@ -12,6 +12,12 @@ interface FieldInspectorProps {
   allFields: TemplateField[];
   onChange(patch: Partial<TemplateField>): void;
   onDelete(): void;
+  /** Canvas layer order (separate from the form order in the field list). */
+  onBringToFront(): void;
+  onSendToBack(): void;
+  /** When this matches the shown field's id, focus + select the label input
+   * (a just-dropped palette element opens for naming). */
+  focusLabelFieldId?: string | null;
 }
 
 const FIELD_TYPES: Array<{ value: FieldType; label: string }> = [
@@ -28,25 +34,52 @@ const controlStyle: React.CSSProperties = {};
 
 /** Inspector for the selected field: label/type, locked styling (fonts and
  * colors come from the brand kit — never free values), and guardrails. */
-export function FieldInspector({ field, allFields, onChange, onDelete }: FieldInspectorProps) {
+export function FieldInspector({
+  field,
+  allFields,
+  onChange,
+  onDelete,
+  onBringToFront,
+  onSendToBack,
+  focusLabelFieldId,
+}: FieldInspectorProps) {
   const { kit, assets } = useBrand();
   const isText = field.type === "text" || field.type === "multiline" || field.type === "select";
   const boundStyle = getTypeStyle(kit, field.typeStyleKey);
   const locked = lockedProperties(boundStyle);
+  const labelRef = useRef<HTMLInputElement>(null);
+
+  // A freshly-dropped palette element opens for naming immediately; the
+  // parent clears focusLabelFieldId once selection moves on, so merely
+  // re-selecting a field never steals focus into the label input.
+  useEffect(() => {
+    if (focusLabelFieldId !== field.id) return;
+    labelRef.current?.focus();
+    labelRef.current?.select();
+  }, [focusLabelFieldId, field.id]);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="sp-panel-title">Field settings</h3>
-        <button onClick={onDelete} title="Delete field">
-          <Trash2 className="w-4 h-4" style={{ color: "var(--destructive)" }} />
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button onClick={onBringToFront} title="Bring to front (canvas layer)">
+            <ArrowUpToLine className="w-4 h-4" style={{ color: "var(--fg-2)" }} />
+          </button>
+          <button onClick={onSendToBack} title="Send to back (canvas layer)">
+            <ArrowDownToLine className="w-4 h-4" style={{ color: "var(--fg-2)" }} />
+          </button>
+          <button onClick={onDelete} title="Delete field">
+            <Trash2 className="w-4 h-4" style={{ color: "var(--destructive)" }} />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
           <label className={labelClass} style={labelStyle}>Label</label>
           <input
+            ref={labelRef}
             className={controlClass}
             style={controlStyle}
             value={field.label}
@@ -176,6 +209,12 @@ export function FieldInspector({ field, allFields, onChange, onDelete }: FieldIn
           </div>
         )}
         {field.type === "image" && (
+          <CornerRadiusControl
+            value={field.cornerRadius}
+            onChange={(cornerRadius) => onChange({ cornerRadius })}
+          />
+        )}
+        {field.type === "image" && (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass} style={labelStyle}>Crop ratio (w/h)</label>
@@ -237,6 +276,88 @@ export function FieldInspector({ field, allFields, onChange, onDelete }: FieldIn
           </label>
         </div>
       </div>
+    </div>
+  );
+}
+
+interface CornerRadiusControlProps {
+  value: CornerRadius | undefined;
+  onChange(value: CornerRadius | undefined): void;
+}
+
+const CORNERS: Array<{ key: keyof CornerRadius; label: string }> = [
+  { key: "tl", label: "TL" },
+  { key: "tr", label: "TR" },
+  { key: "br", label: "BR" },
+  { key: "bl", label: "BL" },
+];
+
+/** Figma-style corner radius for image fields: one linked value for all four
+ * corners, or unlink to set TL/TR/BR/BL independently. Renders identically
+ * in the editor preview, the member page, and the exported PNG. */
+function CornerRadiusControl({ value, onChange }: CornerRadiusControlProps) {
+  const uniform = !value || (value.tl === value.tr && value.tr === value.br && value.br === value.bl);
+  const [linked, setLinked] = useState(uniform);
+
+  const set = (patch: Partial<CornerRadius>) => {
+    const next = { tl: 0, tr: 0, br: 0, bl: 0, ...value, ...patch };
+    const empty = !next.tl && !next.tr && !next.br && !next.bl;
+    onChange(empty ? undefined : next);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <label className={labelClass} style={{ marginBottom: 0 }}>Corner radius (px)</label>
+        <button
+          onClick={() => {
+            if (!linked) {
+              // Re-linking collapses to the top-left value.
+              const r = value?.tl ?? 0;
+              set({ tl: r, tr: r, br: r, bl: r });
+            }
+            setLinked(!linked);
+          }}
+          title={linked ? "Unlink corners — set each independently" : "Link corners — one value for all four"}
+        >
+          {linked ? (
+            <LinkIcon className="w-3.5 h-3.5" style={{ color: "var(--solar)" }} />
+          ) : (
+            <Unlink className="w-3.5 h-3.5" style={{ color: "var(--fg-3)" }} />
+          )}
+        </button>
+      </div>
+      {linked ? (
+        <input
+          type="number"
+          min={0}
+          className={controlClass}
+          value={value?.tl ?? 0}
+          onChange={(e) => {
+            const r = Math.max(0, Number(e.target.value) || 0);
+            set({ tl: r, tr: r, br: r, bl: r });
+          }}
+        />
+      ) : (
+        <div className="grid grid-cols-4 gap-1.5">
+          {CORNERS.map((c) => (
+            <div key={c.key}>
+              <input
+                type="number"
+                min={0}
+                className={controlClass}
+                style={{ padding: "6px 6px", fontSize: 12 }}
+                value={value?.[c.key] ?? 0}
+                title={c.label}
+                onChange={(e) => set({ [c.key]: Math.max(0, Number(e.target.value) || 0) })}
+              />
+              <p className="text-center" style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--fg-4)" }}>
+                {c.label}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

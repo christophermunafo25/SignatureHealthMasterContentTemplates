@@ -94,6 +94,8 @@ export interface TemplateFieldRow {
   height: number;
   rotation: number | null;
   anchor: TemplateField["anchor"] | null;
+  z_index: number | null;
+  corner_radius: import("../../types").CornerRadius | null;
   font_family: string | null;
   font_weight: number | null;
   color_hex: string | null;
@@ -133,6 +135,8 @@ export const toTemplateField = (r: TemplateFieldRow): TemplateField => ({
   height: Number(r.height),
   rotation: opt(r.rotation) === undefined ? undefined : Number(r.rotation),
   anchor: opt(r.anchor),
+  zIndex: opt(r.z_index) === undefined ? undefined : Number(r.z_index),
+  cornerRadius: opt(r.corner_radius),
   fontFamily: opt(r.font_family),
   fontWeight: opt(r.font_weight) === undefined ? undefined : Number(r.font_weight),
   colorHex: opt(r.color_hex),
@@ -170,6 +174,8 @@ export const fieldToRow = (
   height: f.height,
   rotation: f.rotation ?? null,
   anchor: f.anchor ?? null,
+  z_index: f.zIndex ?? null,
+  corner_radius: f.cornerRadius ?? null,
   font_family: f.fontFamily ?? null,
   font_weight: f.fontWeight ?? null,
   color_hex: f.colorHex ?? null,

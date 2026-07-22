@@ -15,6 +15,13 @@ export function mergeCaption(template: TemplateSchema, values: FieldValues): str
   });
 }
 
+/** Rewrite every {oldKey} tag to {newKey} — keeps a caption template in sync
+ * when renaming a field re-derives its merge tag. */
+export function retagCaption(caption: string, oldKey: string, newKey: string): string {
+  if (!caption || oldKey === newKey) return caption;
+  return caption.split(`{${oldKey}}`).join(`{${newKey}}`);
+}
+
 /** Suggest a unique snake_case field key from a label ("Team Name" → team_name). */
 export function suggestFieldKey(label: string, taken: TemplateField[]): string {
   const base =

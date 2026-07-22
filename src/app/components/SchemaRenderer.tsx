@@ -155,7 +155,16 @@ function boxStyle(field: TemplateField): React.CSSProperties {
     width: field.width,
     height: field.height,
     transform: transforms.join(" ") || undefined,
+    // Canvas layer order. Fields array order is the member FORM order; paint
+    // order is zIndex (ties fall back to DOM order = form order).
+    zIndex: field.zIndex ?? 0,
   };
+}
+
+export function cornerRadiusCss(field: TemplateField): string | undefined {
+  const r = field.cornerRadius;
+  if (!r || (!r.tl && !r.tr && !r.br && !r.bl)) return undefined;
+  return `${r.tl}px ${r.tr}px ${r.br}px ${r.bl}px`;
 }
 
 interface FieldBoxProps {
@@ -219,6 +228,7 @@ function ImageFieldBox({ field, value }: { field: TemplateField; value: string |
       style={{
         ...boxStyle(field),
         overflow: "hidden",
+        borderRadius: cornerRadiusCss(field),
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

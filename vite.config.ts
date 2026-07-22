@@ -17,6 +17,9 @@ function figmaAssetResolver() {
 }
 
 export default defineConfig({
+  // Honor the harness-assigned port (autoPort) so multiple sessions can run
+  // their own dev servers side by side; falls back to Vite's default.
+  server: process.env.PORT ? { port: Number(process.env.PORT), strictPort: true } : undefined,
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if

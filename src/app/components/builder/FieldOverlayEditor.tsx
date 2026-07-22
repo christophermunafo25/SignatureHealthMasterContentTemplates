@@ -1,18 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Moveable from "react-moveable";
-import type { TemplateField } from "@/lib/types";
+import type { FieldType, TemplateField } from "@/lib/types";
 import { useDataUrl } from "@/lib/render/useDataUrl";
+import { cornerRadiusCss } from "../SchemaRenderer";
+import { PALETTE_MIME } from "./fieldOps";
 
 interface FieldOverlayEditorProps {
   canvasWidth: number;
   canvasHeight: number;
   backgroundUrl: string;
   fields: TemplateField[];
-  selectedId: string | null;
-  onSelect(id: string | null): void;
+  selectedIds: string[];
+  onSelect(ids: string[]): void;
   onChange(fields: TemplateField[]): void;
-  /** Called when the admin draws a new box (canvas-space rect). */
+  /** Secondary path: the admin drew a raw box (canvas-space rect). */
   onDraw(rect: { x: number; y: number; width: number; height: number }): void;
+  /** Primary path: a palette element was dropped at a canvas point. */
+  onDropElement(type: FieldType, at: { x: number; y: number }): void;
+  /** Right-click on a field (id) or empty canvas (null, with canvas point). */
+  onContextMenu(pos: { x: number; y: number }, fieldId: string | null, canvasPoint: { x: number; y: number }): void;
 }
 
 interface DrawState {
@@ -29,11 +35,22 @@ const GRID = 10; // canvas px
 /** The Template Builder's design canvas. Figma-class editing via
  * react-moveable: drag to move, 8 resize handles (corner drags scale a text
  * field's font size with the box), rotation handle, snap-to-grid, and smart
- * alignment guides against the canvas edges/center and every other field.
- * Drag on empty canvas to draw a new field. All coordinates commit in canvas
- * pixel space (screen px ÷ scale). */
+ * alignment guides. Multi-select via shift/⌘-click (group drag). Palette
+ * elements drop where released; drawing a box still works as a secondary
+ * path. All coordinates commit in canvas pixel space (screen px ÷ scale). */
 export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
-  const { canvasWidth, canvasHeight, backgroundUrl, fields, selectedId, onSelect, onChange, onDraw } = props;
+  const {
+    canvasWidth,
+    canvasHeight,
+    backgroundUrl,
+    fields,
+    selectedIds,
+    onSelect,
+    onChange,
+    onDraw,
+    onDropElement,
+    onContextMenu,
+  } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const boxRefs = useRef(new Map<string, HTMLDivElement>());
   const [scale, setScale] = useState(0.4);
@@ -62,36 +79,26 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
     [scale, canvasWidth, canvasHeight],
   );
 
-  const patchField = useCallback(
-    (id: string, patch: Partial<TemplateField>) =>
-      onChange(fields.map((f) => (f.id === id ? { ...f, ...patch } : f))),
+  const patchFields = useCallback(
+    (patches: Map<string, Partial<TemplateField>>) =>
+      onChange(fields.map((f) => (patches.has(f.id) ? { ...f, ...patches.get(f.id)! } : f))),
     [fields, onChange],
   );
 
-  // Delete/Backspace removes the selected field (unless typing in an input).
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (!selectedId) return;
-      const tag = (document.activeElement?.tagName ?? "").toLowerCase();
-      if (tag === "input" || tag === "textarea" || tag === "select") return;
-      if (e.key === "Delete" || e.key === "Backspace") {
-        e.preventDefault();
-        onChange(fields.filter((f) => f.id !== selectedId));
-        onSelect(null);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [selectedId, fields, onChange, onSelect]);
+  const selected = fields.filter((f) => selectedIds.includes(f.id));
+  const single = selected.length === 1 ? selected[0] : null;
 
-  const selected = fields.find((f) => f.id === selectedId) ?? null;
-  // Target element via state (not a render-time ref read): callback refs
-  // populate AFTER render, so a newly-drawn box needs this second pass for
-  // Moveable to mount on it.
-  const [selectedEl, setSelectedEl] = useState<HTMLDivElement | null>(null);
+  // Target elements via state (not a render-time ref read): callback refs
+  // populate AFTER render, so newly-added boxes need this second pass for
+  // Moveable to mount on them.
+  const [targetEls, setTargetEls] = useState<HTMLDivElement[]>([]);
   useEffect(() => {
-    setSelectedEl(selectedId ? (boxRefs.current.get(selectedId) ?? null) : null);
-  }, [selectedId, fields, scale]);
+    setTargetEls(
+      selectedIds
+        .map((id) => boxRefs.current.get(id))
+        .filter((el): el is HTMLDivElement => Boolean(el)),
+    );
+  }, [selectedIds, fields, scale]);
 
   /** Editor always works in top-left space; center-anchored fields are
    * normalized on display and denormalized on commit. */
@@ -102,15 +109,43 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
     y: Math.round(f.anchor === "center" ? top / scale + h / 2 : top / scale),
   });
 
+  /** Commit every selected box's current on-screen position (group drag). */
+  const commitGroupPositions = useCallback(() => {
+    const patches = new Map<string, Partial<TemplateField>>();
+    for (const f of fields) {
+      if (!selectedIds.includes(f.id)) continue;
+      const el = boxRefs.current.get(f.id);
+      if (!el) continue;
+      patches.set(f.id, commitPos(f, parseFloat(el.style.left), parseFloat(el.style.top)));
+    }
+    patchFields(patches);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields, selectedIds, patchFields, scale]);
+
   const guidelineElements = useMemo(
     () =>
       fields
-        .filter((f) => f.id !== selectedId)
+        .filter((f) => !selectedIds.includes(f.id))
         .map((f) => boxRefs.current.get(f.id))
         .filter((el): el is HTMLDivElement => Boolean(el)),
     // Refs are stable per id; recompute when the set or selection changes.
-    [fields, selectedId, scale],
+    [fields, selectedIds, scale],
   );
+
+  const moveableProps = {
+    container: containerRef.current,
+    origin: false,
+    throttleDrag: 0,
+    snappable: true,
+    snapThreshold: 6,
+    snapGridWidth: GRID * scale,
+    snapGridHeight: GRID * scale,
+    elementGuidelines: guidelineElements,
+    verticalGuidelines: [0, (canvasWidth * scale) / 2, canvasWidth * scale],
+    horizontalGuidelines: [0, (canvasHeight * scale) / 2, canvasHeight * scale],
+    elementSnapDirections: { top: true, bottom: true, left: true, right: true, center: true, middle: true },
+    snapDirections: { top: true, bottom: true, left: true, right: true, center: true, middle: true },
+  };
 
   return (
     <div
@@ -118,12 +153,31 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
       data-overlay-root
       className="relative w-full select-none touch-none overflow-hidden"
       style={{ aspectRatio: `${canvasWidth} / ${canvasHeight}`, cursor: "crosshair" }}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes(PALETTE_MIME)) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        }
+      }}
+      onDrop={(e) => {
+        const type = e.dataTransfer.getData(PALETTE_MIME) as FieldType;
+        if (!type) return;
+        e.preventDefault();
+        onDropElement(type, toCanvas(e));
+      }}
+      onContextMenu={(e) => {
+        const target = e.target as HTMLElement;
+        if (target !== e.currentTarget && target.dataset.role !== "bg") return;
+        e.preventDefault();
+        onContextMenu({ x: e.clientX, y: e.clientY }, null, toCanvas(e));
+      }}
       onPointerDown={(e) => {
+        if (e.button !== 0) return;
         const target = e.target as HTMLElement;
         if (target !== e.currentTarget && target.dataset.role !== "bg") return;
         const p = toCanvas(e);
         setDraw({ startX: p.x, startY: p.y, x: p.x, y: p.y, w: 0, h: 0 });
-        onSelect(null);
+        onSelect([]);
         try {
           (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
         } catch {
@@ -177,9 +231,9 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
         )}
       </div>
 
-      {/* Field boxes (screen space = canvas × scale) */}
+      {/* Field boxes (screen space = canvas × scale; z = canvas layer order) */}
       {fields.map((f) => {
-        const isSelected = f.id === selectedId;
+        const isSelected = selectedIds.includes(f.id);
         return (
           <div
             key={f.id}
@@ -188,8 +242,21 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
               else boxRefs.current.delete(f.id);
             }}
             onPointerDown={(e) => {
+              if (e.button !== 0) return;
               e.stopPropagation();
-              onSelect(f.id);
+              if (e.shiftKey || e.metaKey || e.ctrlKey) {
+                onSelect(
+                  isSelected ? selectedIds.filter((id) => id !== f.id) : [...selectedIds, f.id],
+                );
+              } else if (!isSelected) {
+                onSelect([f.id]);
+              }
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!isSelected) onSelect([f.id]);
+              onContextMenu({ x: e.clientX, y: e.clientY }, f.id, toCanvas(e));
             }}
             style={{
               position: "absolute",
@@ -197,8 +264,10 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
               top: displayY(f) * scale,
               width: f.width * scale,
               height: f.height * scale,
+              zIndex: (f.zIndex ?? 0) + 1, // +1 keeps every box above the background
               transform: f.rotation ? `rotate(${f.rotation}deg)` : undefined,
               border: isSelected ? "1.5px solid #2563EB" : "1.5px dashed rgba(37,99,235,0.65)",
+              borderRadius: f.type === "image" ? cornerRadiusCss(f) : undefined,
               background: isSelected ? "rgba(37,99,235,0.08)" : "rgba(37,99,235,0.04)",
               cursor: "move",
             }}
@@ -213,41 +282,31 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
         );
       })}
 
-      {/* Figma-class transform controls on the selected box */}
-      {selected && selectedEl && (
+      {/* Figma-class transform controls: full controls on a single selection,
+          group drag on a multi-selection */}
+      {single && targetEls.length === 1 && (
         <Moveable
-          key={`${selected.id}-${scale}`}
-          target={selectedEl}
-          container={containerRef.current}
-          origin={false}
+          key={`${single.id}-${scale}`}
+          target={targetEls[0]}
+          {...moveableProps}
           draggable
           resizable
           rotatable
-          throttleDrag={0}
           throttleResize={0}
           throttleRotate={0}
           renderDirections={["nw", "n", "ne", "e", "se", "s", "sw", "w"]}
-          snappable
-          snapThreshold={6}
-          snapGridWidth={GRID * scale}
-          snapGridHeight={GRID * scale}
-          elementGuidelines={guidelineElements}
-          verticalGuidelines={[0, (canvasWidth * scale) / 2, canvasWidth * scale]}
-          horizontalGuidelines={[0, (canvasHeight * scale) / 2, canvasHeight * scale]}
-          elementSnapDirections={{ top: true, bottom: true, left: true, right: true, center: true, middle: true }}
-          snapDirections={{ top: true, bottom: true, left: true, right: true, center: true, middle: true }}
           onDrag={(e) => {
             e.target.style.left = `${e.left}px`;
             e.target.style.top = `${e.top}px`;
           }}
           onDragEnd={(e) => {
             if (!e.lastEvent) return;
-            patchField(selected.id, commitPos(selected, e.lastEvent.left, e.lastEvent.top));
+            patchFields(new Map([[single.id, commitPos(single, e.lastEvent.left, e.lastEvent.top)]]));
           }}
           onResizeStart={(e) => {
             resizeStart.current = {
-              height: selected.height,
-              fontSize: selected.fontSizePx,
+              height: single.height,
+              fontSize: single.fontSizePx,
               corner: e.direction[0] !== 0 && e.direction[1] !== 0,
             };
           }}
@@ -264,16 +323,16 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
             const patch: Partial<TemplateField> = {
               width: w,
               height: h,
-              ...commitPos(selected, e.lastEvent.drag.left, e.lastEvent.drag.top, w, h),
+              ...commitPos(single, e.lastEvent.drag.left, e.lastEvent.drag.top, w, h),
             };
             // Corner drags scale text like a design tool: font follows the box.
             const start = resizeStart.current;
-            const isText = selected.type === "text" || selected.type === "multiline" || selected.type === "select";
+            const isText = single.type === "text" || single.type === "multiline" || single.type === "select";
             if (start.corner && isText && start.height > 0) {
               const base = start.fontSize ?? 45;
               patch.fontSizePx = Math.max(6, Math.round(base * (h / start.height)));
             }
-            patchField(selected.id, patch);
+            patchFields(new Map([[single.id, patch]]));
           }}
           onRotate={(e) => {
             e.target.style.transform = `rotate(${e.rotation}deg)`;
@@ -281,8 +340,23 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
           onRotateEnd={(e) => {
             if (!e.lastEvent) return;
             const deg = Math.round(e.lastEvent.rotation) % 360;
-            patchField(selected.id, { rotation: deg === 0 ? undefined : deg });
+            patchFields(new Map([[single.id, { rotation: deg === 0 ? undefined : deg }]]));
           }}
+        />
+      )}
+      {selected.length > 1 && targetEls.length > 1 && (
+        <Moveable
+          key={`group-${selectedIds.join(",")}-${scale}`}
+          target={targetEls}
+          {...moveableProps}
+          draggable
+          onDragGroup={(e) => {
+            e.events.forEach((ev) => {
+              ev.target.style.left = `${ev.left}px`;
+              ev.target.style.top = `${ev.top}px`;
+            });
+          }}
+          onDragGroupEnd={commitGroupPositions}
         />
       )}
 
@@ -298,6 +372,7 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
             border: "2px dashed #2563EB",
             background: "rgba(37,99,235,0.08)",
             pointerEvents: "none",
+            zIndex: 10000,
           }}
         />
       )}

@@ -29,7 +29,13 @@ src/lib/auth/AuthContext.tsx  Auth boundary (dev switcher now, Supabase Auth lat
 src/lib/brand/BrandContext.tsx Active company's kit/assets/locations + theming
 src/lib/render/              Canvas math: data-URL pipeline, autofit, fonts, toPng export
 src/app/components/SchemaRenderer.tsx  THE renderer — every template goes through it
-src/app/components/builder/  Admin Template Builder (overlay editor, inspector, caption)
+src/app/components/builder/  Admin Template Builder — a guided wizard:
+                              source (PNG/Figma) → Name → Fields → Caption →
+                              Tags & details → Publish. The Fields step is an
+                              element palette (drag onto canvas) + canvas
+                              (multi-select, ⌘C/X/V/D + context menu) + field
+                              list (drag = member form order) + inspector
+                              (z-order via To front/back; image corner radius)
 src/app/components/onboarding/ First-run wizard
 supabase/migrations/         Schema + RLS (dev-active, real-ready)
 supabase/functions/          figma-status / figma-connect / figma-import (Deno)

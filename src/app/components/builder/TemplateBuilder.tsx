@@ -1,12 +1,30 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { ArrowLeft, Check, Eye, Figma, Pencil, RefreshCw, Save, Send, Upload } from "lucide-react";
-import type { CanvasPreset, DesignImportResult, NewTemplateInput, TemplateField, TemplateSchema } from "@/lib/types";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Eye,
+  Figma,
+  Pencil,
+  RefreshCw,
+  Save,
+  Send,
+  Upload,
+} from "lucide-react";
+import type {
+  CanvasPreset,
+  DesignImportResult,
+  FieldType,
+  NewTemplateInput,
+  TemplateField,
+  TemplateSchema,
+} from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { newId } from "@/lib/stores/local/db";
-import { suggestFieldKey } from "@/lib/caption";
+import { retagCaption, suggestFieldKey } from "@/lib/caption";
 import { useUnsavedChangesWarning } from "@/lib/useUnsavedChangesWarning";
 import { useRouter } from "../../router";
 import { SchemaRenderer } from "../SchemaRenderer";
@@ -15,12 +33,27 @@ import { FieldInspector } from "./FieldInspector";
 import { CaptionEditor } from "./CaptionEditor";
 import { FigmaImportDialog } from "./FigmaImportDialog";
 import { FigmaFieldPicker } from "./FigmaFieldPicker";
+import { ElementPalette } from "./ElementPalette";
+import { FieldListPanel } from "./FieldListPanel";
+import { FieldContextMenu, type MenuAction } from "./FieldContextMenu";
+import { WIZARD_STEPS, WizardStepper, type WizardStep } from "./WizardStepper";
+import {
+  PALETTE_ITEMS,
+  clipboardHasFields,
+  copyToClipboard,
+  duplicateFields,
+  fieldFromPalette,
+  isTypingTarget,
+  pasteFromClipboard,
+  setLayerOrder,
+} from "./fieldOps";
 import { composeFigmaBackground } from "@/lib/figma/composeLayers";
 
-/** Admin Template Builder: upload a PNG background, draw guarded fields on
- * it, write the caption merge template, publish. The manual path is the
- * reliable baseline; Figma import (when configured) just pre-fills the same
- * state for the admin to confirm. */
+/** Admin Template Builder: a guided wizard. Pick the source (PNG upload or
+ * Figma import), then Step 1 Name → Step 2 Fields (element palette + canvas +
+ * field list + inspector) → Step 3 Caption (optional) → Step 4 Tags & details
+ * (optional) → Publish. Save draft is available at every step; completed
+ * steps are jumpable from the persistent progress indicator. */
 export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   const { company } = useAuth();
   const { kit } = useBrand();
@@ -42,7 +75,9 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     fields: [],
     captionTemplate: "",
   }));
-  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [step, setStep] = useState<WizardStep>("name");
+  const [visited, setVisited] = useState<Set<WizardStep>>(() => new Set(["name"]));
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -53,6 +88,15 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   const [recomposing, setRecomposing] = useState(false);
   const [publishState, setPublishState] = useState<"idle" | "publishing" | "success">("idle");
   const [error, setError] = useState<string | null>(null);
+  /** Field whose label should open for naming (a just-added element);
+   * cleared as soon as the selection moves elsewhere. */
+  const [focusLabelFieldId, setFocusLabelFieldId] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    fieldId: string | null;
+    canvasPoint: { x: number; y: number };
+  } | null>(null);
 
   useEffect(() => {
     stores.companies
@@ -77,20 +121,79 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = t;
           setDraft(rest);
           savedSnapshotRef.current = JSON.stringify(rest);
+          // Editing an existing template: every step is already completed.
+          setVisited(new Set<WizardStep>(["name", "fields", "caption", "details"]));
+          setStep("fields");
         }
       })
       .catch((e) => console.error("Template load failed", e))
       .finally(() => setLoaded(true));
   }, [templateId]);
 
-  const selectedField = draft.fields.find((f) => f.id === selectedFieldId) ?? null;
+  const sourceChosen = Boolean(draft.backgroundUrl);
+  const nameComplete = Boolean(draft.name.trim());
+  const fieldsComplete = draft.fields.length > 0;
+
+  const complete = useMemo(() => {
+    const s = new Set<WizardStep>();
+    if (nameComplete) s.add("name");
+    if (fieldsComplete) s.add("fields");
+    if (visited.has("caption")) s.add("caption");
+    if (visited.has("details")) s.add("details");
+    return s;
+  }, [nameComplete, fieldsComplete, visited]);
+
+  const canGo = useCallback(
+    (target: WizardStep): boolean => {
+      if (!sourceChosen) return false;
+      if (target === "name") return true;
+      if (!nameComplete) return false;
+      if (target === "fields") return true;
+      return fieldsComplete;
+    },
+    [sourceChosen, nameComplete, fieldsComplete],
+  );
+
+  const goTo = useCallback((target: WizardStep) => {
+    setStep(target);
+    setVisited((v) => new Set(v).add(target));
+    setMenu(null);
+  }, []);
+
+  const stepIndex = WIZARD_STEPS.findIndex((s) => s.key === step);
+  const nextStep = WIZARD_STEPS[stepIndex + 1]?.key;
+  const prevStep = WIZARD_STEPS[stepIndex - 1]?.key;
+
+  // -------------------------------------------------------------------------
+  // Field operations
+  // -------------------------------------------------------------------------
 
   const setFields = useCallback(
     (fields: TemplateField[]) => setDraft((d) => ({ ...d, fields })),
     [],
   );
 
-  const addField = (rect: { x: number; y: number; width: number; height: number }) => {
+  const selectedFields = draft.fields.filter((f) => selectedIds.includes(f.id));
+  const singleSelected = selectedFields.length === 1 ? selectedFields[0] : null;
+
+  /** Patch one field; when the patch re-derives the merge tag, rewrite the
+   * caption template so existing {old_key} references follow the rename. */
+  const patchField = useCallback((id: string, patch: Partial<TemplateField>) => {
+    setDraft((d) => {
+      const prev = d.fields.find((f) => f.id === id);
+      const fields = d.fields.map((f) => (f.id === id ? { ...f, ...patch } : f));
+      const captionTemplate =
+        prev && patch.fieldKey && patch.fieldKey !== prev.fieldKey
+          ? retagCaption(d.captionTemplate, prev.fieldKey, patch.fieldKey)
+          : d.captionTemplate;
+      return { ...d, fields, captionTemplate };
+    });
+  }, []);
+
+  const maxZ = (fields: TemplateField[]) => fields.reduce((m, f) => Math.max(m, f.zIndex ?? 0), 0);
+
+  /** Secondary path: a raw drawn box becomes a text field. */
+  const addDrawnField = (rect: { x: number; y: number; width: number; height: number }) => {
     const label = `Field ${draft.fields.length + 1}`;
     const field: TemplateField = {
       id: newId(),
@@ -98,6 +201,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       fieldKey: suggestFieldKey(label, draft.fields),
       type: "text",
       ...rect,
+      zIndex: maxZ(draft.fields) + 1,
       fontFamily: kit?.headingFont?.family,
       fontSizePx: Math.max(18, Math.min(90, Math.round(rect.height * 0.55))),
       colorKey: kit?.colors.find((c) => c.key === "text")?.key ?? kit?.colors[0]?.key,
@@ -105,8 +209,117 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       autoFit: true,
     };
     setFields([...draft.fields, field]);
-    setSelectedFieldId(field.id);
+    setSelectedIds([field.id]);
+    setFocusLabelFieldId(field.id);
   };
+
+  /** Primary path: a palette element dropped (or clicked) onto the canvas —
+   * pre-sized, pre-typed, and immediately open for naming. */
+  const addPaletteField = (type: FieldType, at?: { x: number; y: number }) => {
+    const item = PALETTE_ITEMS.find((p) => p.type === type);
+    if (!item) return;
+    const point = at ?? { x: draft.canvasWidth / 2, y: draft.canvasHeight / 2 };
+    const field = fieldFromPalette(item, point, draft.fields, kit, {
+      width: draft.canvasWidth,
+      height: draft.canvasHeight,
+    });
+    setFields([...draft.fields, field]);
+    setSelectedIds([field.id]);
+    setFocusLabelFieldId(field.id);
+  };
+
+  // The naming focus applies only while the just-added field stays the sole
+  // selection; any other selection clears it.
+  useEffect(() => {
+    if (!focusLabelFieldId) return;
+    if (selectedIds.length !== 1 || selectedIds[0] !== focusLabelFieldId) {
+      setFocusLabelFieldId(null);
+    }
+  }, [selectedIds, focusLabelFieldId]);
+
+  const deleteFields = useCallback(
+    (ids: string[]) => {
+      if (!ids.length) return;
+      const idSet = new Set(ids);
+      setDraft((d) => ({ ...d, fields: d.fields.filter((f) => !idSet.has(f.id)) }));
+      setSelectedIds((sel) => sel.filter((id) => !idSet.has(id)));
+    },
+    [],
+  );
+
+  const copyFields = useCallback(
+    (ids: string[]) => copyToClipboard(draft.fields.filter((f) => ids.includes(f.id))),
+    [draft.fields],
+  );
+
+  const cutFields = useCallback(
+    (ids: string[]) => {
+      copyFields(ids);
+      deleteFields(ids);
+    },
+    [copyFields, deleteFields],
+  );
+
+  const pasteFields = useCallback(
+    (at?: { x: number; y: number }) => {
+      const pasted = pasteFromClipboard(draft.fields, at);
+      if (!pasted.length) return;
+      setFields([...draft.fields, ...pasted]);
+      setSelectedIds(pasted.map((f) => f.id));
+    },
+    [draft.fields, setFields],
+  );
+
+  const duplicateSelected = useCallback(
+    (ids: string[]) => {
+      const targets = draft.fields.filter((f) => ids.includes(f.id));
+      const dups = duplicateFields(targets, draft.fields);
+      if (!dups.length) return;
+      setFields([...draft.fields, ...dups]);
+      setSelectedIds(dups.map((f) => f.id));
+    },
+    [draft.fields, setFields],
+  );
+
+  const reorderLayer = useCallback(
+    (ids: string[], where: "front" | "back") => setFields(setLayerOrder(draft.fields, ids, where)),
+    [draft.fields, setFields],
+  );
+
+  // Keyboard shortcuts on the Fields step: ⌘/Ctrl C, X, V, D, Delete, Escape.
+  // Never fire while typing in an input.
+  useEffect(() => {
+    if (step !== "fields" || mode !== "edit") return;
+    const handler = (e: KeyboardEvent) => {
+      if (isTypingTarget(e)) return;
+      const mod = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
+      if (mod && key === "c" && selectedIds.length) {
+        e.preventDefault();
+        copyFields(selectedIds);
+      } else if (mod && key === "x" && selectedIds.length) {
+        e.preventDefault();
+        cutFields(selectedIds);
+      } else if (mod && key === "v" && clipboardHasFields()) {
+        e.preventDefault();
+        pasteFields();
+      } else if (mod && key === "d" && selectedIds.length) {
+        e.preventDefault();
+        duplicateSelected(selectedIds);
+      } else if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.length) {
+        e.preventDefault();
+        deleteFields(selectedIds);
+      } else if (e.key === "Escape") {
+        setSelectedIds([]);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [step, mode, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, deleteFields]);
+
+  // -------------------------------------------------------------------------
+  // Source, save, publish
+  // -------------------------------------------------------------------------
 
   const onDropBackground = useCallback(
     async (accepted: File[]) => {
@@ -117,6 +330,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       try {
         const url = await stores.templates.uploadBackground(company.id, file, file.name);
         setDraft((d) => ({ ...d, backgroundUrl: url }));
+        goTo("name");
       } catch (e) {
         console.error("Background upload failed", e);
         setError("Background upload failed — check your storage configuration.");
@@ -124,7 +338,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         setUploading(false);
       }
     },
-    [company],
+    [company, goTo],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -192,6 +406,39 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     [draft, savedId],
   );
 
+  // -------------------------------------------------------------------------
+  // Context menu actions
+  // -------------------------------------------------------------------------
+
+  const menuActions: MenuAction[] = useMemo(() => {
+    if (!menu) return [];
+    if (menu.fieldId === null) {
+      return [
+        {
+          label: "Paste here",
+          shortcut: "⌘V",
+          disabled: !clipboardHasFields(),
+          onSelect: () => pasteFields(menu.canvasPoint),
+        },
+      ];
+    }
+    const ids = selectedIds.includes(menu.fieldId) ? selectedIds : [menu.fieldId];
+    return [
+      { label: "Copy", shortcut: "⌘C", onSelect: () => copyFields(ids) },
+      { label: "Cut", shortcut: "⌘X", onSelect: () => cutFields(ids) },
+      {
+        label: "Paste",
+        shortcut: "⌘V",
+        disabled: !clipboardHasFields(),
+        onSelect: () => pasteFields(),
+      },
+      { label: "Duplicate", shortcut: "⌘D", onSelect: () => duplicateSelected(ids) },
+      { label: "Bring to front", onSelect: () => reorderLayer(ids, "front") },
+      { label: "Send to back", onSelect: () => reorderLayer(ids, "back") },
+      { label: "Delete", shortcut: "⌫", destructive: true, onSelect: () => deleteFields(ids) },
+    ];
+  }, [menu, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, reorderLayer, deleteFields]);
+
   if (!loaded) {
     return <p className="text-center py-24 text-sm" style={{ color: "var(--muted-foreground)" }}>Loading…</p>;
   }
@@ -253,8 +500,12 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         />
       )}
 
+      {menu && (
+        <FieldContextMenu x={menu.x} y={menu.y} actions={menuActions} onClose={() => setMenu(null)} />
+      )}
+
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
         <button
           onClick={() => navigate({ name: "adminTemplates" })}
           style={{ fontSize: 13, color: "var(--fg-2)", display: "flex", alignItems: "center", gap: 6 }}
@@ -262,53 +513,24 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           <ArrowLeft className="w-3.5 h-3.5" />
           Builder
         </button>
-        <input
-          value={draft.name}
-          onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-          placeholder="Template name"
-          className="bg-transparent outline-none flex-1 min-w-[200px]"
-          style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}
-        />
+        <span
+          className="flex-1 min-w-[200px] truncate"
+          style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, letterSpacing: "-0.3px", color: draft.name.trim() ? "var(--ink)" : "var(--fg-4)" }}
+        >
+          {draft.name.trim() || "Untitled template"}
+        </span>
         <span
           className="sp-eyebrow px-2 py-1 rounded-md" style={{ background: "rgba(35,31,35,0.04)" }}
         >
           {draft.canvasWidth}×{draft.canvasHeight} · {draft.status}
           {recomposing ? " · lifting elements off background…" : ""}
         </span>
-        <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--hairline-strong)" }}>
-          {(["edit", "preview"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className="flex items-center gap-1.5 px-3 py-2 capitalize"
-              style={{
-                fontSize: 12,
-                ...(mode === m
-                  ? { background: "var(--ink)", color: "var(--fg-on-dark-1)" }
-                  : { background: "var(--lift)", color: "var(--fg-2)" }),
-              }}
-            >
-              {m === "edit" ? <Pencil className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-              {m}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={() => void save()}
-          disabled={saving}
-          className="sp-btn sp-btn-ghost"
-        >
-          <Save className="w-3.5 h-3.5" />
-          Save draft
-        </button>
-        <button
-          onClick={() => void publish()}
-          disabled={saving || publishState !== "idle" || !draft.backgroundUrl || draft.fields.length === 0}
-          className="sp-btn sp-btn-primary"
-        >
-          <Send className="w-3.5 h-3.5" />
-          Publish
-        </button>
+        {sourceChosen && (
+          <button onClick={() => void save()} disabled={saving} className="sp-btn sp-btn-ghost">
+            <Save className="w-3.5 h-3.5" />
+            Save draft
+          </button>
+        )}
       </div>
 
       {error && (
@@ -326,9 +548,10 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
             const importResult = pendingImport;
             setDraft((d) => {
               const existing = [...d.fields];
+              let z = maxZ(existing);
               const merged = fields.map((f) => {
                 const fieldKey = suggestFieldKey(f.label, existing);
-                const next = { ...f, fieldKey };
+                const next = { ...f, fieldKey, zIndex: ++z };
                 existing.push(next);
                 return next;
               });
@@ -342,6 +565,9 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
             });
             setPendingImport(null);
             setMode("edit");
+            // A brand-new import starts at Step 1 (Name); an existing
+            // template that pulled in more fields goes straight to Fields.
+            goTo(draft.name.trim() ? "fields" : "name");
             // Lift the chosen elements OFF the background: re-render the frame
             // without them and swap in the recomposed PNG. On any failure the
             // flat render stays (fields overlay their baked twins).
@@ -380,8 +606,8 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
             }
           }}
         />
-      ) : !draft.backgroundUrl ? (
-        /* Step 1: two co-equal creation paths */
+      ) : !sourceChosen ? (
+        /* Source pick: two co-equal creation paths */
         <div className="max-w-3xl mx-auto py-10 space-y-5">
           <div className="text-center space-y-1 mb-2">
             <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}>
@@ -414,7 +640,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
               <p style={{ fontSize: 12, color: "var(--fg-2)", maxWidth: 240 }}>
                 {uploading
                   ? "Uploading…"
-                  : "Drop a finished design here, then draw the editable areas on top of it."}
+                  : "Drop a finished design here, then drag editable elements onto it."}
               </p>
             </div>
             {/* Path B — Figma link */}
@@ -442,126 +668,277 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           </div>
         </div>
       ) : (
-        /* Step 2+: mapping, caption, details */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-7 space-y-4">
-            <div className="sp-card p-4">
-              {mode === "edit" ? (
-                <>
-                  <p className="mb-3" style={{ fontSize: 12, color: "var(--fg-3)" }}>
-                    Drag on the canvas to draw a field. Drag to move, handles resize (corners scale text), top handle rotates — with snapping and alignment guides. Delete removes the selected field.
+        <>
+          <WizardStepper current={step} complete={complete} canGo={canGo} onGo={goTo} />
+
+          {step === "name" && (
+            <div className="max-w-xl mx-auto py-8">
+              <div className="sp-card p-6 space-y-4">
+                <div className="space-y-1">
+                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}>
+                    What should this template be called?
+                  </h2>
+                  <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
+                    Members see this name in their template gallery. You'll name
+                    each editable field next — field names become the caption's
+                    merge tags.
                   </p>
-                  <FieldOverlayEditor
-                    canvasWidth={draft.canvasWidth}
-                    canvasHeight={draft.canvasHeight}
-                    backgroundUrl={draft.backgroundUrl}
-                    fields={draft.fields}
-                    selectedId={selectedFieldId}
-                    onSelect={setSelectedFieldId}
-                    onChange={setFields}
-                    onDraw={addField}
-                  />
-                </>
-              ) : (
-                <SchemaRenderer
-                  schema={previewSchema}
-                  values={{}}
-                  brandKit={kit}
-                  instrument={false}
+                </div>
+                <input
+                  autoFocus
+                  value={draft.name}
+                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && nameComplete) goTo("fields");
+                  }}
+                  placeholder="e.g. Employee anniversary post"
+                  className="sp-input"
+                  style={{ fontSize: 16, padding: "12px 14px" }}
                 />
-              )}
+              </div>
             </div>
-            {stores.designImport.isConfigured() && mode === "edit" && (
+          )}
+
+          {step === "fields" && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+              <div className="lg:col-span-3 space-y-4">
+                {mode === "edit" && <ElementPalette onAdd={(type) => addPaletteField(type)} />}
+                <FieldListPanel
+                  fields={draft.fields}
+                  selectedIds={selectedIds}
+                  onSelect={setSelectedIds}
+                  onReorder={setFields}
+                  onContextMenu={(e, fieldId) => {
+                    e.preventDefault();
+                    if (!selectedIds.includes(fieldId)) setSelectedIds([fieldId]);
+                    setMenu({ x: e.clientX, y: e.clientY, fieldId, canvasPoint: { x: 0, y: 0 } });
+                  }}
+                />
+              </div>
+
+              <div className="lg:col-span-5 space-y-3">
+                <div className="sp-card p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p style={{ fontSize: 12, color: "var(--fg-3)" }}>
+                      {mode === "edit"
+                        ? "Drag elements from the palette onto the canvas. Drag to move, handles resize, top handle rotates. Right-click for copy/paste."
+                        : "Member preview — placeholder content, locked styling."}
+                    </p>
+                    <div className="flex rounded-lg overflow-hidden flex-shrink-0" style={{ border: "1px solid var(--hairline-strong)" }}>
+                      {(["edit", "preview"] as const).map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setMode(m)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 capitalize"
+                          style={{
+                            fontSize: 12,
+                            ...(mode === m
+                              ? { background: "var(--ink)", color: "var(--fg-on-dark-1)" }
+                              : { background: "var(--lift)", color: "var(--fg-2)" }),
+                          }}
+                        >
+                          {m === "edit" ? <Pencil className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {mode === "edit" ? (
+                    <FieldOverlayEditor
+                      canvasWidth={draft.canvasWidth}
+                      canvasHeight={draft.canvasHeight}
+                      backgroundUrl={draft.backgroundUrl}
+                      fields={draft.fields}
+                      selectedIds={selectedIds}
+                      onSelect={setSelectedIds}
+                      onChange={setFields}
+                      onDraw={addDrawnField}
+                      onDropElement={(type, at) => addPaletteField(type, at)}
+                      onContextMenu={(pos, fieldId, canvasPoint) =>
+                        setMenu({ x: pos.x, y: pos.y, fieldId, canvasPoint })
+                      }
+                    />
+                  ) : (
+                    <SchemaRenderer
+                      schema={previewSchema}
+                      values={{}}
+                      brandKit={kit}
+                      instrument={false}
+                    />
+                  )}
+                </div>
+                {stores.designImport.isConfigured() && mode === "edit" && (
+                  <button
+                    onClick={() => setFigmaOpen(true)}
+                    style={{ fontSize: 12, color: "var(--fg-2)", display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    <Figma className="w-3.5 h-3.5" />
+                    Import more fields from Figma
+                  </button>
+                )}
+              </div>
+
+              <div className="lg:col-span-4 space-y-4">
+                {singleSelected ? (
+                  <div className="sp-card p-4">
+                    <FieldInspector
+                      field={singleSelected}
+                      allFields={draft.fields}
+                      focusLabelFieldId={focusLabelFieldId}
+                      onChange={(patch) => patchField(singleSelected.id, patch)}
+                      onDelete={() => deleteFields([singleSelected.id])}
+                      onBringToFront={() => reorderLayer([singleSelected.id], "front")}
+                      onSendToBack={() => reorderLayer([singleSelected.id], "back")}
+                    />
+                  </div>
+                ) : selectedFields.length > 1 ? (
+                  <div className="sp-card p-4 space-y-3">
+                    <h3 className="sp-panel-title">{selectedFields.length} fields selected</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button className="sp-btn sp-btn-ghost" onClick={() => copyFields(selectedIds)}>Copy</button>
+                      <button className="sp-btn sp-btn-ghost" onClick={() => duplicateSelected(selectedIds)}>Duplicate</button>
+                      <button className="sp-btn sp-btn-ghost" onClick={() => reorderLayer(selectedIds, "front")}>To front</button>
+                      <button className="sp-btn sp-btn-ghost" onClick={() => reorderLayer(selectedIds, "back")}>To back</button>
+                    </div>
+                    <button
+                      className="sp-btn sp-btn-ghost w-full"
+                      style={{ color: "var(--destructive)" }}
+                      onClick={() => deleteFields(selectedIds)}
+                    >
+                      Delete {selectedFields.length} fields
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className="p-6 text-center"
+                    style={{ border: "1.5px dashed var(--hairline-strong)", borderRadius: 12, fontSize: 13, color: "var(--fg-3)" }}
+                  >
+                    {draft.fields.length === 0
+                      ? "Drag your first element from the palette onto the canvas."
+                      : "Select a field to edit it — click on the canvas or in the list."}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {step === "caption" && (
+            <div className="max-w-2xl mx-auto py-8">
+              <div className="sp-card p-6 space-y-4">
+                <div className="space-y-1">
+                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}>
+                    Suggested caption
+                    <span style={{ fontSize: 12, color: "var(--fg-4)", fontWeight: 400 }}> · optional</span>
+                  </h2>
+                  <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
+                    Members get this caption next to the finished graphic, with
+                    the tags filled from what they typed. Click a tag chip to
+                    insert it.
+                  </p>
+                </div>
+                <CaptionEditor
+                  value={draft.captionTemplate}
+                  fields={draft.fields}
+                  onChange={(captionTemplate) => setDraft((d) => ({ ...d, captionTemplate }))}
+                />
+              </div>
+            </div>
+          )}
+
+          {step === "details" && (
+            <div className="max-w-2xl mx-auto py-8 space-y-4">
+              <div className="sp-card p-6 space-y-4">
+                <div className="space-y-1">
+                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}>
+                    Tags & details
+                    <span style={{ fontSize: 12, color: "var(--fg-4)", fontWeight: 400 }}> · optional</span>
+                  </h2>
+                  <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
+                    Shown on the template's card in the members' gallery.
+                  </p>
+                </div>
+                <input
+                  value={draft.description}
+                  onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+                  placeholder="Short description shown on the portal card"
+                  className="sp-input"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    value={draft.category}
+                    onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
+                    placeholder="Category"
+                    className="sp-input"
+                  />
+                  <input
+                    value={draft.tags.join(", ")}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean),
+                      }))
+                    }
+                    placeholder="Tags (comma-separated)"
+                    className="sp-input"
+                  />
+                </div>
+                <label
+                  className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 12, color: "var(--fg-2)" }}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  Replace background PNG
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void onDropBackground([f]);
+                    }}
+                  />
+                </label>
+              </div>
+              <div className="sp-card p-6 space-y-3">
+                <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
+                  "{draft.name.trim() || "Untitled template"}" · {draft.fields.length} field
+                  {draft.fields.length !== 1 ? "s" : ""} ·{" "}
+                  {draft.captionTemplate ? "caption set" : "no caption"}
+                </p>
+                <button
+                  onClick={() => void publish()}
+                  disabled={saving || publishState !== "idle" || !draft.backgroundUrl || draft.fields.length === 0}
+                  className="sp-btn sp-btn-primary w-full"
+                  style={{ padding: "11px 14px" }}
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  {draft.status === "published" ? "Publish changes" : "Publish template"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Back / Next */}
+          <div className="flex items-center justify-between mt-6">
+            {prevStep ? (
+              <button onClick={() => goTo(prevStep)} className="sp-btn sp-btn-ghost">
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Back
+              </button>
+            ) : (
+              <span />
+            )}
+            {nextStep && (
               <button
-                onClick={() => setFigmaOpen(true)}
-                style={{ fontSize: 12, color: "var(--fg-2)", display: "flex", alignItems: "center", gap: 6 }}
+                onClick={() => goTo(nextStep)}
+                disabled={!canGo(nextStep)}
+                className="sp-btn sp-btn-primary"
               >
-                <Figma className="w-3.5 h-3.5" />
-                Import fields from Figma
+                Next
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
-
-          <div className="lg:col-span-5 space-y-4">
-            {selectedField ? (
-              <div className="sp-card p-4">
-                <FieldInspector
-                  field={selectedField}
-                  allFields={draft.fields}
-                  onChange={(patch) =>
-                    setFields(draft.fields.map((f) => (f.id === selectedField.id ? { ...f, ...patch } : f)))
-                  }
-                  onDelete={() => {
-                    setFields(draft.fields.filter((f) => f.id !== selectedField.id));
-                    setSelectedFieldId(null);
-                  }}
-                />
-              </div>
-            ) : (
-              <div
-                className="p-6 text-center"
-                style={{ border: "1.5px dashed var(--hairline-strong)", borderRadius: 12, fontSize: 13, color: "var(--fg-3)" }}
-              >
-                {draft.fields.length === 0
-                  ? "Draw your first field box on the image."
-                  : "Select a field box to edit its settings."}
-              </div>
-            )}
-
-            <div className="sp-card p-4 space-y-3">
-              <h3 className="sp-panel-title">Suggested caption</h3>
-              <CaptionEditor
-                value={draft.captionTemplate}
-                fields={draft.fields}
-                onChange={(captionTemplate) => setDraft((d) => ({ ...d, captionTemplate }))}
-              />
-            </div>
-
-            <div className="sp-card p-4 space-y-3">
-              <h3 className="sp-panel-title">Details</h3>
-              <input
-                value={draft.description}
-                onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-                placeholder="Short description shown on the portal card"
-                className="sp-input"
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  value={draft.category}
-                  onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
-                  placeholder="Category"
-                  className="sp-input"
-                />
-                <input
-                  value={draft.tags.join(", ")}
-                  onChange={(e) =>
-                    setDraft((d) => ({
-                      ...d,
-                      tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean),
-                    }))
-                  }
-                  placeholder="Tags (comma-separated)"
-                  className="sp-input"
-                />
-              </div>
-              <label
-                className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 12, color: "var(--fg-2)" }}
-              >
-                <Upload className="w-3.5 h-3.5" />
-                Replace background PNG
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void onDropBackground([f]);
-                  }}
-                />
-              </label>
-            </div>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );

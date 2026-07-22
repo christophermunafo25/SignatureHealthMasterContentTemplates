@@ -110,6 +110,47 @@
     linear-gradient(170deg, #ff8300 0%, #ff3f00 55%, #ff5a72 100%);
 }
 
+/* ── Dark mode ──────────────────────────────────────────────────────────────
+   The `dark` class on <html> flips the PLATFORM CHROME tokens only. Template
+   graphics are untouched: the render canvas is a fixed #fff surface and field
+   colors come from tenant brand kits, so previews/exports are identical in
+   both modes. `--ink` (text + primary-pill surfaces) and `--fg-on-dark-*`
+   (text on those surfaces) flip as a PAIR, so every existing
+   ink-background/on-dark-text combo stays readable. */
+.dark {
+  /* Surfaces */
+  --linen: #151215;
+  --paper: #1d1a1d;
+  --paper-warm: #272328;
+  --lift: #211e22;
+  --ink: #f2f0f2;
+  --obsidian: #ffffff; /* primary-button hover brightens instead of darkens */
+
+  /* Foregrounds (light-on-dark) */
+  --fg-1: #f2f0f2;
+  --fg-2: rgba(242, 240, 242, 0.66);
+  --fg-3: rgba(242, 240, 242, 0.48);
+  --fg-4: rgba(242, 240, 242, 0.34);
+  --fg-5: rgba(242, 240, 242, 0.08);
+  --hairline: rgba(242, 240, 242, 0.1);
+  --hairline-strong: rgba(242, 240, 242, 0.26);
+
+  /* Text on ink-colored surfaces (ink is light here, so this goes dark) */
+  --fg-on-dark-1: #1a171a;
+  --fg-on-dark-2: rgba(26, 23, 26, 0.7);
+  --fg-on-dark-3: rgba(26, 23, 26, 0.5);
+
+  /* Elevation reads through darker, larger shadows */
+  --shadow-e1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.28);
+  --shadow-e2: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-e3: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --shadow-e4: 0 16px 48px rgba(0, 0, 0, 0.55);
+}
+/* The warm mesh stays warm — text on it stays light in both modes. */
+.dark .sp-mesh { color: #f7f6f5; }
+.dark .sp-btn-ghost:hover:not(:disabled) { background: rgba(242, 240, 242, 0.06); }
+.dark ::selection { background: var(--orchid); color: #231f23; }
+
 /* ── Base ───────────────────────────────────────────────────────────────── */
 
 html {

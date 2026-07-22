@@ -5,6 +5,7 @@ import { stores } from "@/lib/stores";
 import { AuthPage } from "./components/auth/AuthPage";
 import { PeopleAdmin } from "./components/admin/PeopleAdmin";
 import { BrandProvider } from "@/lib/brand/BrandContext";
+import { ColorSchemeProvider } from "@/lib/colorScheme";
 import { RouterProvider, useRouter } from "./router";
 import { AppShell } from "./components/AppShell";
 import { Portal } from "./components/Portal";
@@ -56,12 +57,14 @@ function Screen() {
 export default function App() {
   const AuthProvider = stores.backend === "supabase" ? SupabaseAuthProvider : DevAuthProvider;
   return (
-    <AuthProvider>
-      <BrandProvider>
-        <RouterProvider>
-          <Screen />
-        </RouterProvider>
-      </BrandProvider>
-    </AuthProvider>
+    <ColorSchemeProvider>
+      <AuthProvider>
+        <BrandProvider>
+          <RouterProvider>
+            <Screen />
+          </RouterProvider>
+        </BrandProvider>
+      </AuthProvider>
+    </ColorSchemeProvider>
   );
 }

@@ -1,8 +1,35 @@
 import React from "react";
+import { Monitor, Moon, Sun } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBrand } from "@/lib/brand/BrandContext";
+import { useColorScheme, type ColorScheme } from "@/lib/colorScheme";
 import { useRouter, type Route } from "../router";
 import { DevSwitcher } from "./DevSwitcher";
+
+const SCHEME_CYCLE: Array<{ key: ColorScheme; label: string; Icon: typeof Sun }> = [
+  { key: "system", label: "System theme", Icon: Monitor },
+  { key: "light", label: "Light theme", Icon: Sun },
+  { key: "dark", label: "Dark theme", Icon: Moon },
+];
+
+/** Compact header control cycling System → Light → Dark. */
+function ThemeToggle() {
+  const { scheme, setScheme } = useColorScheme();
+  const idx = SCHEME_CYCLE.findIndex((s) => s.key === scheme);
+  const current = SCHEME_CYCLE[idx === -1 ? 0 : idx];
+  const next = SCHEME_CYCLE[(idx + 1) % SCHEME_CYCLE.length];
+  return (
+    <button
+      onClick={() => setScheme(next.key)}
+      title={`${current.label} — click for ${next.label.toLowerCase()}`}
+      aria-label={`Color theme: ${current.label}. Switch to ${next.label}`}
+      className="flex items-center justify-center rounded-lg transition-colors"
+      style={{ width: 30, height: 30, border: "1px solid var(--hairline)", color: "var(--fg-2)" }}
+    >
+      <current.Icon style={{ width: 14, height: 14 }} />
+    </button>
+  );
+}
 
 const ADMIN_NAV: Array<{ label: string; route: Route }> = [
   { label: "Builder", route: { name: "adminTemplates" } },
@@ -85,7 +112,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
           )}
 
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle />
             <DevSwitcher />
           </div>
         </div>

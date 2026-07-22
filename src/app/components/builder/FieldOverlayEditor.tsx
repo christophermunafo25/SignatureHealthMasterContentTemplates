@@ -300,7 +300,7 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
               className="absolute -top-5 left-0 text-[10px] font-bold px-1 rounded whitespace-nowrap"
               style={{ background: "#2563EB", color: "white", pointerEvents: "none" }}
             >
-              {f.label} · {f.type}
+              {f.label} · {f.static ? "fixed" : f.type}
             </span>
           </div>
         );

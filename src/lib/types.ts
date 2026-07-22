@@ -112,6 +112,11 @@ export interface TemplateField {
   /** Canvas paint (layer) order — higher paints on top. This is a SEPARATE
    * concern from the fields array order, which is the member form order. */
   zIndex?: number;
+  /** Static element: exists on the graphic but is NOT a member-editable
+   * field — no form entry, no caption tag, no required check. The admin
+   * fixes its content in `staticValue` (text, or an image URL). */
+  static?: boolean;
+  staticValue?: string;
   /** Image fields only: rounded corners, rendered identically in the
    * builder, member preview, and PNG export. */
   cornerRadius?: CornerRadius;

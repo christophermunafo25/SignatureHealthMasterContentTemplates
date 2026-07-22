@@ -28,6 +28,15 @@ Placement (canvas pixel space):
   array order (= form order). Never negative — layer moves renormalize all
   fields to 0..n-1 so nothing paints behind the background image.
 
+Fixed elements:
+
+- `static: true` + `staticValue` — the element exists on the graphic but is
+  NOT member-editable: no form entry, no required check, no tag chip. The
+  admin fixes the content (`staticValue` = the text, or an image URL uploaded
+  from the inspector). Full canvas editing, styling, z-order, and clipboard
+  behavior still apply. A leftover `{tag}` referencing a fixed text element
+  merges to its `staticValue`. `select` fields can't be static.
+
 Types:
 
 - `text` / `multiline` — single/multi-line text.

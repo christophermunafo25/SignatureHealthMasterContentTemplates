@@ -27,7 +27,8 @@ export function CaptionEditor({ value, fields, onChange }: CaptionEditorProps) {
     });
   };
 
-  const taggable = fields.filter((f) => f.type !== "image");
+  // Static elements have no member value to merge — no tag chip.
+  const taggable = fields.filter((f) => f.type !== "image" && !f.static);
 
   return (
     <div className="space-y-2">

@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowDownToLine, ArrowUpToLine, Link as LinkIcon, Lock, Trash2, Unlink } from "lucide-react";
+import { ArrowDownToLine, ArrowUpToLine, Link as LinkIcon, Lock, Pin, RefreshCw, Trash2, Unlink, Upload } from "lucide-react";
 import type { BrandKit, CornerRadius, FieldType, TemplateField, TextGradient } from "@/lib/types";
+import { stores } from "@/lib/stores";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { GOOGLE_FONTS } from "@/lib/render/fonts";
 import { suggestFieldKey } from "@/lib/caption";
@@ -44,10 +46,26 @@ export function FieldInspector({
   focusLabelFieldId,
 }: FieldInspectorProps) {
   const { kit, assets } = useBrand();
+  const { company } = useAuth();
   const isText = field.type === "text" || field.type === "multiline" || field.type === "select";
+  const isStatic = Boolean(field.static);
   const boundStyle = getTypeStyle(kit, field.typeStyleKey);
   const locked = lockedProperties(boundStyle);
   const labelRef = useRef<HTMLInputElement>(null);
+  const [uploadingStatic, setUploadingStatic] = useState(false);
+
+  const uploadStaticImage = async (file: File) => {
+    if (!company) return;
+    setUploadingStatic(true);
+    try {
+      const url = await stores.templates.uploadBackground(company.id, file, file.name);
+      onChange({ staticValue: url });
+    } catch (e) {
+      console.error("Static image upload failed", e);
+    } finally {
+      setUploadingStatic(false);
+    }
+  };
 
   // A freshly-dropped palette element opens for naming immediately; the
   // parent clears focusLabelFieldId once selection moves on, so merely
@@ -91,9 +109,11 @@ export function FieldInspector({
               });
             }}
           />
-          <p className="text-[10px] mt-1 font-mono" style={{ color: "var(--muted-foreground)" }}>
-            caption tag: {"{"}{field.fieldKey}{"}"}
-          </p>
+          {!isStatic && (
+            <p className="text-[10px] mt-1 font-mono" style={{ color: "var(--muted-foreground)" }}>
+              caption tag: {"{"}{field.fieldKey}{"}"}
+            </p>
+          )}
         </div>
         <div className="col-span-2">
           <label className={labelClass} style={labelStyle}>Type</label>
@@ -103,11 +123,84 @@ export function FieldInspector({
             value={field.type}
             onChange={(e) => onChange({ type: e.target.value as FieldType })}
           >
-            {FIELD_TYPES.map((t) => (
+            {FIELD_TYPES.filter((t) => !isStatic || t.value !== "select").map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
         </div>
+
+        {field.type !== "select" && (
+          <div className="col-span-2">
+            <label
+              className="flex items-start gap-2 cursor-pointer"
+              style={{ fontSize: 13, color: "var(--ink)" }}
+            >
+              <input
+                type="checkbox"
+                style={{ marginTop: 3 }}
+                checked={isStatic}
+                onChange={(e) =>
+                  onChange(
+                    e.target.checked
+                      ? { static: true, required: undefined, placeholder: undefined, maxLength: undefined }
+                      : { static: undefined, staticValue: undefined },
+                  )
+                }
+              />
+              <span>
+                <Pin style={{ width: 11, height: 11, display: "inline", marginRight: 4, verticalAlign: "-1px", color: "var(--solar)" }} />
+                Fixed element
+                <span style={{ display: "block", fontSize: 11, color: "var(--fg-3)" }}>
+                  Baked into the graphic — members don't see or edit it.
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
+
+        {isStatic && isText && (
+          <div className="col-span-2">
+            <label className={labelClass} style={labelStyle}>Content</label>
+            <textarea
+              rows={field.type === "multiline" ? 3 : 1}
+              className={controlClass}
+              style={{ ...controlStyle, resize: "vertical" }}
+              value={field.staticValue ?? ""}
+              placeholder="The exact text shown on the graphic"
+              onChange={(e) => onChange({ staticValue: e.target.value || undefined })}
+            />
+          </div>
+        )}
+        {isStatic && field.type === "image" && (
+          <div className="col-span-2">
+            <label className={labelClass} style={labelStyle}>Image</label>
+            <label
+              className="flex items-center justify-center gap-2 cursor-pointer py-2.5"
+              style={{
+                border: "1.5px dashed var(--hairline-strong)",
+                borderRadius: 8,
+                fontSize: 12,
+                color: "var(--fg-2)",
+              }}
+            >
+              {uploadingStatic ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" style={{ color: "var(--solar)" }} />
+              ) : (
+                <Upload className="w-3.5 h-3.5" style={{ color: "var(--solar)" }} />
+              )}
+              {uploadingStatic ? "Uploading…" : field.staticValue ? "Replace image" : "Upload image"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void uploadStaticImage(f);
+                }}
+              />
+            </label>
+          </div>
+        )}
 
         {isText && (
           <div className="col-span-2">
@@ -180,23 +273,25 @@ export function FieldInspector({
         assets.filter((a) => a.kind === "font").map((a) => a.metadata.family ?? a.name)
       } />}
 
-      {/* Guardrails */}
+      {/* Guardrails (member-input concerns hidden on fixed elements) */}
       <div className="pt-2 border-t space-y-3" style={{ borderColor: "var(--border)" }}>
-        <h4 className="sp-eyebrow">Guardrails</h4>
+        <h4 className="sp-eyebrow">{isStatic ? "Rendering" : "Guardrails"}</h4>
         {isText && field.type !== "select" && (
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass} style={labelStyle}>Max characters</label>
-              <input
-                type="number"
-                className={controlClass}
-                style={controlStyle}
-                disabled={locked.has("maxLength")}
-                value={field.maxLength ?? ""}
-                placeholder="none"
-                onChange={(e) => onChange({ maxLength: e.target.value ? Number(e.target.value) : undefined })}
-              />
-            </div>
+            {!isStatic && (
+              <div>
+                <label className={labelClass} style={labelStyle}>Max characters</label>
+                <input
+                  type="number"
+                  className={controlClass}
+                  style={controlStyle}
+                  disabled={locked.has("maxLength")}
+                  value={field.maxLength ?? ""}
+                  placeholder="none"
+                  onChange={(e) => onChange({ maxLength: e.target.value ? Number(e.target.value) : undefined })}
+                />
+              </div>
+            )}
             <label className="flex items-end gap-2 pb-2 text-sm" style={{ color: "var(--foreground)" }}>
               <input
                 type="checkbox"
@@ -216,18 +311,20 @@ export function FieldInspector({
         )}
         {field.type === "image" && (
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass} style={labelStyle}>Crop ratio (w/h)</label>
-              <input
-                type="number"
-                step="0.01"
-                className={controlClass}
-                style={controlStyle}
-                value={field.aspectRatio ?? ""}
-                placeholder={`box: ${(field.width / field.height).toFixed(2)}`}
-                onChange={(e) => onChange({ aspectRatio: e.target.value ? Number(e.target.value) : undefined })}
-              />
-            </div>
+            {!isStatic && (
+              <div>
+                <label className={labelClass} style={labelStyle}>Crop ratio (w/h)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className={controlClass}
+                  style={controlStyle}
+                  value={field.aspectRatio ?? ""}
+                  placeholder={`box: ${(field.width / field.height).toFixed(2)}`}
+                  onChange={(e) => onChange({ aspectRatio: e.target.value ? Number(e.target.value) : undefined })}
+                />
+              </div>
+            )}
             <div>
               <label className={labelClass} style={labelStyle}>Fit</label>
               <select
@@ -256,25 +353,27 @@ export function FieldInspector({
             />
           </div>
         )}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelClass} style={labelStyle}>Placeholder</label>
-            <input
-              className={controlClass}
-              style={controlStyle}
-              value={field.placeholder ?? ""}
-              onChange={(e) => onChange({ placeholder: e.target.value || undefined })}
-            />
+        {!isStatic && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass} style={labelStyle}>Placeholder</label>
+              <input
+                className={controlClass}
+                style={controlStyle}
+                value={field.placeholder ?? ""}
+                onChange={(e) => onChange({ placeholder: e.target.value || undefined })}
+              />
+            </div>
+            <label className="flex items-end gap-2 pb-2 text-sm" style={{ color: "var(--foreground)" }}>
+              <input
+                type="checkbox"
+                checked={field.required ?? false}
+                onChange={(e) => onChange({ required: e.target.checked || undefined })}
+              />
+              Required
+            </label>
           </div>
-          <label className="flex items-end gap-2 pb-2 text-sm" style={{ color: "var(--foreground)" }}>
-            <input
-              type="checkbox"
-              checked={field.required ?? false}
-              onChange={(e) => onChange({ required: e.target.checked || undefined })}
-            />
-            Required
-          </label>
-        </div>
+        )}
       </div>
     </div>
   );

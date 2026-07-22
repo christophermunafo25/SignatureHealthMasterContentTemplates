@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { AlignLeft, ChevronDown, GripVertical, Image as ImageIcon, Type as TypeIcon } from "lucide-react";
+import { AlignLeft, ChevronDown, GripVertical, Image as ImageIcon, Pin, Type as TypeIcon } from "lucide-react";
 import type { FieldType, TemplateField } from "@/lib/types";
 
 const ICONS: Record<FieldType, React.ComponentType<{ style?: React.CSSProperties }>> = {
@@ -51,9 +51,14 @@ export function FieldListPanel({ fields, selectedIds, onSelect, onReorder, onCon
         </p>
       ) : (
         <div className="space-y-1">
-          {fields.map((f, i) => {
+          {(() => {
+            // Form numbering skips fixed elements — they never appear in the
+            // member form.
+            let formStep = 0;
+            return fields.map((f, i) => {
             const Icon = ICONS[f.type];
             const isSelected = selectedIds.includes(f.id);
+            const stepNo = f.static ? null : ++formStep;
             return (
               <div
                 key={f.id}
@@ -100,6 +105,7 @@ export function FieldListPanel({ fields, selectedIds, onSelect, onReorder, onCon
                   style={{ width: 13, height: 13, color: "var(--fg-4)", flexShrink: 0, cursor: "grab" }}
                 />
                 <span
+                  className="flex items-center"
                   style={{
                     fontFamily: "var(--font-mono)",
                     fontSize: 10,
@@ -108,7 +114,11 @@ export function FieldListPanel({ fields, selectedIds, onSelect, onReorder, onCon
                     flexShrink: 0,
                   }}
                 >
-                  {String(i + 1).padStart(2, "0")}
+                  {stepNo === null ? (
+                    <Pin style={{ width: 11, height: 11, color: "var(--solar)" }} />
+                  ) : (
+                    String(stepNo).padStart(2, "0")
+                  )}
                 </span>
                 <Icon style={{ width: 13, height: 13, color: "var(--fg-3)", flexShrink: 0 }} />
                 <span className="flex-1 truncate" style={{ fontSize: 12.5, color: "var(--ink)" }}>
@@ -118,11 +128,12 @@ export function FieldListPanel({ fields, selectedIds, onSelect, onReorder, onCon
                   className="truncate"
                   style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, color: "var(--fg-4)", maxWidth: 90 }}
                 >
-                  {"{"}{f.fieldKey}{"}"}
+                  {f.static ? "fixed" : `{${f.fieldKey}}`}
                 </span>
               </div>
             );
-          })}
+            });
+          })()}
         </div>
       )}
       <p style={{ fontSize: 10.5, color: "var(--fg-3)" }}>

@@ -8,6 +8,8 @@ import type { FieldValues, TemplateField, TemplateSchema } from "./types";
 export function mergeCaption(template: TemplateSchema, values: FieldValues): string {
   return template.captionTemplate.replace(/\{([a-zA-Z0-9_]+)\}/g, (raw, key: string) => {
     const field = template.fields.find((f) => f.fieldKey === key);
+    // Static elements have fixed content, not member values.
+    if (field?.static) return field.type === "image" ? raw : field.staticValue || "____";
     const value = values[key];
     if (!value) return "____";
     if (field?.type === "image") return raw; // images have no caption text

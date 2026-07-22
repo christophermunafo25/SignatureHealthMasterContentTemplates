@@ -40,9 +40,12 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
   const suggestedCaption = template ? mergeCaption(template, values) : "";
   const shownCaption = caption ?? suggestedCaption;
 
+  // Static elements are baked into the graphic — members never fill them in.
+  const formFields = useMemo(() => (template?.fields ?? []).filter((f) => !f.static), [template]);
+
   const missingRequired = useMemo(
-    () => (template?.fields ?? []).filter((f) => f.required && !values[f.fieldKey]),
-    [template, values],
+    () => formFields.filter((f) => f.required && !values[f.fieldKey]),
+    [formFields, values],
   );
 
   if (loading) {
@@ -91,7 +94,7 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
             )}
           </div>
 
-          {template.fields.map((field, i) => {
+          {formFields.map((field, i) => {
             const maxLength = resolveFieldStyle(field, kit).maxLength;
             return (
             <div key={field.id} className="p-4 space-y-2.5" style={panel}>

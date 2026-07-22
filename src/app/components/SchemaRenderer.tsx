@@ -176,10 +176,12 @@ interface FieldBoxProps {
 /** Exported for the builder's edit canvas, which paints the same placeholder
  * content underneath its transform boxes so fields are never empty outlines. */
 export function FieldBox({ field, value, brandKit }: FieldBoxProps) {
+  // Static elements carry their own fixed content — member values never apply.
+  const effective = field.static ? field.staticValue : value;
   if (field.type === "image") {
-    return <ImageFieldBox field={field} value={value} />;
+    return <ImageFieldBox field={field} value={effective} />;
   }
-  return <TextFieldBox field={field} value={value} brandKit={brandKit} />;
+  return <TextFieldBox field={field} value={effective} brandKit={brandKit} />;
 }
 
 function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {

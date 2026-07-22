@@ -96,6 +96,8 @@ export interface TemplateFieldRow {
   anchor: TemplateField["anchor"] | null;
   z_index: number | null;
   corner_radius: import("../../types").CornerRadius | null;
+  is_static: boolean | null;
+  static_value: string | null;
   font_family: string | null;
   font_weight: number | null;
   color_hex: string | null;
@@ -137,6 +139,8 @@ export const toTemplateField = (r: TemplateFieldRow): TemplateField => ({
   anchor: opt(r.anchor),
   zIndex: opt(r.z_index) === undefined ? undefined : Number(r.z_index),
   cornerRadius: opt(r.corner_radius),
+  static: opt(r.is_static),
+  staticValue: opt(r.static_value),
   fontFamily: opt(r.font_family),
   fontWeight: opt(r.font_weight) === undefined ? undefined : Number(r.font_weight),
   colorHex: opt(r.color_hex),
@@ -176,6 +180,8 @@ export const fieldToRow = (
   anchor: f.anchor ?? null,
   z_index: f.zIndex ?? null,
   corner_radius: f.cornerRadius ?? null,
+  is_static: f.static ?? null,
+  static_value: f.staticValue ?? null,
   font_family: f.fontFamily ?? null,
   font_weight: f.fontWeight ?? null,
   color_hex: f.colorHex ?? null,

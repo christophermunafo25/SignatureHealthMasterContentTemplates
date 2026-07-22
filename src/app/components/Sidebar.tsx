@@ -73,23 +73,44 @@ export function Sidebar() {
   const { company, companies, role, user, isDevAuth, setCompany, setRole, signOut, backend } = useAuth();
   const { resolved } = useColorScheme();
   const { route, navigate } = useRouter();
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
+  // Narrow viewports (<1024px) always get the icon rail; expanding there
+  // opens the panel as an OVERLAY above the content instead of pushing it —
+  // a 264px panel would otherwise crush a phone's content to a sliver.
+  const [isNarrow, setIsNarrow] = useState(() => window.matchMedia("(max-width: 1023px)").matches);
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  const [collapsedPref, setCollapsedPref] = useState<boolean>(() => {
     try {
-      const stored = localStorage.getItem(LS_COLLAPSED);
-      if (stored !== null) return stored === "1";
+      return localStorage.getItem(LS_COLLAPSED) === "1";
     } catch {
-      // fall through to the width default
+      return false;
     }
-    return window.innerWidth < 1024;
   });
 
   useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const onChange = () => {
+      setIsNarrow(mq.matches);
+      setOverlayOpen(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
     try {
-      localStorage.setItem(LS_COLLAPSED, collapsed ? "1" : "0");
+      localStorage.setItem(LS_COLLAPSED, collapsedPref ? "1" : "0");
     } catch {
       // persistence is best-effort
     }
-  }, [collapsed]);
+  }, [collapsedPref]);
+
+  const collapsed = isNarrow ? !overlayOpen : collapsedPref;
+  const toggle = () => (isNarrow ? setOverlayOpen((o) => !o) : setCollapsedPref((c) => !c));
+  /** Close the overlay after any navigation on narrow screens. */
+  const go = (target: Route) => {
+    navigate(target);
+    if (isNarrow) setOverlayOpen(false);
+  };
 
   const items = NAV.filter((item) => role === "admin" || !item.adminOnly);
   const initials = (user?.email ?? company?.name ?? "?")
@@ -103,20 +124,42 @@ export function Sidebar() {
     : company?.name ?? "Workspace";
 
   return (
-    <aside
-      className="sp-sidebar sticky top-0 flex flex-col flex-shrink-0"
+    <>
+      {/* Scrim behind the narrow-screen overlay panel */}
+      {isNarrow && overlayOpen && (
+        <div
+          className="fixed inset-0"
+          style={{ background: "rgba(26,23,26,0.4)", zIndex: 29 }}
+          onClick={() => setOverlayOpen(false)}
+          aria-hidden
+        />
+      )}
+    {/* The wrapper reserves layout space (always just the rail on narrow
+        screens) so the overlay panel never reflows the content behind it. */}
+    <div
+      className="flex-shrink-0"
       style={{
+        width: isNarrow || collapsedPref ? "var(--sb-width-collapsed)" : "var(--sb-width)",
+        transition: "width 0.2s ease",
+      }}
+    >
+    <aside
+      className="sp-sidebar flex flex-col"
+      style={{
+        position: isNarrow && overlayOpen ? "fixed" : "sticky",
+        left: isNarrow && overlayOpen ? 0 : undefined,
+        top: 0,
         width: collapsed ? "var(--sb-width-collapsed)" : "var(--sb-width)",
         height: "100vh",
         padding: collapsed ? "20px 12px" : "24px 20px",
         transition: "width 0.2s ease",
-        zIndex: 20,
+        zIndex: 30,
       }}
     >
       {/* Logo + collapse toggle */}
       <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} mb-7`}>
         {!collapsed && (
-          <button onClick={() => navigate({ name: role === "admin" ? "adminTemplates" : "portal" })} title="Home">
+          <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} title="Home">
             <img
               src={resolved === "dark" ? logoOnDark : logoOnLight}
               alt="SocialPaint"
@@ -125,7 +168,7 @@ export function Sidebar() {
           </button>
         )}
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={toggle}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           className="flex items-center justify-center rounded-md flex-shrink-0"
@@ -136,7 +179,7 @@ export function Sidebar() {
       </div>
       {collapsed && (
         <button
-          onClick={() => navigate({ name: role === "admin" ? "adminTemplates" : "portal" })}
+          onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })}
           title="SocialPaint — home"
           className="mx-auto mb-6"
         >
@@ -144,14 +187,14 @@ export function Sidebar() {
         </button>
       )}
 
-      {/* Nav */}
-      <nav className="flex flex-col gap-3.5" aria-label="Primary">
+      {/* Nav — scrolls on short viewports so the user block stays reachable */}
+      <nav className="flex flex-col gap-3.5 flex-1 min-h-0 overflow-y-auto" aria-label="Primary">
         {items.map(({ label, route: target, Icon, matches }) => {
           const active = matches.includes(route.name);
           return (
             <button
               key={label}
-              onClick={() => navigate(target)}
+              onClick={() => go(target)}
               className="sp-sidebar-item"
               data-active={active}
               title={collapsed ? label : undefined}
@@ -165,14 +208,14 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="flex-1" />
+      <div style={{ height: 16 }} />
 
       {/* Dev/backends controls + user block pinned to the bottom */}
       {!collapsed && (companies.length > 1 || isDevAuth) && (
         <select
           value={company?.id ?? ""}
           onChange={(e) => {
-            if (e.target.value === "__new__") navigate({ name: "onboarding" });
+            if (e.target.value === "__new__") go({ name: "onboarding" });
             else void setCompany(e.target.value);
           }}
           className="sp-input mb-2"
@@ -247,5 +290,7 @@ export function Sidebar() {
         )}
       </div>
     </aside>
+    </div>
+    </>
   );
 }

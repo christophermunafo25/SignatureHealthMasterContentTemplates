@@ -22,7 +22,9 @@ export function ElementPalette({ onAdd }: ElementPaletteProps) {
   return (
     <div className="sp-card p-3 space-y-2">
       <h3 className="sp-eyebrow">Elements</h3>
-      <div className="grid grid-cols-2 gap-2">
+      {/* When the builder stacks to one column (below lg), the palette spans
+          the full content width — four-across keeps the tiles hand-sized. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2">
         {PALETTE_ITEMS.map((item) => {
           const Icon = ICONS[item.type];
           return (

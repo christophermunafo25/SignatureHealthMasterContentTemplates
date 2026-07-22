@@ -701,7 +701,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
 
           {step === "fields" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-              <div className="lg:col-span-3 space-y-4">
+              <div className="lg:col-span-3 space-y-4 w-full max-w-xl mx-auto lg:max-w-none">
                 {mode === "edit" && <ElementPalette onAdd={(type) => addPaletteField(type)} />}
                 <FieldListPanel
                   fields={draft.fields}
@@ -716,10 +716,10 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                 />
               </div>
 
-              <div className="lg:col-span-5 space-y-3">
+              <div className="lg:col-span-5 space-y-3 w-full max-w-xl mx-auto lg:max-w-none">
                 <div className="sp-card p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <p style={{ fontSize: 12, color: "var(--fg-3)" }}>
+                  <div className="flex items-center justify-between gap-3 flex-wrap-reverse mb-3">
+                    <p style={{ fontSize: 12, color: "var(--fg-3)", flex: "1 1 260px", minWidth: 0 }}>
                       {mode === "edit"
                         ? "Drag elements from the palette onto the canvas. Drag to move, handles resize, top handle rotates. Right-click for copy/paste."
                         : "Member preview — placeholder content, locked styling."}
@@ -778,7 +778,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                 )}
               </div>
 
-              <div className="lg:col-span-4 space-y-4">
+              <div className="lg:col-span-4 space-y-4 w-full max-w-xl mx-auto lg:max-w-none">
                 {singleSelected ? (
                   <div className="sp-card p-4">
                     <FieldInspector

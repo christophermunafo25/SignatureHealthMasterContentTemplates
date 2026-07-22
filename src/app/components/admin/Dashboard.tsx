@@ -88,8 +88,8 @@ export function Dashboard() {
             </div>
           </div>
 
-          <div className="sp-card overflow-hidden">
-            <table className="w-full" style={{ fontSize: 13 }}>
+          <div className="sp-card overflow-hidden overflow-x-auto">
+            <table className="w-full" style={{ fontSize: 13, minWidth: 480 }}>
               <thead>
                 <tr className="text-left" style={{ borderBottom: "1px solid var(--hairline)" }}>
                   {["Template", "Opens", "Downloads", "Last used"].map((h) => (

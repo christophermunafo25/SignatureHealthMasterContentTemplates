@@ -5,11 +5,11 @@ import { useRouter, type Route } from "../router";
 import { DevSwitcher } from "./DevSwitcher";
 
 const ADMIN_NAV: Array<{ label: string; route: Route }> = [
-  { label: "Templates", route: { name: "adminTemplates" } },
+  { label: "Builder", route: { name: "adminTemplates" } },
   { label: "Brand Studio", route: { name: "brandStudio" } },
   { label: "Dashboard", route: { name: "dashboard" } },
   { label: "People", route: { name: "people" } },
-  { label: "Portal", route: { name: "portal" } },
+  { label: "Templates", route: { name: "portal" } },
 ];
 
 /** Platform chrome — SocialPaint design system (topbar on lift, hairline

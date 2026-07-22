@@ -40,9 +40,9 @@ export function AdminTemplates() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="flex items-end justify-between mb-6">
         <div>
-          <h1 className="sp-page-title">Templates</h1>
+          <h1 className="sp-page-title">Builder</h1>
           <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
-            Build locked templates your team fills in — published ones appear in the portal.
+            Create a new template or edit an existing one — published templates appear in Templates.
           </p>
         </div>
         <button className="sp-btn sp-btn-primary" onClick={() => navigate({ name: "builder", templateId: null })}>
@@ -62,7 +62,7 @@ export function AdminTemplates() {
             Create your first template
           </p>
           <p className="max-w-md mx-auto" style={{ fontSize: 13, color: "var(--fg-2)" }}>
-            Upload a PNG of an existing design, map the editable fields, and publish it to your team's portal.
+            Upload a PNG or import a Figma frame, map the editable fields, and publish it for your team.
           </p>
         </div>
       ) : (

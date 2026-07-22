@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { ArrowLeft, Eye, Figma, Pencil, RefreshCw, Save, Send, Upload } from "lucide-react";
+import { ArrowLeft, Check, Eye, Figma, Pencil, RefreshCw, Save, Send, Upload } from "lucide-react";
 import type { CanvasPreset, DesignImportResult, NewTemplateInput, TemplateField, TemplateSchema } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -51,6 +51,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   const savedSnapshotRef = useRef<string>("");
   const [pendingImport, setPendingImport] = useState<DesignImportResult | null>(null);
   const [recomposing, setRecomposing] = useState(false);
+  const [publishState, setPublishState] = useState<"idle" | "publishing" | "success">("idle");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -168,6 +169,19 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     JSON.stringify(draft) !== savedSnapshotRef.current;
   useUnsavedChangesWarning(dirty);
 
+  /** Publish: processing indicator → success marker → back to the Builder
+   * page (create new / edit existing). */
+  const publish = async () => {
+    setPublishState("publishing");
+    const saved = await save("published");
+    if (!saved) {
+      setPublishState("idle"); // save() already surfaced the error
+      return;
+    }
+    setPublishState("success");
+    window.setTimeout(() => navigate({ name: "adminTemplates" }), 1400);
+  };
+
   const previewSchema: TemplateSchema = useMemo(
     () => ({
       ...draft,
@@ -184,6 +198,51 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      {publishState !== "idle" && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(26,23,26,0.55)", backdropFilter: "blur(2px)" }}
+          role="status"
+          aria-live="polite"
+        >
+          <div
+            className="w-full max-w-xs p-7 text-center space-y-3"
+            style={{ background: "var(--lift)", borderRadius: "var(--radius-card)", boxShadow: "var(--shadow-e4)" }}
+          >
+            {publishState === "publishing" ? (
+              <>
+                <RefreshCw
+                  className="animate-spin mx-auto"
+                  style={{ width: 28, height: 28, color: "var(--solar)" }}
+                />
+                <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 17, color: "var(--ink)" }}>
+                  Publishing…
+                </p>
+                <p style={{ fontSize: 12, color: "var(--fg-3)" }}>
+                  Saving "{draft.name.trim() || "Untitled template"}" and making it live for your team.
+                </p>
+              </>
+            ) : (
+              <>
+                <span
+                  className="mx-auto flex items-center justify-center"
+                  style={{ width: 44, height: 44, borderRadius: 999, background: "var(--mint)" }}
+                >
+                  <Check style={{ width: 22, height: 22, color: "var(--ink)" }} />
+                </span>
+                <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 17, color: "var(--ink)" }}>
+                  Template published
+                </p>
+                <p style={{ fontSize: 12, color: "var(--fg-3)" }}>
+                  "{draft.name.trim() || "Untitled template"}" is live. Taking you back to the
+                  Builder…
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {figmaOpen && (
         <FigmaImportDialog
           onClose={() => setFigmaOpen(false)}
@@ -201,7 +260,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           style={{ fontSize: 13, color: "var(--fg-2)", display: "flex", alignItems: "center", gap: 6 }}
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Templates
+          Builder
         </button>
         <input
           value={draft.name}
@@ -243,8 +302,8 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           Save draft
         </button>
         <button
-          onClick={() => void save("published")}
-          disabled={saving || !draft.backgroundUrl || draft.fields.length === 0}
+          onClick={() => void publish()}
+          disabled={saving || publishState !== "idle" || !draft.backgroundUrl || draft.fields.length === 0}
           className="sp-btn sp-btn-primary"
         >
           <Send className="w-3.5 h-3.5" />

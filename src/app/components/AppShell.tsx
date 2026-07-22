@@ -1,10 +1,11 @@
 import React from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { useBrand } from "@/lib/brand/BrandContext";
 import { useColorScheme, type ColorScheme } from "@/lib/colorScheme";
 import { useRouter, type Route } from "../router";
 import { DevSwitcher } from "./DevSwitcher";
+import logoOnLight from "@/assets/socialpaint/socialpaint-logo-on-light.png";
+import logoOnDark from "@/assets/socialpaint/socialpaint-logo-on-dark.png";
 
 const SCHEME_CYCLE: Array<{ key: ColorScheme; label: string; Icon: typeof Sun }> = [
   { key: "system", label: "System theme", Icon: Monitor },
@@ -44,7 +45,7 @@ const ADMIN_NAV: Array<{ label: string; route: Route }> = [
  * workspace identity chip; their brand styles the graphics, not the chrome. */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { company, role } = useAuth();
-  const { primaryLogoUrl } = useBrand();
+  const { resolved } = useColorScheme();
   const { route, navigate } = useRouter();
 
   return (
@@ -55,27 +56,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => navigate({ name: role === "admin" ? "adminTemplates" : "portal" })}
             className="flex items-center gap-2.5"
           >
-            {primaryLogoUrl ? (
-              <img src={primaryLogoUrl} alt="" style={{ height: 26, width: "auto", display: "block" }} />
-            ) : (
-              <span
-                className="sp-mesh"
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 8,
-                  display: "grid",
-                  placeItems: "center",
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 500,
-                  fontSize: 12,
-                  color: "#fff",
-                  overflow: "hidden",
-                }}
-              >
-                <span>{(company?.name ?? "?").slice(0, 1).toUpperCase()}</span>
-              </span>
-            )}
+            {/* Platform brand — theme-aware: dark wordmark on light chrome,
+                white wordmark on dark chrome. Tenant logos live in Brand
+                Studio and on the graphics, never in the platform chrome. */}
+            <img
+              src={resolved === "dark" ? logoOnDark : logoOnLight}
+              alt="SocialPaint"
+              style={{ height: 20, width: "auto", display: "block" }}
+            />
+            <span
+              aria-hidden
+              style={{ width: 1, height: 22, background: "var(--hairline-strong)" }}
+            />
             <span className="text-left">
               <span className="block" style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.2 }}>
                 {company?.name ?? "Brand portal"}

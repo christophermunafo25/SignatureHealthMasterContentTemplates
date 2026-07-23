@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, Copy, Download, RefreshCw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Copy, Download, RefreshCw } from "lucide-react";
 import type { FieldValues, TemplateSchema } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { mergeCaption } from "@/lib/caption";
@@ -26,7 +26,18 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
   const [caption, setCaption] = useState<string | null>(null); // null → follow suggestion
   const [copied, setCopied] = useState(false);
   const [exporting, setExporting] = useState(false);
+  /** Post-export feedback toast; auto-dismisses. */
+  const [exportToast, setExportToast] = useState<"downloaded" | "shared" | "error" | null>(null);
+  const toastTimer = useRef<number | undefined>(undefined);
   const rendererRef = useRef<SchemaRendererHandle>(null);
+
+  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  const showToast = (kind: "downloaded" | "shared" | "error") => {
+    window.clearTimeout(toastTimer.current);
+    setExportToast(kind);
+    toastTimer.current = window.setTimeout(() => setExportToast(null), kind === "error" ? 6000 : 4000);
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -59,9 +70,11 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
     if (!rendererRef.current) return;
     setExporting(true);
     try {
-      await rendererRef.current.exportPng();
+      const outcome = await rendererRef.current.exportPng();
+      showToast(outcome);
     } catch (e) {
       console.error("Export failed", e);
+      showToast("error");
     } finally {
       setExporting(false);
     }
@@ -75,6 +88,32 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
+      {exportToast && (
+        <div
+          className="sp-toast"
+          data-tone={exportToast === "error" ? "danger" : undefined}
+          role="status"
+          aria-live="polite"
+        >
+          {exportToast === "error" ? (
+            <AlertTriangle style={{ width: 16, height: 16, color: "var(--danger)", flexShrink: 0, marginTop: 1 }} />
+          ) : (
+            <CheckCircle2 style={{ width: 16, height: 16, color: "var(--success)", flexShrink: 0, marginTop: 1 }} />
+          )}
+          <span className="min-w-0">
+            <span className="block" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
+              {exportToast === "downloaded" && "Graphic downloaded"}
+              {exportToast === "shared" && "Graphic shared"}
+              {exportToast === "error" && "Couldn't export the graphic"}
+            </span>
+            <span className="block" style={{ fontSize: 12, color: "var(--fg-3)" }}>
+              {exportToast === "downloaded" && "It's in your downloads folder, ready to post."}
+              {exportToast === "shared" && "Sent through your device's share sheet."}
+              {exportToast === "error" && "Try again — if it keeps failing, re-upload the photo."}
+            </span>
+          </span>
+        </div>
+      )}
       <button
         onClick={() => navigate({ name: "portal" })}
         className="flex items-center gap-1.5 mb-5"

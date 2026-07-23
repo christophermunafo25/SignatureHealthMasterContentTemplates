@@ -313,6 +313,31 @@ button, input, select, textarea, optgroup {
 }
 .sp-mesh .sp-eyebrow { color: #caff5f; }
 
+/* Toast — floating card with the DS's 3px semantic top bar. */
+.sp-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 260px;
+  max-width: min(92vw, 420px);
+  padding: 12px 16px;
+  background: var(--lift);
+  border: 1px solid var(--hairline);
+  border-top: 3px solid var(--success);
+  border-radius: 10px;
+  box-shadow: var(--shadow-e3);
+  animation: sp-toast-in var(--dur-panel) var(--ease);
+}
+.sp-toast[data-tone="danger"] { border-top-color: var(--danger); }
+@keyframes sp-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+}
+
 /* ── Sidebar — flat surface panel, rounded on its right corners only ────── */
 .sp-sidebar {
   background: var(--sb-bg);

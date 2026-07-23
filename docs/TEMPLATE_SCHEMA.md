@@ -76,6 +76,11 @@ Guardrails:
 - `autoFit` (+ `minFontSizePx`) — shrink-to-fit text. Generalized from the
   reference generators: `fontSize = clamp(min, (2·width)/(len·0.58), fontSizePx)`
   (see `src/lib/render/autoFit.ts`).
+- `fixedWidth` — the box width is a HARD constraint: single-line text shrinks
+  at exactly the point it would escape (real canvas `measureText` in the
+  field's font, letter-spacing accounted for — not the estimate above),
+  multi-line wraps at the edge, and both clip so nothing leaves the box.
+  Takes precedence over `autoFit` for single-line sizing.
 - `aspectRatio` — enforced by the crop dialog for image fields.
 - `required` — blocks download until filled.
 - `placeholder` — ghost text in the form and on the canvas preview.

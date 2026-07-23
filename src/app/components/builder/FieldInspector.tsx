@@ -301,6 +301,22 @@ export function FieldInspector({
               />
               Auto-shrink to fit
             </label>
+            <label className="col-span-2 flex items-start gap-2 text-sm" style={{ color: "var(--foreground)" }}>
+              <input
+                type="checkbox"
+                style={{ marginTop: 3 }}
+                checked={field.fixedWidth ?? false}
+                onChange={(e) => onChange({ fixedWidth: e.target.checked || undefined })}
+              />
+              <span>
+                Fixed width
+                <span style={{ display: "block", fontSize: 11, color: "var(--fg-3)" }}>
+                  {field.type === "multiline"
+                    ? "Text wraps at the box edge and never escapes it."
+                    : "Text shrinks at exactly the box edge and never escapes it."}
+                </span>
+              </span>
+            </label>
           </div>
         )}
         {field.type === "image" && (

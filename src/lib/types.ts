@@ -146,6 +146,10 @@ export interface TemplateField {
   // Guardrails
   maxLength?: number;
   autoFit?: boolean;
+  /** The box width is a hard constraint: single-line text shrinks (measured,
+   * not estimated) until it fits, multi-line text wraps at it, and nothing
+   * ever escapes the box. */
+  fixedWidth?: boolean;
   objectFit?: "cover" | "contain";
   aspectRatio?: number;
   options?: string[];

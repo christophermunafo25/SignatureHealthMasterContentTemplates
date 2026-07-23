@@ -110,6 +110,7 @@ export interface TemplateFieldRow {
   letter_spacing_px: number | null;
   line_height: number | null;
   max_length: number | null;
+  fixed_width: boolean | null;
   auto_fit: boolean | null;
   object_fit: TemplateField["objectFit"] | null;
   aspect_ratio: number | null;
@@ -153,6 +154,7 @@ export const toTemplateField = (r: TemplateFieldRow): TemplateField => ({
   letterSpacingPx: opt(r.letter_spacing_px) === undefined ? undefined : Number(r.letter_spacing_px),
   lineHeight: opt(r.line_height) === undefined ? undefined : Number(r.line_height),
   maxLength: opt(r.max_length),
+  fixedWidth: opt(r.fixed_width),
   autoFit: opt(r.auto_fit),
   objectFit: opt(r.object_fit),
   aspectRatio: opt(r.aspect_ratio) === undefined ? undefined : Number(r.aspect_ratio),
@@ -194,6 +196,7 @@ export const fieldToRow = (
   letter_spacing_px: f.letterSpacingPx ?? null,
   line_height: f.lineHeight ?? null,
   max_length: f.maxLength ?? null,
+  fixed_width: f.fixedWidth ?? null,
   auto_fit: f.autoFit ?? null,
   object_fit: f.objectFit ?? null,
   aspect_ratio: f.aspectRatio ?? null,

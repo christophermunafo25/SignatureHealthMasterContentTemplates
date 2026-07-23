@@ -28,7 +28,7 @@
   --paper: #f2f3ee;
   --paper-warm: #e8eae1;
   --lift: #ffffff;
-  --ink: #162100;
+  --ink: #122407;
   --obsidian: #000000;
 
   /* Accent range (names kept; values are the DS secondary palette) */
@@ -41,19 +41,19 @@
   /* Brand accents — light mode: --solar is the READABLE accent (brights
      are fills, not text, on light) */
   --amber: #89f6ff;
-  --solar: #3e5419;
+  --solar: #122407;
   --blush: #ff8af5;
 
   /* Semantic state */
-  --success: #3e5419;
+  --success: #122407;
   --danger: #b02015;
 
   /* Foregrounds on light (green-cast ladder) */
-  --fg-1: #162100;
+  --fg-1: #122407;
   --fg-2: #4a5738;
   --fg-3: #66754f;
   --fg-4: #9aa48b;
-  --fg-5: rgba(22, 33, 0, 0.08);
+  --fg-5: rgba(18, 36, 7, 0.08);
   --hairline: #dddfd4;
   --hairline-strong: #b9bea9;
 
@@ -64,9 +64,9 @@
   --fg-on-dark-3: rgba(255, 255, 255, 0.55);
 
   /* Accent washes/borders for tinted chrome (active nav, locked-rule boxes) */
-  --accent-wash: color-mix(in srgb, #162100 8%, transparent);
-  --accent-wash-strong: color-mix(in srgb, #162100 16%, transparent);
-  --accent-border: color-mix(in srgb, #3e5419 35%, transparent);
+  --accent-wash: color-mix(in srgb, #122407 8%, transparent);
+  --accent-wash-strong: color-mix(in srgb, #122407 16%, transparent);
+  --accent-border: color-mix(in srgb, #122407 35%, transparent);
   --fill-danger-bg: #ffd9d5;
 
   /* Typography families */
@@ -84,13 +84,13 @@
   --radius-pill: 999px;
 
   /* Elevation (light) */
-  --shadow-e1: 0 2px 8px rgba(22, 33, 0, 0.07);
-  --shadow-e2: 0 2px 8px rgba(22, 33, 0, 0.07);
-  --shadow-e3: 0 8px 24px rgba(22, 33, 0, 0.11);
-  --shadow-e4: 0 8px 24px rgba(22, 33, 0, 0.11);
+  --shadow-e1: 0 2px 8px rgba(18, 36, 7, 0.07);
+  --shadow-e2: 0 2px 8px rgba(18, 36, 7, 0.07);
+  --shadow-e3: 0 8px 24px rgba(18, 36, 7, 0.11);
+  --shadow-e4: 0 8px 24px rgba(18, 36, 7, 0.11);
 
   /* Focus — 2px ring; mid-green on light (lime would vanish on paper) */
-  --ring-color: #3e5419;
+  --ring-color: #122407;
   --focus-ring: 0 0 0 2px var(--ring-color);
   --focus-ring-tight: 0 0 0 2px var(--ring-color);
 
@@ -101,23 +101,23 @@
 
   /* Brand moment surfaces (names kept from the old mesh; now FLAT deep
      green — gradients as surface treatment are banned in this system) */
-  --mesh-warm: #162100;
-  --mesh-soft: #162100;
+  --mesh-warm: #122407;
+  --mesh-soft: #122407;
 
   /* Primary action: light = deep green fill + lime text */
-  --btn-primary-bg: #162100;
+  --btn-primary-bg: #122407;
   --btn-primary-fg: #caff5f;
-  --btn-primary-bg-hover: color-mix(in srgb, #162100 86%, #fff);
+  --btn-primary-bg-hover: color-mix(in srgb, #122407 86%, #fff);
 
   /* Sidebar — flat surface (no glass in this system) */
   --sb-width: 264px;
   --sb-width-collapsed: 76px;
   --sb-bg: #ffffff;
   --sb-border: #dddfd4;
-  --sb-shadow: 0 2px 8px rgba(22, 33, 0, 0.07);
+  --sb-shadow: 0 2px 8px rgba(18, 36, 7, 0.07);
   --sb-fg: #4a5738;
-  --sb-fg-active: #162100;
-  --sb-active-bg: color-mix(in srgb, #162100 8%, transparent);
+  --sb-fg-active: #122407;
+  --sb-active-bg: color-mix(in srgb, #122407 8%, transparent);
   --sb-active-border: transparent;
 }
 
@@ -156,9 +156,9 @@
   --hairline-strong: #454545;
 
   /* Ink pills are light in dark mode — text on them goes deep green */
-  --fg-on-dark-1: #162100;
-  --fg-on-dark-2: rgba(22, 33, 0, 0.72);
-  --fg-on-dark-3: rgba(22, 33, 0, 0.5);
+  --fg-on-dark-1: #122407;
+  --fg-on-dark-2: rgba(18, 36, 7, 0.72);
+  --fg-on-dark-3: rgba(18, 36, 7, 0.5);
 
   --accent-wash: color-mix(in srgb, #caff5f 15%, transparent);
   --accent-wash-strong: color-mix(in srgb, #caff5f 28%, transparent);
@@ -175,7 +175,7 @@
 
   /* Primary action: dark = lime fill + deep green text */
   --btn-primary-bg: #caff5f;
-  --btn-primary-fg: #162100;
+  --btn-primary-fg: #122407;
   --btn-primary-bg-hover: color-mix(in srgb, #caff5f 86%, #fff);
 
   --sb-bg: #242424;
@@ -186,8 +186,8 @@
   --sb-active-bg: color-mix(in srgb, #caff5f 15%, transparent);
   --sb-active-border: transparent;
 }
-.dark ::selection { background: var(--mint); color: #162100; }
-::selection { background: var(--mint); color: #162100; }
+.dark ::selection { background: var(--mint); color: #122407; }
+::selection { background: var(--mint); color: #122407; }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
 
@@ -264,7 +264,7 @@ button, input, select, textarea, optgroup {
 .sp-btn-ghost { background: transparent; color: var(--fg-2); border-color: var(--hairline-strong); }
 .sp-btn-ghost:hover:not(:disabled) { background: var(--paper-warm); color: var(--fg-1); }
 /* Lime CTA — same fill both modes; deep green carries the text */
-.sp-btn-solar { background: #caff5f; color: #162100; }
+.sp-btn-solar { background: #caff5f; color: #122407; }
 .sp-btn-solar:hover:not(:disabled) { background: color-mix(in srgb, #caff5f 86%, #fff); }
 
 .sp-input {
@@ -293,7 +293,7 @@ button, input, select, textarea, optgroup {
 /* Brand-moment surface (hero headers, identity chips). Flat deep green with
    lime as the voice — the old warm mesh + noise treatment is gone. */
 .sp-mesh {
-  background: #162100;
+  background: #122407;
   color: #f2f3ef;
 }
 .sp-mesh .sp-eyebrow { color: #caff5f; }

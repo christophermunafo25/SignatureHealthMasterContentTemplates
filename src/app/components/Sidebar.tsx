@@ -286,7 +286,7 @@ export function Sidebar() {
             height: collapsed ? 34 : 42,
             borderRadius: 999,
             background: "var(--mint)", // flat fill — gradients are banned as surface treatment
-            color: "#162100",
+            color: "#122407",
             fontSize: collapsed ? 11 : 13,
             fontWeight: 600,
           }}

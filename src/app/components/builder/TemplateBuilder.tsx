@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useDropzone } from "react-dropzone";
 import {
   ArrowLeft,
   ArrowRight,
@@ -7,6 +6,7 @@ import {
   Eye,
   Figma,
   Pencil,
+  Plus,
   RefreshCw,
   Save,
   Send,
@@ -76,6 +76,9 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     captionTemplate: "",
   }));
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  /** True once a creation path was chosen — "Start blank" needs no
+   * background, so backgroundUrl alone can't gate the wizard anymore. */
+  const [started, setStarted] = useState<boolean>(Boolean(templateId));
   const [step, setStep] = useState<WizardStep>("name");
   const [visited, setVisited] = useState<Set<WizardStep>>(() => new Set(["name"]));
   const [mode, setMode] = useState<"edit" | "preview">("edit");
@@ -130,7 +133,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       .finally(() => setLoaded(true));
   }, [templateId]);
 
-  const sourceChosen = Boolean(draft.backgroundUrl);
+  const sourceChosen = started || Boolean(draft.backgroundUrl);
   const nameComplete = Boolean(draft.name.trim());
   const fieldsComplete = draft.fields.length > 0;
 
@@ -330,7 +333,6 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       try {
         const url = await stores.templates.uploadBackground(company.id, file, file.name);
         setDraft((d) => ({ ...d, backgroundUrl: url }));
-        goTo("name");
       } catch (e) {
         console.error("Background upload failed", e);
         setError("Background upload failed — check your storage configuration.");
@@ -338,14 +340,8 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         setUploading(false);
       }
     },
-    [company, goTo],
+    [company],
   );
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (files) => void onDropBackground(files),
-    accept: { "image/png": [".png"], "image/jpeg": [".jpg", ".jpeg"] },
-    maxFiles: 1,
-  });
 
   const save = async (status?: "draft" | "published") => {
     if (!company) return null;
@@ -611,38 +607,37 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         <div className="max-w-3xl mx-auto py-10 space-y-5">
           <div className="text-center space-y-1 mb-2">
             <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}>
-              Start with your design
+              Start your template
             </h2>
             <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
-              Two ways in — both end at the same place: locked design, editable fields.
+              Build from scratch, or import a designed frame — both end at the
+              same place: locked design, editable fields.
               {presets[0] && ` Canvas: ${presets[0].label}.`}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
-            {/* Path A — PNG upload */}
-            <div
-              {...getRootProps()}
-              className="border-dashed p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3"
+            {/* Path A — blank canvas */}
+            <button
+              onClick={() => {
+                setStarted(true);
+                goTo("name");
+              }}
+              className="p-8 text-center transition-all flex flex-col items-center justify-center gap-3"
               style={{
-                border: `1.5px dashed ${isDragActive ? "var(--solar)" : "var(--hairline-strong)"}`,
+                border: "1.5px dashed var(--hairline-strong)",
                 borderRadius: "var(--radius-card-sm)",
-                background: isDragActive ? "var(--accent-wash)" : "var(--lift)",
+                background: "var(--lift)",
                 minHeight: 220,
+                cursor: "pointer",
               }}
             >
-              <input {...getInputProps()} />
-              {uploading ? (
-                <RefreshCw className="w-6 h-6 animate-spin" style={{ color: "var(--solar)" }} />
-              ) : (
-                <Upload className="w-6 h-6" style={{ color: "var(--solar)" }} />
-              )}
-              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>Upload a PNG</p>
+              <Plus className="w-6 h-6" style={{ color: "var(--solar)" }} />
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>Start blank</p>
               <p style={{ fontSize: 12, color: "var(--fg-2)", maxWidth: 240 }}>
-                {uploading
-                  ? "Uploading…"
-                  : "Drop a finished design here, then drag editable elements onto it."}
+                Build the design from scratch on an empty canvas — drag on
+                text, images, and fixed elements.
               </p>
-            </div>
+            </button>
             {/* Path B — Figma link */}
             <button
               onClick={() => stores.designImport.isConfigured() && setFigmaOpen(true)}
@@ -885,8 +880,12 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                 <label
                   className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 12, color: "var(--fg-2)" }}
                 >
-                  <Upload className="w-3.5 h-3.5" />
-                  Replace background PNG
+                  {uploading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  {uploading
+                    ? "Uploading…"
+                    : draft.backgroundUrl
+                      ? "Replace background PNG"
+                      : "Add a background PNG (optional)"}
                   <input
                     type="file"
                     accept="image/png,image/jpeg"
@@ -906,7 +905,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                 </p>
                 <button
                   onClick={() => void publish()}
-                  disabled={saving || publishState !== "idle" || !draft.backgroundUrl || draft.fields.length === 0}
+                  disabled={saving || publishState !== "idle" || draft.fields.length === 0}
                   className="sp-btn sp-btn-primary w-full"
                   style={{ padding: "11px 14px" }}
                 >

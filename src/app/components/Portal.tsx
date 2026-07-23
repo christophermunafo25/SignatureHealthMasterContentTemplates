@@ -40,53 +40,41 @@ export function Portal() {
 
   return (
     <div>
-      {/* Hero — signature warm mesh with film grain */}
-      <div className="sp-mesh relative overflow-hidden">
-        <div className="relative max-w-7xl mx-auto px-4 py-12">
-          <p className="sp-eyebrow mb-3" style={{ color: "var(--mint)" }}>
-            {company?.name}
-          </p>
-          <h1
-            style={{
-              fontFamily: "var(--font-display)",
-              fontWeight: 800,
-              textTransform: "uppercase",
-              fontSize: "clamp(22px, 3.2vw, 36px)",
-              letterSpacing: "-0.03em",
-              lineHeight: 0.95,
-              color: "#f2f3ef",
-              marginBottom: 10,
-            }}
-          >
-            Choose a template
-          </h1>
-          <p style={{ fontFamily: "var(--font-body)", fontWeight: 300, color: "rgba(255,255,255,0.82)", fontSize: 15, maxWidth: 420, marginBottom: 28 }}>
-            Pick a template, fill in the details, and download a ready-to-post on-brand graphic.
-          </p>
-          <div className="relative max-w-md">
-            <Search className="absolute" style={{ left: 14, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "rgba(255,255,255,0.6)" }} />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search templates…"
-              className="w-full outline-none"
-              style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: 13,
-                color: "#fff",
-                background: "rgba(255,255,255,0.14)",
-                border: "1px solid rgba(255,255,255,0.25)",
-                borderRadius: "var(--radius-input)",
-                padding: "10px 14px 10px 38px",
-              }}
-            />
-          </div>
+      {/* Header — flat on the canvas; comfortable clearance from the sidebar */}
+      <div className="max-w-7xl mx-auto px-8 sm:px-12 pt-12 pb-2">
+        <p className="sp-eyebrow mb-3">{company?.name}</p>
+        <h1
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 800,
+            textTransform: "uppercase",
+            fontSize: "clamp(22px, 3.2vw, 36px)",
+            letterSpacing: "-0.03em",
+            lineHeight: 0.95,
+            color: "var(--ink)",
+            marginBottom: 10,
+          }}
+        >
+          Choose a template
+        </h1>
+        <p style={{ fontFamily: "var(--font-body)", color: "var(--fg-2)", fontSize: 15, maxWidth: 420, marginBottom: 24 }}>
+          Pick a template, fill in the details, and download a ready-to-post on-brand graphic.
+        </p>
+        <div className="relative max-w-md">
+          <Search className="absolute" style={{ left: 14, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "var(--fg-3)", zIndex: 1 }} />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search templates…"
+            className="sp-input"
+            style={{ padding: "10px 14px 10px 38px" }}
+          />
         </div>
       </div>
 
       {/* Grid */}
-      <div className="max-w-7xl mx-auto px-4 py-10">
+      <div className="max-w-7xl mx-auto px-8 sm:px-12 py-10">
         {loading ? (
           <p className="text-center py-20" style={{ fontSize: 13, color: "var(--fg-3)" }}>
             Loading templates…

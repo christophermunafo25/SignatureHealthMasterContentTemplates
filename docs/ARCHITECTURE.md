@@ -97,8 +97,9 @@ additional redirect URLs so confirmation/invite/reset links land correctly.
 ## App shell
 
 Navigation is a persistent left sidebar (`src/app/components/Sidebar.tsx`,
-from Figma `KFBFgZBs7Tl9LXovzNUaNP` node 13:28): a glass panel pinned to the
-left edge, rounded on its right corners, with logo + collapse toggle, six
+layout from Figma `KFBFgZBs7Tl9LXovzNUaNP` node 13:28, surface treatment from
+the current design system — flat, no glass): a panel pinned to the left
+edge, rounded on its right corners, with logo + collapse toggle, six
 role-gated destinations (Brand Templates · Template Builder · Insights &
 Analytics · Brand Studio · People · Settings & Admin — members see only the
 first), and a user block pinned to the bottom (theme toggle, sign out, and —

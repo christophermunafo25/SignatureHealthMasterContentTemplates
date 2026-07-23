@@ -148,7 +148,7 @@ export function ImageCropper({ imageSrc, onCancel, onCropComplete, aspect = 1 }:
             step={0.1}
             aria-labelledby="Zoom"
             onChange={(e) => setZoom(Number(e.target.value))}
-            className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+            className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[var(--ring-color)]"
           />
         </div>
 
@@ -161,7 +161,7 @@ export function ImageCropper({ imageSrc, onCancel, onCropComplete, aspect = 1 }:
           </button>
           <button
             onClick={showCroppedImage}
-            className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20"
+            className="sp-btn sp-btn-primary px-6"
           >
             Apply Crop
           </button>

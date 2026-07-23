@@ -102,7 +102,7 @@ export function AuthPage() {
           <p className="sp-eyebrow mb-1" style={{ color: "rgba(255,255,255,0.85)" }}>
             Brand template portal
           </p>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 24, letterSpacing: "-0.5px", color: "#fff" }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase", fontSize: 20, letterSpacing: "-0.03em", color: "#f2f3ef" }}>
             {view === "signup" ? "Create your account" : view === "forgot" ? "Reset password" : view === "setPassword" ? "Choose a new password" : "Sign in"}
           </h1>
         </div>
@@ -163,7 +163,7 @@ export function AuthPage() {
           )}
 
           {error && (
-            <p className="rounded-lg px-3 py-2" style={{ fontSize: 12, background: "#FBE9E9", color: "var(--danger)" }}>
+            <p className="rounded-lg px-3 py-2" style={{ fontSize: 12, background: "var(--fill-danger-bg)", color: "var(--danger)" }}>
               {error}
             </p>
           )}

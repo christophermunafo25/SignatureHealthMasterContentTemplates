@@ -167,7 +167,7 @@ export function BrandStudio() {
       </div>
 
       {error && (
-        <p className="mb-5 text-sm rounded-xl px-4 py-3" style={{ background: "#FBE9E9", color: "var(--destructive)" }}>
+        <p className="mb-5 text-sm rounded-xl px-4 py-3" style={{ background: "var(--fill-danger-bg)", color: "var(--destructive)" }}>
           {error}
         </p>
       )}

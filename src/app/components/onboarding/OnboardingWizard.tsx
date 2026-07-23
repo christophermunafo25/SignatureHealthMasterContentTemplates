@@ -107,7 +107,7 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
           <p className="sp-eyebrow mb-1" style={{ color: "rgba(255,255,255,0.85)" }}>
             {firstRun ? "Welcome" : "New company"}
           </p>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 26, letterSpacing: "-0.5px", lineHeight: 1.15, color: "#fff" }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase", fontSize: 20, letterSpacing: "-0.03em", lineHeight: 1.05, color: "#f2f3ef" }}>
             {firstRun ? "Set up your brand portal" : "Create a company"}
           </h1>
           <div className="flex gap-1.5 mt-5">
@@ -151,7 +151,7 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
             />
           )}
           {error && (
-            <p className="text-sm rounded-xl px-4 py-3" style={{ background: "#FBE9E9", color: "var(--destructive)" }}>
+            <p className="text-sm rounded-xl px-4 py-3" style={{ background: "var(--fill-danger-bg)", color: "var(--destructive)" }}>
               {error}
             </p>
           )}

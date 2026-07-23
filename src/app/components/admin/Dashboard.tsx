@@ -47,7 +47,7 @@ export function Dashboard() {
             <Download style={{ width: 15, height: 15, color: "var(--ink)" }} />
           </span>
           <div>
-            <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 24, letterSpacing: "-0.5px", color: "var(--ink)", lineHeight: 1 }}>
+            <p style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 24, letterSpacing: "-0.5px", color: "var(--ink)", lineHeight: 1 }}>
               {summary.totalDownloads}
             </p>
             <p className="sp-eyebrow" style={{ marginTop: 3 }}>Total exports</p>

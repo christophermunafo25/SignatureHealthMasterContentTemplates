@@ -15,11 +15,44 @@ import {
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useColorScheme, type ColorScheme } from "@/lib/colorScheme";
 import { useRouter, type Route } from "../router";
-import logoOnLight from "@/assets/socialpaint/socialpaint-logo-on-light.png";
-import logoOnDark from "@/assets/socialpaint/socialpaint-logo-on-dark.png";
-import markOnly from "@/assets/socialpaint/socialpaint-mark.png";
 
 const LS_COLLAPSED = "sp-sidebar-collapsed";
+
+/** The SocialPaint mark — five bars resolving into a solid square. Recolors
+ * via currentColor: lime on dark chrome, deep green on light. */
+function BrandMark({ width = 28 }: { width?: number }) {
+  return (
+    <svg viewBox="0 0 164 78" fill="currentColor" style={{ width, height: "auto", display: "block" }} aria-hidden>
+      <rect x="0" y="0" width="7" height="78" />
+      <rect x="16" y="0" width="10" height="78" />
+      <rect x="34" y="0" width="10" height="78" />
+      <rect x="51" y="0" width="12" height="78" />
+      <rect x="67" y="0" width="14" height="78" />
+      <rect x="85" y="0" width="79" height="78" />
+    </svg>
+  );
+}
+
+/** Mark + wordmark lockup (wordmark in the heading face, per the DS NavRail). */
+function BrandLockup() {
+  return (
+    <span className="flex items-center gap-2" style={{ color: "var(--solar)" }}>
+      <BrandMark width={26} />
+      <span
+        style={{
+          fontFamily: "var(--font-display)",
+          fontWeight: 800,
+          textTransform: "uppercase",
+          fontSize: 13,
+          letterSpacing: "-0.02em",
+          color: "var(--ink)",
+        }}
+      >
+        SocialPaint
+      </span>
+    </span>
+  );
+}
 
 interface NavItem {
   label: string;
@@ -71,7 +104,6 @@ function ThemeToggle() {
  * SocialPaint product UI — tenant brand kits never re-color it. */
 export function Sidebar() {
   const { company, companies, role, user, isDevAuth, setCompany, setRole, signOut, backend } = useAuth();
-  const { resolved } = useColorScheme();
   const { route, navigate } = useRouter();
   // Narrow viewports (<1024px) always get the icon rail; expanding there
   // opens the panel as an OVERLAY above the content instead of pushing it —
@@ -159,12 +191,8 @@ export function Sidebar() {
       {/* Logo + collapse toggle */}
       <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} mb-7`}>
         {!collapsed && (
-          <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} title="Home">
-            <img
-              src={resolved === "dark" ? logoOnDark : logoOnLight}
-              alt="SocialPaint"
-              style={{ height: 20, width: "auto", display: "block" }}
-            />
+          <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} title="Home" aria-label="SocialPaint — home">
+            <BrandLockup />
           </button>
         )}
         <button
@@ -182,8 +210,9 @@ export function Sidebar() {
           onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })}
           title="SocialPaint — home"
           className="mx-auto mb-6"
+          style={{ color: "var(--solar)" }}
         >
-          <img src={markOnly} alt="SocialPaint" style={{ height: 24, width: "auto", display: "block" }} />
+          <BrandMark width={26} />
         </button>
       )}
 
@@ -256,8 +285,8 @@ export function Sidebar() {
             width: collapsed ? 34 : 42,
             height: collapsed ? 34 : 42,
             borderRadius: 999,
-            background: "linear-gradient(135deg, var(--mint) 0%, #2fbf71 100%)",
-            color: "#12351f",
+            background: "var(--mint)", // flat fill — gradients are banned as surface treatment
+            color: "#162100",
             fontSize: collapsed ? 11 : 13,
             fontWeight: 600,
           }}

@@ -56,7 +56,7 @@ export function SettingsAdmin() {
               className="flex flex-col items-center gap-1.5 py-3 rounded-xl"
               style={{
                 border: `1.5px solid ${scheme === key ? "var(--solar)" : "var(--hairline-strong)"}`,
-                background: scheme === key ? "rgba(255,63,0,0.06)" : "var(--lift)",
+                background: scheme === key ? "var(--accent-wash)" : "var(--lift)",
                 color: "var(--ink)",
                 fontSize: 12.5,
               }}

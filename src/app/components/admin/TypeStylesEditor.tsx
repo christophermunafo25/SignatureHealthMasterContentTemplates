@@ -188,7 +188,7 @@ export function TypeStylesEditor({ styles, colors, customFamilies, onChange }: T
                 {rules.length > 0 && (
                   <div
                     className="rounded-lg px-3 py-2 space-y-0.5"
-                    style={{ background: "rgba(255,63,0,0.06)", border: "1px solid rgba(255,63,0,0.18)" }}
+                    style={{ background: "var(--accent-wash)", border: "1px solid var(--accent-border)" }}
                   >
                     {rules.map((r) => (
                       <p key={r} style={{ fontSize: 11, color: "var(--fg-2)" }}>

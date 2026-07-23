@@ -95,7 +95,7 @@ export function FieldListPanel({ fields, selectedIds, onSelect, onReorder, onCon
                   borderRadius: 8,
                   border: `1px solid ${isSelected ? "var(--solar)" : "var(--hairline)"}`,
                   background: isSelected
-                    ? "rgba(255,63,0,0.06)"
+                    ? "var(--accent-wash)"
                     : overIndex === i && dragIndex.current !== null
                       ? "var(--paper)"
                       : "var(--lift)",

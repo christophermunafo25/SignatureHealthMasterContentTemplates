@@ -95,7 +95,7 @@ function ImageFieldInput({ field, value, onChange }: FieldInputProps) {
         style={{
           border: `1.5px dashed ${isDragActive ? "var(--solar)" : "var(--hairline-strong)"}`,
           borderRadius: "var(--radius-input)",
-          background: isDragActive ? "rgba(255,63,0,0.05)" : "var(--lift)",
+          background: isDragActive ? "var(--accent-wash)" : "var(--lift)",
           padding: 14,
         }}
       >

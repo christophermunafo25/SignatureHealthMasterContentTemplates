@@ -1,182 +1,199 @@
 /* ==========================================================================
    SocialPaint Design System — platform UI tokens.
-   Adapted from the claude.ai/design "SocialPaint Design System" project
-   (colors_and_type.css + preview/app-shell.html recipes). PLATFORM UI ONLY:
-   these tokens style the product chrome. Tenant brand kits style the
-   template graphics themselves, never this chrome.
+   Implemented from the claude.ai/design "SocialPaint Design System" project
+   (tokens/*.css + readme). Acid lime + deep green lead; cyan and pink
+   support; every neutral carries a green cast — no grey neutrals. Soft
+   containers (20px) against crisp controls (5px). Flat color only: no
+   gradients as surface treatment, no glass, no texture. PLATFORM UI ONLY:
+   tenant brand kits style the template graphics, never this chrome.
+
+   The custom-property NAMES are kept from the previous system so components
+   need no changes — only the VALUES changed.
    ========================================================================== */
 
-@import url("https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Inter:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
 
+/* Kurdis Extra Wide Extra Bold — licensed heading face, vendored locally. */
 @font-face {
-  font-family: "Stack Sans Headline";
-  src: url("../assets/fonts/socialpaint/StackSansHeadline-Variable.woff2") format("woff2-variations");
-  font-weight: 100 900;
+  font-family: "Kurdis Extra Wide";
+  src: url("../assets/fonts/kurdis/KurdisExtraWideExtraBold.otf") format("opentype");
+  font-weight: 400 800;
   font-style: normal;
   font-display: swap;
 }
-@font-face {
-  font-family: "Stack Sans";
-  src: url("../assets/fonts/socialpaint/StackSansText-Variable.woff2") format("woff2-variations");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-/* Static fallbacks in case variable axes are unsupported */
-@font-face { font-family: "Stack Sans"; src: url("../assets/fonts/socialpaint/StackSansText-Light.woff2") format("woff2"); font-weight: 300; font-style: normal; font-display: swap; }
-@font-face { font-family: "Stack Sans"; src: url("../assets/fonts/socialpaint/StackSansText-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: "Stack Sans"; src: url("../assets/fonts/socialpaint/StackSansText-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
-@font-face { font-family: "Stack Sans Headline"; src: url("../assets/fonts/socialpaint/StackSansHeadline-Light.woff2") format("woff2"); font-weight: 300; font-style: normal; font-display: swap; }
-@font-face { font-family: "Stack Sans Headline"; src: url("../assets/fonts/socialpaint/StackSansHeadline-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
 
 :root {
-  /* Surfaces */
-  --linen: #faf8f5;
-  --paper: #f7f6f5;
-  --paper-warm: #ececec;
+  /* Surfaces (light: canvas / raised / hover / surface, all green-cast) */
+  --linen: #fafaf9;
+  --paper: #f2f3ee;
+  --paper-warm: #e8eae1;
   --lift: #ffffff;
-  --ink: #231f23;
-  --obsidian: #1a171a;
+  --ink: #162100;
+  --obsidian: #000000;
 
-  /* Pastel accents (feature/category colors — chips and tiles only) */
-  --orchid: #cdbcff;
-  --mint: #a7ffac;
-  --sky: #a6ceff;
-  --sand: #ffed8c;
-  --peach: #ffc5b0; /* Brand Templates */
+  /* Accent range (names kept; values are the DS secondary palette) */
+  --orchid: #ff8af5;
+  --mint: #caff5f;
+  --sky: #89f6ff;
+  --sand: #caff5f;
+  --peach: #ff8af5;
 
-  /* Warm spectrum — primary brand */
-  --amber: #ff8300;
-  --solar: #ff3f00;
-  --blush: #ff5a72;
+  /* Brand accents — light mode: --solar is the READABLE accent (brights
+     are fills, not text, on light) */
+  --amber: #89f6ff;
+  --solar: #3e5419;
+  --blush: #ff8af5;
 
   /* Semantic state */
-  --success: #4a7c59;
-  --danger: #e94560;
+  --success: #3e5419;
+  --danger: #b02015;
 
-  /* Foreground opacities on light */
-  --fg-1: #231f23;
-  --fg-2: rgba(35, 31, 35, 0.64);
-  --fg-3: rgba(35, 31, 35, 0.48);
-  --fg-4: rgba(35, 31, 35, 0.32);
-  --fg-5: rgba(35, 31, 35, 0.08);
-  --hairline: rgba(35, 31, 35, 0.08);
-  --hairline-strong: rgba(35, 31, 35, 0.24);
+  /* Foregrounds on light (green-cast ladder) */
+  --fg-1: #162100;
+  --fg-2: #4a5738;
+  --fg-3: #66754f;
+  --fg-4: #9aa48b;
+  --fg-5: rgba(22, 33, 0, 0.08);
+  --hairline: #dddfd4;
+  --hairline-strong: #b9bea9;
 
-  /* Foreground on dark */
-  --fg-on-dark-1: #f7f6f5;
-  --fg-on-dark-2: rgba(247, 246, 245, 0.64);
-  --fg-on-dark-3: rgba(247, 246, 245, 0.48);
+  /* Text on ink-colored surfaces. Light mode's primary construction is deep
+     green fill + LIME text (DS light primary button). */
+  --fg-on-dark-1: #caff5f;
+  --fg-on-dark-2: rgba(255, 255, 255, 0.78);
+  --fg-on-dark-3: rgba(255, 255, 255, 0.55);
+
+  /* Accent washes/borders for tinted chrome (active nav, locked-rule boxes) */
+  --accent-wash: color-mix(in srgb, #162100 8%, transparent);
+  --accent-wash-strong: color-mix(in srgb, #162100 16%, transparent);
+  --accent-border: color-mix(in srgb, #3e5419 35%, transparent);
+  --fill-danger-bg: #ffd9d5;
 
   /* Typography families */
-  --font-display: "Stack Sans Headline", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-body: "Stack Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "Fragment Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  /* Platform UI font — form fields, buttons, menus, tables, app chrome. */
-  --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Kurdis Extra Wide", "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter Tight", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-ui: "Inter Tight", ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  /* Radii */
+  /* Shape: soft containers vs crisp controls — hold the gap, never 12px */
   --radius-card: 20px;
-  --radius-card-sm: 16px;
-  --radius-icon: 12px;
-  --radius-input: 10px;
-  --radius-button: 8px;
+  --radius-card-sm: 20px;
+  --radius-icon: 5px;
+  --radius-input: 5px;
+  --radius-button: 5px;
   --radius-pill: 999px;
 
-  /* Elevation shadows */
-  --shadow-e1: 0 1px 2px rgba(35, 31, 35, 0.04), 0 1px 1px rgba(35, 31, 35, 0.03);
-  --shadow-e2: 0 4px 16px rgba(35, 31, 35, 0.06);
-  --shadow-e3: 0 8px 32px rgba(35, 31, 35, 0.08);
-  --shadow-e4: 0 16px 48px rgba(35, 31, 35, 0.12);
+  /* Elevation (light) */
+  --shadow-e1: 0 2px 8px rgba(22, 33, 0, 0.07);
+  --shadow-e2: 0 2px 8px rgba(22, 33, 0, 0.07);
+  --shadow-e3: 0 8px 24px rgba(22, 33, 0, 0.11);
+  --shadow-e4: 0 8px 24px rgba(22, 33, 0, 0.11);
 
-  /* Focus ring — solar */
-  --focus-ring: 0 0 0 3px rgba(255, 63, 0, 0.32);
-  --focus-ring-tight: 0 0 0 2px rgba(255, 63, 0, 0.4);
+  /* Focus — 2px ring; mid-green on light (lime would vanish on paper) */
+  --ring-color: #3e5419;
+  --focus-ring: 0 0 0 2px var(--ring-color);
+  --focus-ring-tight: 0 0 0 2px var(--ring-color);
 
-  /* Signature warm mesh — identity chips, hero washes */
-  --mesh-warm:
-    radial-gradient(90% 75% at 82% 6%, rgba(255, 131, 0, 1) 0%, rgba(255, 131, 0, 0.55) 40%, rgba(255, 131, 0, 0) 100%),
-    radial-gradient(85% 70% at 22% 14%, rgba(255, 131, 0, 1) 0%, rgba(255, 131, 0, 0.55) 45%, rgba(255, 131, 0, 0) 100%),
-    radial-gradient(90% 75% at 58% 42%, rgba(255, 63, 0, 1) 0%, rgba(255, 63, 0, 0.55) 45%, rgba(255, 63, 0, 0) 100%),
-    radial-gradient(80% 65% at 8% 52%, rgba(255, 63, 0, 1) 0%, rgba(255, 63, 0, 0.55) 45%, rgba(255, 63, 0, 0) 100%),
-    radial-gradient(75% 65% at 92% 60%, rgba(255, 63, 0, 1) 0%, rgba(255, 63, 0, 0.55) 45%, rgba(255, 63, 0, 0) 100%),
-    radial-gradient(80% 65% at 28% 86%, rgba(255, 90, 114, 1) 0%, rgba(255, 90, 114, 0.55) 45%, rgba(255, 90, 114, 0) 100%),
-    radial-gradient(70% 60% at 82% 96%, rgba(255, 90, 114, 1) 0%, rgba(255, 90, 114, 0.55) 45%, rgba(255, 90, 114, 0) 100%),
-    linear-gradient(180deg, #ff8300 0%, #ff3f00 50%, #ff5a72 100%);
-  --mesh-soft:
-    radial-gradient(70% 60% at 80% 10%, rgba(255, 131, 0, 0.85) 0%, transparent 60%),
-    radial-gradient(60% 55% at 18% 35%, rgba(255, 63, 0, 0.8) 0%, transparent 65%),
-    radial-gradient(60% 55% at 78% 75%, rgba(255, 90, 114, 0.85) 0%, transparent 65%),
-    linear-gradient(170deg, #ff8300 0%, #ff3f00 55%, #ff5a72 100%);
+  /* Motion — one easing, three durations */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-state: 140ms;
+  --dur-panel: 220ms;
 
-  /* Sidebar (Figma KFBFgZBs7Tl9LXovzNUaNP node 13:28 — dark variant; the
-     light values are derived from the same roles). SocialPaint product UI:
-     NEVER re-colored by a tenant brand kit. */
+  /* Brand moment surfaces (names kept from the old mesh; now FLAT deep
+     green — gradients as surface treatment are banned in this system) */
+  --mesh-warm: #162100;
+  --mesh-soft: #162100;
+
+  /* Primary action: light = deep green fill + lime text */
+  --btn-primary-bg: #162100;
+  --btn-primary-fg: #caff5f;
+  --btn-primary-bg-hover: color-mix(in srgb, #162100 86%, #fff);
+
+  /* Sidebar — flat surface (no glass in this system) */
   --sb-width: 264px;
   --sb-width-collapsed: 76px;
-  --sb-bg: rgba(255, 255, 255, 0.55);
-  --sb-border: rgba(35, 31, 35, 0.14);
-  --sb-shadow: -5px 4px 10px rgba(35, 31, 35, 0.08);
-  --sb-fg: rgba(35, 31, 35, 0.78);
-  --sb-fg-active: var(--ink);
-  --sb-active-bg: #ffffff;
-  --sb-active-border: rgba(35, 31, 35, 0.3);
+  --sb-bg: #ffffff;
+  --sb-border: #dddfd4;
+  --sb-shadow: 0 2px 8px rgba(22, 33, 0, 0.07);
+  --sb-fg: #4a5738;
+  --sb-fg-active: #162100;
+  --sb-active-bg: color-mix(in srgb, #162100 8%, transparent);
+  --sb-active-border: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-state: 0ms;
+    --dur-panel: 0ms;
+  }
 }
 
 /* ── Dark mode ──────────────────────────────────────────────────────────────
-   The `dark` class on <html> flips the PLATFORM CHROME tokens only. Template
-   graphics are untouched: the render canvas is a fixed #fff surface and field
-   colors come from tenant brand kits, so previews/exports are identical in
-   both modes. `--ink` (text + primary-pill surfaces) and `--fg-on-dark-*`
-   (text on those surfaces) flip as a PAIR, so every existing
-   ink-background/on-dark-text combo stays readable. */
+   The dark ladder is the DS dark theme: #1A1A1A canvas rising through
+   surface/raised/hover. Dark elevates with surface color — NO shadows.
+   Template graphics are untouched: the render canvas is a fixed #fff
+   surface and field colors come from tenant brand kits. */
 .dark {
-  /* Surfaces */
-  --linen: #151215;
-  --paper: #1d1a1d;
-  --paper-warm: #272328;
-  --lift: #211e22;
-  --ink: #f2f0f2;
-  --obsidian: #ffffff; /* primary-button hover brightens instead of darkens */
+  --linen: #1a1a1a;
+  --paper: #2e2e2e;
+  --paper-warm: #383838;
+  --lift: #242424;
+  --ink: #f2f3ef;
+  --obsidian: #ffffff;
 
-  /* Foregrounds (light-on-dark) */
-  --fg-1: #f2f0f2;
-  --fg-2: rgba(242, 240, 242, 0.66);
-  --fg-3: rgba(242, 240, 242, 0.48);
-  --fg-4: rgba(242, 240, 242, 0.34);
-  --fg-5: rgba(242, 240, 242, 0.08);
-  --hairline: rgba(242, 240, 242, 0.1);
-  --hairline-strong: rgba(242, 240, 242, 0.26);
+  --solar: #caff5f; /* brights carry text on dark */
+  --amber: #89f6ff;
+  --blush: #ff8af5;
+  --success: #caff5f;
+  --danger: #ff7a6e;
 
-  /* Text on ink-colored surfaces (ink is light here, so this goes dark) */
-  --fg-on-dark-1: #1a171a;
-  --fg-on-dark-2: rgba(26, 23, 26, 0.7);
-  --fg-on-dark-3: rgba(26, 23, 26, 0.5);
+  --fg-1: #f2f3ef;
+  --fg-2: #c3c6bd;
+  --fg-3: #97998f;
+  --fg-4: #5d5f57;
+  --fg-5: rgba(242, 243, 239, 0.08);
+  --hairline: #333333;
+  --hairline-strong: #454545;
 
-  /* Elevation reads through darker, larger shadows */
-  --shadow-e1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.28);
-  --shadow-e2: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-e3: 0 8px 32px rgba(0, 0, 0, 0.45);
-  --shadow-e4: 0 16px 48px rgba(0, 0, 0, 0.55);
+  /* Ink pills are light in dark mode — text on them goes deep green */
+  --fg-on-dark-1: #162100;
+  --fg-on-dark-2: rgba(22, 33, 0, 0.72);
+  --fg-on-dark-3: rgba(22, 33, 0, 0.5);
 
-  /* Sidebar — the Figma-specced dark variant */
-  --sb-bg: rgba(53, 48, 53, 0.25);
-  --sb-border: rgba(255, 255, 255, 0.4);
-  --sb-shadow: -5px 4px 10px rgba(0, 0, 0, 0.25);
-  --sb-fg: rgba(255, 255, 255, 0.9);
-  --sb-fg-active: #ffffff;
-  --sb-active-bg: #2c282c;
-  --sb-active-border: rgba(255, 255, 255, 0.75);
+  --accent-wash: color-mix(in srgb, #caff5f 15%, transparent);
+  --accent-wash-strong: color-mix(in srgb, #caff5f 28%, transparent);
+  --accent-border: color-mix(in srgb, #caff5f 40%, transparent);
+  --fill-danger-bg: rgba(255, 122, 110, 0.16);
+
+  /* Dark mode raises with surface color, never shadow */
+  --shadow-e1: none;
+  --shadow-e2: none;
+  --shadow-e3: none;
+  --shadow-e4: none;
+
+  --ring-color: #caff5f;
+
+  /* Primary action: dark = lime fill + deep green text */
+  --btn-primary-bg: #caff5f;
+  --btn-primary-fg: #162100;
+  --btn-primary-bg-hover: color-mix(in srgb, #caff5f 86%, #fff);
+
+  --sb-bg: #242424;
+  --sb-border: #333333;
+  --sb-shadow: none;
+  --sb-fg: #c3c6bd;
+  --sb-fg-active: #f2f3ef;
+  --sb-active-bg: color-mix(in srgb, #caff5f 15%, transparent);
+  --sb-active-border: transparent;
 }
-/* The warm mesh stays warm — text on it stays light in both modes. */
-.dark .sp-mesh { color: #f7f6f5; }
-.dark .sp-btn-ghost:hover:not(:disabled) { background: rgba(242, 240, 242, 0.06); }
-.dark ::selection { background: var(--orchid); color: #231f23; }
+.dark ::selection { background: var(--mint); color: #162100; }
+::selection { background: var(--mint); color: #162100; }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
 
 html {
   font-family: var(--font-ui);
+  letter-spacing: -0.015em; /* Inter Tight at -1% per the DS body spec */
   color: var(--fg-1);
   background: var(--linen);
   -webkit-font-smoothing: antialiased;
@@ -186,67 +203,82 @@ html {
 
 button, input, select, textarea, optgroup {
   font-family: var(--font-ui);
+  letter-spacing: -0.015em;
 }
 
-/* ── Platform UI primitives (from preview/app-shell.html) ───────────────── */
+/* Focus: 2px ring at 2px offset on every interactive element, both modes. */
+:focus-visible {
+  outline: 2px solid var(--ring-color);
+  outline-offset: 2px;
+}
+
+/* ── Platform UI primitives ─────────────────────────────────────────────── */
 
 .sp-eyebrow {
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--fg-3);
   font-weight: 400;
 }
 
+/* Headings are Kurdis Extra Wide Extra Bold, UPPERCASE, -3% tracking. The
+   face is broad and heavy, so sizes are compressed. */
 .sp-page-title {
   font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 500;
-  letter-spacing: -0.4px;
+  font-size: 24px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
   color: var(--ink);
 }
 
 .sp-panel-title {
-  font-family: var(--font-display);
+  font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 
 .sp-btn {
   font-family: var(--font-ui);
+  font-weight: 500;
   font-size: 13px;
-  padding: 8px 14px;
+  letter-spacing: -0.02em;
+  min-height: 38px;
+  padding: 8px 16px;
   border-radius: var(--radius-button);
-  border: 0;
+  border: 1px solid transparent;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: opacity 0.2s, background 0.2s;
+  transition: background var(--dur-state) var(--ease), color var(--dur-state) var(--ease), border-color var(--dur-state) var(--ease), opacity var(--dur-state) var(--ease);
 }
-.sp-btn:disabled { opacity: 0.45; cursor: default; }
-.sp-btn-primary { background: var(--ink); color: var(--fg-on-dark-1); }
-.sp-btn-primary:hover:not(:disabled) { background: var(--obsidian); }
-.sp-btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--hairline-strong); }
-.sp-btn-ghost:hover:not(:disabled) { background: rgba(35, 31, 35, 0.04); }
-.sp-btn-solar { background: var(--solar); color: #fff; }
-.sp-btn-solar:hover:not(:disabled) { opacity: 0.92; }
+.sp-btn:disabled { opacity: 0.4; cursor: default; }
+.sp-btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
+.sp-btn-primary:hover:not(:disabled) { background: var(--btn-primary-bg-hover); }
+.sp-btn-ghost { background: transparent; color: var(--fg-2); border-color: var(--hairline-strong); }
+.sp-btn-ghost:hover:not(:disabled) { background: var(--paper-warm); color: var(--fg-1); }
+/* Lime CTA — same fill both modes; deep green carries the text */
+.sp-btn-solar { background: #caff5f; color: #162100; }
+.sp-btn-solar:hover:not(:disabled) { background: color-mix(in srgb, #caff5f 86%, #fff); }
 
 .sp-input {
   font-family: var(--font-ui);
   font-size: 13px;
+  letter-spacing: -0.015em;
   width: 100%;
-  padding: 8px 12px;
+  padding: 9px 12px;
   border-radius: var(--radius-input);
   background: var(--lift);
   border: 1px solid var(--hairline);
   color: var(--ink);
   outline: none;
-  box-shadow: var(--shadow-e1);
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition: box-shadow var(--dur-state) var(--ease), border-color var(--dur-state) var(--ease);
 }
 .sp-input::placeholder { color: var(--fg-4); }
 .sp-input:focus { border-color: transparent; box-shadow: var(--focus-ring-tight); }
@@ -254,40 +286,25 @@ button, input, select, textarea, optgroup {
 .sp-card {
   background: var(--lift);
   border: 1px solid var(--hairline);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-e1);
 }
 
+/* Brand-moment surface (hero headers, identity chips). Flat deep green with
+   lime as the voice — the old warm mesh + noise treatment is gone. */
 .sp-mesh {
-  background: var(--mesh-warm);
-  background-color: var(--solar);
-  position: relative;
-  isolation: isolate;
-  color: var(--fg-on-dark-1);
+  background: #162100;
+  color: #f2f3ef;
 }
-.sp-mesh::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  background-size: 240px 240px;
-  background-repeat: repeat;
-  mix-blend-mode: overlay;
-  opacity: 0.55;
-  pointer-events: none;
-  z-index: 1;
-}
-.sp-mesh > * { position: relative; z-index: 2; }
+.sp-mesh .sp-eyebrow { color: #caff5f; }
 
-/* Persistent left sidebar — glass panel pinned to the viewport's left edge,
-   rounded on its RIGHT corners only (Figma node 13:28). */
+/* ── Sidebar — flat surface panel, rounded on its right corners only ────── */
 .sp-sidebar {
   background: var(--sb-bg);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
   border-top: 1px solid var(--sb-border);
   border-right: 1px solid var(--sb-border);
   border-bottom: 1px solid var(--sb-border);
-  border-radius: 0 35px 35px 0;
+  border-radius: 0 var(--radius-card) var(--radius-card) 0;
   box-shadow: var(--sb-shadow);
 }
 .sp-sidebar-item {
@@ -295,22 +312,21 @@ button, input, select, textarea, optgroup {
   align-items: center;
   gap: 12px;
   width: 100%;
-  height: 48px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 0.5px solid transparent;
-  font-size: 15px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-button);
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
   color: var(--sb-fg);
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--dur-state) var(--ease), color var(--dur-state) var(--ease);
   white-space: nowrap;
   overflow: hidden;
 }
-.sp-sidebar-item:hover { background: color-mix(in srgb, var(--sb-active-bg) 45%, transparent); }
+.sp-sidebar-item:hover { background: var(--paper-warm); color: var(--sb-fg-active); }
 .sp-sidebar-item[data-active="true"] {
   background: var(--sb-active-bg);
   border-color: var(--sb-active-border);
   color: var(--sb-fg-active);
-  font-weight: 500;
 }
-
-::selection { background: var(--orchid); color: var(--ink); }

@@ -99,7 +99,7 @@ export function PeopleAdmin() {
                 className="sp-mesh flex-shrink-0"
                 style={{ width: 26, height: 26, borderRadius: 999, display: "grid", placeItems: "center", overflow: "hidden" }}
               >
-                <span style={{ color: "#fff", fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 11 }}>
+                <span style={{ color: "#fff", fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 11 }}>
                   {(m.name ?? m.email).slice(0, 1).toUpperCase()}
                 </span>
               </span>

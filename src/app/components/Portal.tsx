@@ -43,17 +43,18 @@ export function Portal() {
       {/* Hero — signature warm mesh with film grain */}
       <div className="sp-mesh relative overflow-hidden">
         <div className="relative max-w-7xl mx-auto px-4 py-12">
-          <p className="sp-eyebrow mb-3" style={{ color: "rgba(255,255,255,0.85)" }}>
+          <p className="sp-eyebrow mb-3" style={{ color: "var(--mint)" }}>
             {company?.name}
           </p>
           <h1
             style={{
               fontFamily: "var(--font-display)",
-              fontWeight: 400,
-              fontSize: "clamp(30px, 4.6vw, 48px)",
-              letterSpacing: "-1px",
-              lineHeight: 1.1,
-              color: "#fff",
+              fontWeight: 800,
+              textTransform: "uppercase",
+              fontSize: "clamp(22px, 3.2vw, 36px)",
+              letterSpacing: "-0.03em",
+              lineHeight: 0.95,
+              color: "#f2f3ef",
               marginBottom: 10,
             }}
           >
@@ -136,7 +137,7 @@ export function Portal() {
                     <div className="flex items-start justify-between gap-3 mb-1.5">
                       <div>
                         {t.category && <p className="sp-eyebrow mb-1">{t.category}</p>}
-                        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 16, letterSpacing: "-0.2px", color: "var(--ink)" }}>
+                        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 16, letterSpacing: "-0.2px", color: "var(--ink)" }}>
                           {t.name}
                         </h2>
                       </div>

@@ -102,9 +102,9 @@ export function FigmaFieldPicker({ result, kit, onConfirm, onBack }: FigmaFieldP
                   border: include ? "2px solid var(--solar)" : "1.5px dashed rgba(35,31,35,0.35)",
                   background:
                     activeId === field.id
-                      ? "rgba(255,63,0,0.16)"
+                      ? "var(--accent-wash-strong)"
                       : include
-                        ? "rgba(255,63,0,0.07)"
+                        ? "var(--accent-wash)"
                         : "transparent",
                   cursor: "pointer",
                 }}

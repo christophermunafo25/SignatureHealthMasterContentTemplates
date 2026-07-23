@@ -1,5 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowDownToLine, ArrowUpToLine, Link as LinkIcon, Lock, Pin, RefreshCw, Trash2, Unlink, Upload } from "lucide-react";
+import {
+  ArrowDownToLine,
+  ArrowUpToLine,
+  ChevronDown,
+  Link as LinkIcon,
+  Lock,
+  Pin,
+  RefreshCw,
+  Trash2,
+  Unlink,
+  Unlock,
+  Upload,
+} from "lucide-react";
 import type { BrandKit, CornerRadius, FieldType, TemplateField, TextGradient } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -34,8 +46,73 @@ const labelStyle: React.CSSProperties = {};
 const controlClass = "sp-input";
 const controlStyle: React.CSSProperties = {};
 
-/** Inspector for the selected field: label/type, locked styling (fonts and
- * colors come from the brand kit — never free values), and guardrails. */
+// ---------------------------------------------------------------------------
+// Collapsible sections — open/closed state persists per section across
+// selections and sessions, so the inspector stays the way the admin left it.
+// ---------------------------------------------------------------------------
+
+const SECTIONS_KEY = "sp-inspector-open";
+
+const readOpen = (id: string, fallback: boolean): boolean => {
+  try {
+    const m = JSON.parse(localStorage.getItem(SECTIONS_KEY) ?? "{}") as Record<string, boolean>;
+    return typeof m[id] === "boolean" ? m[id] : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeOpen = (id: string, open: boolean): void => {
+  try {
+    const m = JSON.parse(localStorage.getItem(SECTIONS_KEY) ?? "{}") as Record<string, boolean>;
+    m[id] = open;
+    localStorage.setItem(SECTIONS_KEY, JSON.stringify(m));
+  } catch {
+    // persistence is best-effort
+  }
+};
+
+function Section({
+  id,
+  title,
+  defaultOpen = true,
+  children,
+}: {
+  id: string;
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(() => readOpen(id, defaultOpen));
+  return (
+    <div className="pt-3" style={{ borderTop: "1px solid var(--hairline)" }}>
+      <button
+        onClick={() => {
+          setOpen(!open);
+          writeOpen(id, !open);
+        }}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between"
+        style={{ paddingBottom: open ? 10 : 2 }}
+      >
+        <span className="sp-eyebrow">{title}</span>
+        <ChevronDown
+          style={{
+            width: 13,
+            height: 13,
+            color: "var(--fg-3)",
+            transform: open ? undefined : "rotate(-90deg)",
+            transition: "transform var(--dur-state) var(--ease)",
+          }}
+        />
+      </button>
+      {open && <div className="space-y-3">{children}</div>}
+    </div>
+  );
+}
+
+/** Inspector for the selected field. Identity up top, then collapsible
+ * sections: Layout (with the width lock), Text style, Image, Member input. */
 export function FieldInspector({
   field,
   allFields,
@@ -76,8 +153,10 @@ export function FieldInspector({
     labelRef.current?.select();
   }, [focusLabelFieldId, field.id]);
 
+  const canLockWidth = field.type === "text" || field.type === "multiline";
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="sp-panel-title">Field settings</h3>
         <div className="flex items-center gap-2.5">
@@ -93,8 +172,9 @@ export function FieldInspector({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2">
+      {/* Identity — always visible */}
+      <div className="space-y-3">
+        <div>
           <label className={labelClass} style={labelStyle}>Label</label>
           <input
             ref={labelRef}
@@ -115,7 +195,7 @@ export function FieldInspector({
             </p>
           )}
         </div>
-        <div className="col-span-2">
+        <div>
           <label className={labelClass} style={labelStyle}>Type</label>
           <select
             className={controlClass}
@@ -130,36 +210,34 @@ export function FieldInspector({
         </div>
 
         {field.type !== "select" && (
-          <div className="col-span-2">
-            <label
-              className="flex items-start gap-2 cursor-pointer"
-              style={{ fontSize: 13, color: "var(--ink)" }}
-            >
-              <input
-                type="checkbox"
-                style={{ marginTop: 3 }}
-                checked={isStatic}
-                onChange={(e) =>
-                  onChange(
-                    e.target.checked
-                      ? { static: true, required: undefined, placeholder: undefined, maxLength: undefined }
-                      : { static: undefined, staticValue: undefined },
-                  )
-                }
-              />
-              <span>
-                <Pin style={{ width: 11, height: 11, display: "inline", marginRight: 4, verticalAlign: "-1px", color: "var(--solar)" }} />
-                Fixed element
-                <span style={{ display: "block", fontSize: 11, color: "var(--fg-3)" }}>
-                  Baked into the graphic — members don't see or edit it.
-                </span>
+          <label
+            className="flex items-start gap-2 cursor-pointer"
+            style={{ fontSize: 13, color: "var(--ink)" }}
+          >
+            <input
+              type="checkbox"
+              style={{ marginTop: 3 }}
+              checked={isStatic}
+              onChange={(e) =>
+                onChange(
+                  e.target.checked
+                    ? { static: true, required: undefined, placeholder: undefined, maxLength: undefined }
+                    : { static: undefined, staticValue: undefined },
+                )
+              }
+            />
+            <span>
+              <Pin style={{ width: 11, height: 11, display: "inline", marginRight: 4, verticalAlign: "-1px", color: "var(--solar)" }} />
+              Fixed element
+              <span style={{ display: "block", fontSize: 11, color: "var(--fg-3)" }}>
+                Baked into the graphic — members don't see or edit it.
               </span>
-            </label>
-          </div>
+            </span>
+          </label>
         )}
 
         {isStatic && isText && (
-          <div className="col-span-2">
+          <div>
             <label className={labelClass} style={labelStyle}>Content</label>
             <textarea
               rows={field.type === "multiline" ? 3 : 1}
@@ -172,7 +250,7 @@ export function FieldInspector({
           </div>
         )}
         {isStatic && field.type === "image" && (
-          <div className="col-span-2">
+          <div>
             <label className={labelClass} style={labelStyle}>Image</label>
             <label
               className="flex items-center justify-center gap-2 cursor-pointer py-2.5"
@@ -201,9 +279,98 @@ export function FieldInspector({
             </label>
           </div>
         )}
+      </div>
 
-        {isText && (
-          <div className="col-span-2">
+      {/* Layout — position, size (with the width lock), rotation, anchor */}
+      <Section id="layout" title="Layout">
+        <div className="grid grid-cols-2 gap-3">
+          {(["x", "y"] as const).map((k) => (
+            <div key={k}>
+              <label className={labelClass} style={labelStyle}>{k.toUpperCase()}</label>
+              <input
+                type="number"
+                className={controlClass}
+                style={controlStyle}
+                value={Math.round(field[k])}
+                onChange={(e) => onChange({ [k]: Number(e.target.value) } as Partial<TemplateField>)}
+              />
+            </div>
+          ))}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="sp-eyebrow">Width</label>
+              {canLockWidth && (
+                <button
+                  onClick={() => onChange({ fixedWidth: !field.fixedWidth || undefined })}
+                  aria-pressed={Boolean(field.fixedWidth)}
+                  title={
+                    field.fixedWidth
+                      ? `Width locked — ${field.type === "multiline" ? "text wraps" : "text shrinks"} at the box edge and never escapes. Click to unlock.`
+                      : `Lock the width — ${field.type === "multiline" ? "text will wrap" : "text will shrink"} at the box edge instead of escaping.`
+                  }
+                >
+                  {field.fixedWidth ? (
+                    <Lock style={{ width: 12, height: 12, color: "var(--solar)" }} />
+                  ) : (
+                    <Unlock style={{ width: 12, height: 12, color: "var(--fg-4)" }} />
+                  )}
+                </button>
+              )}
+            </div>
+            <input
+              type="number"
+              className={controlClass}
+              style={controlStyle}
+              value={Math.round(field.width)}
+              onChange={(e) => onChange({ width: Number(e.target.value) })}
+            />
+          </div>
+          <div>
+            <label className={labelClass} style={labelStyle}>Height</label>
+            <input
+              type="number"
+              className={controlClass}
+              style={controlStyle}
+              value={Math.round(field.height)}
+              onChange={(e) => onChange({ height: Number(e.target.value) })}
+            />
+          </div>
+          <div>
+            <label className={labelClass} style={labelStyle}>Rotation °</label>
+            <input
+              type="number"
+              className={controlClass}
+              style={controlStyle}
+              value={field.rotation ?? 0}
+              onChange={(e) => onChange({ rotation: Number(e.target.value) || undefined })}
+            />
+          </div>
+          <div>
+            <label className={labelClass} style={labelStyle}>Anchor</label>
+            <select
+              className={controlClass}
+              style={controlStyle}
+              value={field.anchor ?? "topLeft"}
+              onChange={(e) => onChange({ anchor: e.target.value as TemplateField["anchor"] })}
+            >
+              <option value="topLeft">Top-left</option>
+              <option value="center">Center</option>
+            </select>
+          </div>
+        </div>
+        {canLockWidth && field.fixedWidth && (
+          <p style={{ fontSize: 11, color: "var(--fg-3)" }}>
+            <Lock style={{ width: 10, height: 10, display: "inline", marginRight: 4, verticalAlign: "-1px", color: "var(--solar)" }} />
+            Width is locked: {field.type === "multiline" ? "text wraps" : "text shrinks"} at the box
+            edge and never escapes it.
+          </p>
+        )}
+      </Section>
+
+      {/* Text style */}
+      {isText && (
+        <Section id="text-style" title="Text style">
+          <div>
             <label className={labelClass} style={labelStyle}>Saved style (optional)</label>
             <select
               className={controlClass}
@@ -230,102 +397,23 @@ export function FieldInspector({
               </div>
             )}
           </div>
-        )}
-
-        {/* Placement (fine-tuning; boxes are usually dragged) */}
-        {(["x", "y", "width", "height"] as const).map((k) => (
-          <div key={k}>
-            <label className={labelClass} style={labelStyle}>{k}</label>
-            <input
-              type="number"
-              className={controlClass}
-              style={controlStyle}
-              value={Math.round(field[k])}
-              onChange={(e) => onChange({ [k]: Number(e.target.value) } as Partial<TemplateField>)}
-            />
-          </div>
-        ))}
-        <div>
-          <label className={labelClass} style={labelStyle}>Rotation °</label>
-          <input
-            type="number"
-            className={controlClass}
-            style={controlStyle}
-            value={field.rotation ?? 0}
-            onChange={(e) => onChange({ rotation: Number(e.target.value) || undefined })}
+          <TextStyling
+            field={field}
+            kit={kit}
+            locked={locked}
+            onChange={onChange}
+            customFamilies={assets.filter((a) => a.kind === "font").map((a) => a.metadata.family ?? a.name)}
           />
-        </div>
-        <div>
-          <label className={labelClass} style={labelStyle}>Anchor</label>
-          <select
-            className={controlClass}
-            style={controlStyle}
-            value={field.anchor ?? "topLeft"}
-            onChange={(e) => onChange({ anchor: e.target.value as TemplateField["anchor"] })}
-          >
-            <option value="topLeft">Top-left</option>
-            <option value="center">Center</option>
-          </select>
-        </div>
-      </div>
+        </Section>
+      )}
 
-      {isText && <TextStyling field={field} kit={kit} locked={locked} onChange={onChange} customFamilies={
-        assets.filter((a) => a.kind === "font").map((a) => a.metadata.family ?? a.name)
-      } />}
-
-      {/* Guardrails (member-input concerns hidden on fixed elements) */}
-      <div className="pt-2 border-t space-y-3" style={{ borderColor: "var(--border)" }}>
-        <h4 className="sp-eyebrow">{isStatic ? "Rendering" : "Guardrails"}</h4>
-        {isText && field.type !== "select" && (
-          <div className="grid grid-cols-2 gap-3">
-            {!isStatic && (
-              <div>
-                <label className={labelClass} style={labelStyle}>Max characters</label>
-                <input
-                  type="number"
-                  className={controlClass}
-                  style={controlStyle}
-                  disabled={locked.has("maxLength")}
-                  value={field.maxLength ?? ""}
-                  placeholder="none"
-                  onChange={(e) => onChange({ maxLength: e.target.value ? Number(e.target.value) : undefined })}
-                />
-              </div>
-            )}
-            <label className="flex items-end gap-2 pb-2 text-sm" style={{ color: "var(--foreground)" }}>
-              <input
-                type="checkbox"
-                disabled={locked.has("autoFit")}
-                checked={field.autoFit ?? false}
-                onChange={(e) => onChange({ autoFit: e.target.checked || undefined })}
-              />
-              Auto-shrink to fit
-            </label>
-            <label className="col-span-2 flex items-start gap-2 text-sm" style={{ color: "var(--foreground)" }}>
-              <input
-                type="checkbox"
-                style={{ marginTop: 3 }}
-                checked={field.fixedWidth ?? false}
-                onChange={(e) => onChange({ fixedWidth: e.target.checked || undefined })}
-              />
-              <span>
-                Fixed width
-                <span style={{ display: "block", fontSize: 11, color: "var(--fg-3)" }}>
-                  {field.type === "multiline"
-                    ? "Text wraps at the box edge and never escapes it."
-                    : "Text shrinks at exactly the box edge and never escapes it."}
-                </span>
-              </span>
-            </label>
-          </div>
-        )}
-        {field.type === "image" && (
+      {/* Image */}
+      {field.type === "image" && (
+        <Section id="image" title="Image">
           <CornerRadiusControl
             value={field.cornerRadius}
             onChange={(cornerRadius) => onChange({ cornerRadius })}
           />
-        )}
-        {field.type === "image" && (
           <div className="grid grid-cols-2 gap-3">
             {!isStatic && (
               <div>
@@ -354,22 +442,40 @@ export function FieldInspector({
               </select>
             </div>
           </div>
-        )}
-        {field.type === "select" && (
-          <div>
-            <label className={labelClass} style={labelStyle}>Options (one per line)</label>
-            <textarea
-              rows={3}
-              className={controlClass}
-              style={controlStyle}
-              value={(field.options ?? []).join("\n")}
-              onChange={(e) =>
-                onChange({ options: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })
-              }
-            />
-          </div>
-        )}
-        {!isStatic && (
+        </Section>
+      )}
+
+      {/* Member input — what the member sees in their form; gone on fixed elements */}
+      {!isStatic && (
+        <Section id="member-input" title="Member input">
+          {isText && field.type !== "select" && (
+            <div>
+              <label className={labelClass} style={labelStyle}>Max characters</label>
+              <input
+                type="number"
+                className={controlClass}
+                style={controlStyle}
+                disabled={locked.has("maxLength")}
+                value={field.maxLength ?? ""}
+                placeholder="none"
+                onChange={(e) => onChange({ maxLength: e.target.value ? Number(e.target.value) : undefined })}
+              />
+            </div>
+          )}
+          {field.type === "select" && (
+            <div>
+              <label className={labelClass} style={labelStyle}>Options (one per line)</label>
+              <textarea
+                rows={3}
+                className={controlClass}
+                style={controlStyle}
+                value={(field.options ?? []).join("\n")}
+                onChange={(e) =>
+                  onChange({ options: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })
+                }
+              />
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass} style={labelStyle}>Placeholder</label>
@@ -389,8 +495,8 @@ export function FieldInspector({
               Required
             </label>
           </div>
-        )}
-      </div>
+        </Section>
+      )}
     </div>
   );
 }
@@ -486,8 +592,9 @@ interface TextStylingProps {
   onChange(patch: Partial<TemplateField>): void;
 }
 
-/** Locked styling: font family choices are the brand kit's fonts + custom
- * uploads + curated Google list; colors are ONLY brand palette keys. */
+/** Typography controls: font family choices are the brand kit's fonts +
+ * custom uploads + curated Google list; colors are hex-first with brand
+ * palette shortcuts. Auto-shrink lives here — it's rendering behavior. */
 function TextStyling({ field, kit, customFamilies, locked, onChange }: TextStylingProps) {
   const brandFamilies = [
     ...new Set(
@@ -499,159 +606,168 @@ function TextStyling({ field, kit, customFamilies, locked, onChange }: TextStyli
   const otherFamilies = GOOGLE_FONTS.filter((f) => !brandFamilies.includes(f));
 
   return (
-    <div className="pt-2 border-t space-y-3" style={{ borderColor: "var(--border)" }}>
-      <h4 className="sp-eyebrow">Locked styling</h4>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2">
-          <label className={labelClass} style={labelStyle}>Font</label>
-          <select
-            className={controlClass}
-            style={controlStyle}
-            disabled={locked.has("fontFamily")}
-            value={field.fontFamily ?? ""}
-            onChange={(e) => onChange({ fontFamily: e.target.value || undefined })}
-          >
-            <option value="">Default (sans-serif)</option>
-            {brandFamilies.length > 0 && (
-              <optgroup label="Brand fonts">
-                {brandFamilies.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </optgroup>
-            )}
-            <optgroup label="Google Fonts">
-              {otherFamilies.map((f) => (
+    <div className="grid grid-cols-2 gap-3">
+      <div className="col-span-2">
+        <label className={labelClass} style={labelStyle}>Font</label>
+        <select
+          className={controlClass}
+          style={controlStyle}
+          disabled={locked.has("fontFamily")}
+          value={field.fontFamily ?? ""}
+          onChange={(e) => onChange({ fontFamily: e.target.value || undefined })}
+        >
+          <option value="">Default (sans-serif)</option>
+          {brandFamilies.length > 0 && (
+            <optgroup label="Brand fonts">
+              {brandFamilies.map((f) => (
                 <option key={f} value={f}>{f}</option>
               ))}
             </optgroup>
-          </select>
-        </div>
-        <div>
-          <label className={labelClass} style={labelStyle}>Weight</label>
-          <select
-            className={controlClass}
-            style={controlStyle}
-            disabled={locked.has("weight")}
-            value={field.fontWeight ?? ""}
-            onChange={(e) => onChange({ fontWeight: e.target.value ? Number(e.target.value) : undefined })}
-          >
-            <option value="">Default</option>
-            {[100, 200, 300, 400, 500, 600, 700, 800, 900].map((w) => (
-              <option key={w} value={w}>{w}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={labelClass} style={labelStyle}>Size (px)</label>
-          <input
-            type="number"
-            className={controlClass}
-            style={controlStyle}
-            disabled={locked.has("fontSizePx")}
-            value={field.fontSizePx ?? 45}
-            onChange={(e) => onChange({ fontSizePx: Number(e.target.value) })}
-          />
-        </div>
-        <div>
-          <label className={labelClass} style={labelStyle}>Min size (auto-fit)</label>
-          <input
-            type="number"
-            className={controlClass}
-            style={controlStyle}
-            value={field.minFontSizePx ?? ""}
-            placeholder="18"
-            onChange={(e) => onChange({ minFontSizePx: e.target.value ? Number(e.target.value) : undefined })}
-          />
-        </div>
-        <div className="col-span-2 space-y-2">
-          <label className={labelClass} style={labelStyle}>Color</label>
-          <ColorControl
-            ariaLabel="Field text color"
-            value={field.colorHex ?? kit?.colors.find((c) => c.key === field.colorKey)?.hex}
-            onChange={(hex) =>
-              !locked.has("colorKey") &&
-              onChange({ colorHex: hex, colorKey: undefined, textGradient: undefined })
-            }
-          />
-          {(kit?.colors.length ?? 0) > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="sp-eyebrow" style={{ fontSize: 9 }}>Brand</span>
-              {(kit?.colors ?? []).map((c) => (
-                <button
-                  key={c.key}
-                  title={`${c.name} — click to use`}
-                  disabled={locked.has("colorKey")}
-                  onClick={() => onChange({ colorKey: c.key, colorHex: undefined, textGradient: undefined })}
-                  className="w-5 h-5 rounded-md border-2 transition-transform hover:scale-110 cursor-pointer"
-                  style={{
-                    background: c.hex,
-                    borderColor: field.colorKey === c.key ? "var(--ring)" : "var(--hairline)",
-                  }}
-                />
-              ))}
-            </div>
           )}
-          <GradientEditor
-            gradient={field.textGradient}
-            disabled={locked.has("colorKey")}
-            onChange={(textGradient) => onChange({ textGradient })}
-          />
-        </div>
-        <div>
-          <label className={labelClass} style={labelStyle}>Align</label>
-          <select
-            className={controlClass}
-            style={controlStyle}
-            value={field.align ?? "left"}
-            onChange={(e) => onChange({ align: e.target.value as TemplateField["align"] })}
-          >
-            <option value="left">Left</option>
-            <option value="center">Center</option>
-            <option value="right">Right</option>
-          </select>
-        </div>
-        <div className="flex items-end gap-4 pb-2">
-          <label className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground)" }}>
+          <optgroup label="Google Fonts">
+            {otherFamilies.map((f) => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </optgroup>
+        </select>
+      </div>
+      <div>
+        <label className={labelClass} style={labelStyle}>Weight</label>
+        <select
+          className={controlClass}
+          style={controlStyle}
+          disabled={locked.has("weight")}
+          value={field.fontWeight ?? ""}
+          onChange={(e) => onChange({ fontWeight: e.target.value ? Number(e.target.value) : undefined })}
+        >
+          <option value="">Default</option>
+          {[100, 200, 300, 400, 500, 600, 700, 800, 900].map((w) => (
+            <option key={w} value={w}>{w}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className={labelClass} style={labelStyle}>Size (px)</label>
+        <input
+          type="number"
+          className={controlClass}
+          style={controlStyle}
+          disabled={locked.has("fontSizePx")}
+          value={field.fontSizePx ?? 45}
+          onChange={(e) => onChange({ fontSizePx: Number(e.target.value) })}
+        />
+      </div>
+      {field.type !== "select" && (
+        <>
+          <label className="flex items-end gap-2 pb-2 text-sm" style={{ color: "var(--foreground)" }}>
             <input
               type="checkbox"
-              disabled={locked.has("uppercase")}
-              checked={field.uppercase ?? false}
-              onChange={(e) => onChange({ uppercase: e.target.checked || undefined })}
+              disabled={locked.has("autoFit")}
+              checked={field.autoFit ?? false}
+              onChange={(e) => onChange({ autoFit: e.target.checked || undefined })}
             />
-            Uppercase
+            Auto-shrink to fit
           </label>
-        </div>
-        <div>
-          <label className={labelClass} style={labelStyle}>Letter spacing</label>
+          <div>
+            <label className={labelClass} style={labelStyle}>Min size (px)</label>
+            <input
+              type="number"
+              className={controlClass}
+              style={controlStyle}
+              value={field.minFontSizePx ?? ""}
+              placeholder="18"
+              onChange={(e) => onChange({ minFontSizePx: e.target.value ? Number(e.target.value) : undefined })}
+            />
+          </div>
+        </>
+      )}
+      <div className="col-span-2 space-y-2">
+        <label className={labelClass} style={labelStyle}>Color</label>
+        <ColorControl
+          ariaLabel="Field text color"
+          value={field.colorHex ?? kit?.colors.find((c) => c.key === field.colorKey)?.hex}
+          onChange={(hex) =>
+            !locked.has("colorKey") &&
+            onChange({ colorHex: hex, colorKey: undefined, textGradient: undefined })
+          }
+        />
+        {(kit?.colors.length ?? 0) > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="sp-eyebrow" style={{ fontSize: 9 }}>Brand</span>
+            {(kit?.colors ?? []).map((c) => (
+              <button
+                key={c.key}
+                title={`${c.name} — click to use`}
+                disabled={locked.has("colorKey")}
+                onClick={() => onChange({ colorKey: c.key, colorHex: undefined, textGradient: undefined })}
+                className="w-5 h-5 rounded-md border-2 transition-transform hover:scale-110 cursor-pointer"
+                style={{
+                  background: c.hex,
+                  borderColor: field.colorKey === c.key ? "var(--ring)" : "var(--hairline)",
+                }}
+              />
+            ))}
+          </div>
+        )}
+        <GradientEditor
+          gradient={field.textGradient}
+          disabled={locked.has("colorKey")}
+          onChange={(textGradient) => onChange({ textGradient })}
+        />
+      </div>
+      <div>
+        <label className={labelClass} style={labelStyle}>Align</label>
+        <select
+          className={controlClass}
+          style={controlStyle}
+          value={field.align ?? "left"}
+          onChange={(e) => onChange({ align: e.target.value as TemplateField["align"] })}
+        >
+          <option value="left">Left</option>
+          <option value="center">Center</option>
+          <option value="right">Right</option>
+        </select>
+      </div>
+      <div className="flex items-end gap-4 pb-2">
+        <label className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground)" }}>
           <input
-            type="number"
-            step="0.1"
-            className={controlClass}
-            style={controlStyle}
-            disabled={locked.has("letterSpacingPx")}
-            value={field.letterSpacingPx ?? ""}
-            placeholder="0"
-            onChange={(e) => onChange({ letterSpacingPx: e.target.value ? Number(e.target.value) : undefined })}
+            type="checkbox"
+            disabled={locked.has("uppercase")}
+            checked={field.uppercase ?? false}
+            onChange={(e) => onChange({ uppercase: e.target.checked || undefined })}
           />
-        </div>
-        <div>
-          <label className={labelClass} style={labelStyle}>Line height</label>
-          <input
-            type="number"
-            step="0.05"
-            className={controlClass}
-            style={controlStyle}
-            disabled={locked.has("lineHeight")}
-            value={field.lineHeight ?? ""}
-            placeholder="1.1"
-            onChange={(e) => onChange({ lineHeight: e.target.value ? Number(e.target.value) : undefined })}
-          />
-        </div>
+          Uppercase
+        </label>
+      </div>
+      <div>
+        <label className={labelClass} style={labelStyle}>Letter spacing</label>
+        <input
+          type="number"
+          step="0.1"
+          className={controlClass}
+          style={controlStyle}
+          disabled={locked.has("letterSpacingPx")}
+          value={field.letterSpacingPx ?? ""}
+          placeholder="0"
+          onChange={(e) => onChange({ letterSpacingPx: e.target.value ? Number(e.target.value) : undefined })}
+        />
+      </div>
+      <div>
+        <label className={labelClass} style={labelStyle}>Line height</label>
+        <input
+          type="number"
+          step="0.05"
+          className={controlClass}
+          style={controlStyle}
+          disabled={locked.has("lineHeight")}
+          value={field.lineHeight ?? ""}
+          placeholder="1.1"
+          onChange={(e) => onChange({ lineHeight: e.target.value ? Number(e.target.value) : undefined })}
+        />
       </div>
     </div>
   );
 }
-
 
 interface GradientEditorProps {
   gradient: TextGradient | undefined;

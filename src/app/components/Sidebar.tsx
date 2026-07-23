@@ -17,43 +17,38 @@ import {
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useColorScheme, type ColorScheme } from "@/lib/colorScheme";
 import { useRouter, type Route } from "../router";
+import logoOnLight from "@/assets/socialpaint/socialpaint-logo-on-light.svg";
+import logoOnDark from "@/assets/socialpaint/socialpaint-logo-on-dark.svg";
 
 const LS_COLLAPSED = "sp-sidebar-collapsed";
 
-/** The SocialPaint mark — five bars resolving into a solid square. Recolors
- * via currentColor: lime on dark chrome, deep green on light. Exported for
- * DS empty states (the mark at low opacity behind the text). */
+/** The SocialPaint mark — five bars and the sparkle square, from the
+ * official horizontal logo. One-color via currentColor (the sparkle knocks
+ * out to the background). Used where the full lockup doesn't fit: the
+ * collapsed rail and DS empty states. */
 export function BrandMark({ width = 28 }: { width?: number }) {
   return (
-    <svg viewBox="0 0 164 78" fill="currentColor" style={{ width, height: "auto", display: "block" }} aria-hidden>
-      <rect x="0" y="0" width="7" height="78" />
-      <rect x="16" y="0" width="10" height="78" />
-      <rect x="34" y="0" width="10" height="78" />
-      <rect x="51" y="0" width="12" height="78" />
-      <rect x="67" y="0" width="14" height="78" />
-      <rect x="85" y="0" width="79" height="78" />
+    <svg viewBox="0 0 161 87" fill="currentColor" style={{ width, height: "auto", display: "block" }} aria-hidden>
+      <path d="M6.4355 86.5649H0V0H6.4355V86.5649Z" />
+      <path d="M23.5976 86.5649H15.0176V0H23.5976V86.5649Z" />
+      <path d="M40.7597 86.5649H32.1797V0H40.7597V86.5649Z" />
+      <path d="M57.9217 86.5649H47.1952V0H57.9217V86.5649Z" />
+      <path d="M75.0838 86.5649H62.2128V0H75.0838V86.5649Z" />
+      <path d="M149.104 0C155.343 0 160.4 5.05729 160.4 11.2958V86.5649H119.662C119.662 86.5649 121.912 64.2741 130.667 54.972C139.422 45.6706 160.4 43.2813 160.4 43.2813C160.343 43.2748 139.41 40.8815 130.667 31.5929C121.92 22.2997 119.667 0.0428244 119.662 0C119.653 0.090865 117.397 22.3098 108.66 31.5929C99.9181 40.88 78.9913 43.274 78.927 43.2813C78.927 43.2813 99.9047 45.6705 108.66 54.972C117.404 64.2625 119.657 86.5091 119.662 86.5649H78.3049V0H149.104Z" />
     </svg>
   );
 }
 
-/** Mark + wordmark lockup (wordmark in the heading face, per the DS NavRail). */
-function BrandLockup() {
+/** The official horizontal lockup — dark-green artwork on light chrome,
+ * lime + white artwork on dark. */
+function BrandLockup({ height = 16 }: { height?: number }) {
+  const { resolved } = useColorScheme();
   return (
-    <span className="flex items-center gap-2" style={{ color: "var(--solar)" }}>
-      <BrandMark width={26} />
-      <span
-        style={{
-          fontFamily: "var(--font-display)",
-          fontWeight: 800,
-          textTransform: "uppercase",
-          fontSize: 13,
-          letterSpacing: "-0.02em",
-          color: "var(--ink)",
-        }}
-      >
-        SocialPaint
-      </span>
-    </span>
+    <img
+      src={resolved === "dark" ? logoOnDark : logoOnLight}
+      alt="SocialPaint"
+      style={{ height, width: "auto", display: "block" }}
+    />
   );
 }
 
@@ -263,7 +258,7 @@ export function Sidebar() {
         >
           <div className="flex items-center justify-between px-4" style={{ height: 56 }}>
             <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} aria-label="SocialPaint — home">
-              <BrandLockup />
+              <BrandLockup height={18} />
             </button>
             <button
               onClick={() => setMenuOpen(!menuOpen)}

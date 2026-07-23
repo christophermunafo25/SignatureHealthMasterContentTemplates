@@ -779,6 +779,8 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                     <FieldInspector
                       field={singleSelected}
                       allFields={draft.fields}
+                      canvasWidth={draft.canvasWidth}
+                      canvasHeight={draft.canvasHeight}
                       focusLabelFieldId={focusLabelFieldId}
                       onChange={(patch) => patchField(singleSelected.id, patch)}
                       onDelete={() => deleteFields([singleSelected.id])}

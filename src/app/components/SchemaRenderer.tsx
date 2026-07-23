@@ -213,12 +213,14 @@ function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {
       : fittedFontSize({ width: field.width, ...style }, text);
   const justify =
     field.align === "center" ? "center" : field.align === "right" ? "flex-end" : "flex-start";
+  const alignItems =
+    field.verticalAlign === "top" ? "flex-start" : field.verticalAlign === "bottom" ? "flex-end" : "center";
   return (
     <div
       style={{
         ...boxStyle(field),
         display: "flex",
-        alignItems: "center",
+        alignItems,
         justifyContent: justify,
         overflow: field.fixedWidth ? "hidden" : undefined,
       }}

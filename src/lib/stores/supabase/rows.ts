@@ -106,6 +106,7 @@ export interface TemplateFieldRow {
   min_font_size_px: number | null;
   color_key: string | null;
   align: TemplateField["align"] | null;
+  vertical_align: TemplateField["verticalAlign"] | null;
   uppercase: boolean | null;
   letter_spacing_px: number | null;
   line_height: number | null;
@@ -150,6 +151,7 @@ export const toTemplateField = (r: TemplateFieldRow): TemplateField => ({
   minFontSizePx: opt(r.min_font_size_px) === undefined ? undefined : Number(r.min_font_size_px),
   colorKey: opt(r.color_key),
   align: opt(r.align),
+  verticalAlign: opt(r.vertical_align),
   uppercase: opt(r.uppercase),
   letterSpacingPx: opt(r.letter_spacing_px) === undefined ? undefined : Number(r.letter_spacing_px),
   lineHeight: opt(r.line_height) === undefined ? undefined : Number(r.line_height),
@@ -192,6 +194,7 @@ export const fieldToRow = (
   min_font_size_px: f.minFontSizePx ?? null,
   color_key: f.colorKey ?? null,
   align: f.align ?? null,
+  vertical_align: f.verticalAlign ?? null,
   uppercase: f.uppercase ?? null,
   letter_spacing_px: f.letterSpacingPx ?? null,
   line_height: f.lineHeight ?? null,

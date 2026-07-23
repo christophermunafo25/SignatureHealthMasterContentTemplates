@@ -140,6 +140,8 @@ export interface TemplateField {
   /** Optional text fill gradient (wins over solid color when set). */
   textGradient?: TextGradient;
   align?: "left" | "center" | "right";
+  /** Vertical placement of text within the box (default middle). */
+  verticalAlign?: "top" | "middle" | "bottom";
   uppercase?: boolean;
   letterSpacingPx?: number;
   lineHeight?: number;

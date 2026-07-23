@@ -62,7 +62,8 @@ admins style fields freely and directly by default):
 Locked styling (member can NEVER change these — used when no type style
 defines the property):
 
-- `fontFamily`, `fontSizePx`, `align`, `uppercase`, `letterSpacingPx`,
+- `fontFamily`, `fontSizePx`, `align`, `verticalAlign` (top/middle/bottom
+  placement within the box, default middle), `uppercase`, `letterSpacingPx`,
   `lineHeight`.
 - `colorKey` — a brand-kit palette key, resolved at render time so
   re-branding restyles existing templates; `colorHex` — any exact color via

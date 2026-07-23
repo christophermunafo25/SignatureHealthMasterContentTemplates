@@ -27,7 +27,9 @@ import { newId } from "@/lib/stores/local/db";
 import { retagCaption, suggestFieldKey } from "@/lib/caption";
 import { useUnsavedChangesWarning } from "@/lib/useUnsavedChangesWarning";
 import { useRouter } from "../../router";
-import { SchemaRenderer } from "../SchemaRenderer";
+import { ColorControl } from "../ColorControl";
+import { SchemaRenderer, schemaBackgroundCss } from "../SchemaRenderer";
+import { GradientEditor } from "./GradientEditor";
 import { FieldOverlayEditor } from "./FieldOverlayEditor";
 import { FieldInspector } from "./FieldInspector";
 import { CaptionEditor } from "./CaptionEditor";
@@ -743,6 +745,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                       canvasWidth={draft.canvasWidth}
                       canvasHeight={draft.canvasHeight}
                       backgroundUrl={draft.backgroundUrl}
+                      backgroundCss={schemaBackgroundCss(draft)}
                       fields={draft.fields}
                       selectedIds={selectedIds}
                       onSelect={setSelectedIds}
@@ -806,13 +809,69 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                     </button>
                   </div>
                 ) : (
-                  <div
-                    className="p-6 text-center"
-                    style={{ border: "1.5px dashed var(--hairline-strong)", borderRadius: 12, fontSize: 13, color: "var(--fg-3)" }}
-                  >
-                    {draft.fields.length === 0
-                      ? "Drag your first element from the palette onto the canvas."
-                      : "Select a field to edit it — click on the canvas or in the list."}
+                  <div className="sp-card p-4 space-y-4">
+                    <h3 className="sp-panel-title">Canvas</h3>
+                    <p style={{ fontSize: 12, color: "var(--fg-3)" }}>
+                      {draft.fields.length === 0
+                        ? "Drag your first element from the palette onto the canvas. Style the template background below."
+                        : "Select a field to edit it — or style the template background here."}
+                    </p>
+                    <div className="space-y-2">
+                      <label className="sp-eyebrow block">Background color</label>
+                      <ColorControl
+                        ariaLabel="Template background color"
+                        value={draft.backgroundColor ?? "#ffffff"}
+                        onChange={(hex) => setDraft((d) => ({ ...d, backgroundColor: hex }))}
+                      />
+                    </div>
+                    <GradientEditor
+                      label="Gradient background"
+                      gradient={draft.backgroundGradient}
+                      defaultStops={[
+                        { position: 0, color: kit?.colors[0]?.hex ?? "#CAFF5F" },
+                        { position: 1, color: kit?.colors[1]?.hex ?? "#122407" },
+                      ]}
+                      onChange={(backgroundGradient) => setDraft((d) => ({ ...d, backgroundGradient }))}
+                    />
+                    <div className="space-y-2">
+                      <label className="sp-eyebrow block">Background image</label>
+                      <label
+                        className="flex items-center justify-center gap-2 cursor-pointer py-2.5"
+                        style={{
+                          border: "1.5px dashed var(--hairline-strong)",
+                          borderRadius: 8,
+                          fontSize: 12,
+                          color: "var(--fg-2)",
+                        }}
+                      >
+                        {uploading ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" style={{ color: "var(--solar)" }} />
+                        ) : (
+                          <Upload className="w-3.5 h-3.5" style={{ color: "var(--solar)" }} />
+                        )}
+                        {uploading ? "Uploading…" : draft.backgroundUrl ? "Replace image" : "Upload image"}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) void onDropBackground([f]);
+                          }}
+                        />
+                      </label>
+                      {draft.backgroundUrl && (
+                        <button
+                          onClick={() => setDraft((d) => ({ ...d, backgroundUrl: "" }))}
+                          style={{ fontSize: 11, color: "var(--destructive)" }}
+                        >
+                          Remove image
+                        </button>
+                      )}
+                      <p style={{ fontSize: 10.5, color: "var(--fg-4)" }}>
+                        An image covers the gradient, which covers the color.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>

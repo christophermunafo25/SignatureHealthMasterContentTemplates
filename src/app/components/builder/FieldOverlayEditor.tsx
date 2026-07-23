@@ -12,6 +12,8 @@ interface FieldOverlayEditorProps {
   canvasWidth: number;
   canvasHeight: number;
   backgroundUrl: string;
+  /** Canvas base fill (schemaBackgroundCss) — under the background image. */
+  backgroundCss?: string;
   fields: TemplateField[];
   selectedIds: string[];
   onSelect(ids: string[]): void;
@@ -46,6 +48,7 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
     canvasWidth,
     canvasHeight,
     backgroundUrl,
+    backgroundCss,
     fields,
     selectedIds,
     onSelect,
@@ -232,7 +235,7 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
           position: "absolute",
           top: 0,
           left: 0,
-          background: "#fff",
+          background: backgroundCss ?? "#fff",
           pointerEvents: "none",
         }}
       >

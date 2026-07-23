@@ -96,6 +96,7 @@ export interface TemplateFieldRow {
   anchor: TemplateField["anchor"] | null;
   z_index: number | null;
   corner_radius: import("../../types").CornerRadius | null;
+  opacity: number | null;
   is_static: boolean | null;
   static_value: string | null;
   font_family: string | null;
@@ -141,6 +142,7 @@ export const toTemplateField = (r: TemplateFieldRow): TemplateField => ({
   anchor: opt(r.anchor),
   zIndex: opt(r.z_index) === undefined ? undefined : Number(r.z_index),
   cornerRadius: opt(r.corner_radius),
+  opacity: opt(r.opacity) === undefined ? undefined : Number(r.opacity),
   static: opt(r.is_static),
   staticValue: opt(r.static_value),
   fontFamily: opt(r.font_family),
@@ -184,6 +186,7 @@ export const fieldToRow = (
   anchor: f.anchor ?? null,
   z_index: f.zIndex ?? null,
   corner_radius: f.cornerRadius ?? null,
+  opacity: f.opacity ?? null,
   is_static: f.static ?? null,
   static_value: f.staticValue ?? null,
   font_family: f.fontFamily ?? null,
@@ -219,6 +222,8 @@ export interface TemplateRow {
   canvas_width: number;
   canvas_height: number;
   background_storage_path: string | null;
+  background_color: string | null;
+  background_gradient: import("../../types").TextGradient | null;
   caption_template: string;
   created_at: string;
   updated_at: string;
@@ -235,6 +240,8 @@ export const toTemplate = (r: TemplateRow): TemplateSchema => ({
   status: r.status,
   canvasWidth: r.canvas_width,
   canvasHeight: r.canvas_height,
+  backgroundColor: r.background_color ?? undefined,
+  backgroundGradient: r.background_gradient ?? undefined,
   backgroundUrl: r.background_storage_path
     ? resolveUrl(BUCKETS.templateBackgrounds, r.background_storage_path)
     : "",

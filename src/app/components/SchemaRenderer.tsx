@@ -113,7 +113,7 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
               height: schema.canvasHeight,
               position: "relative",
               overflow: "hidden",
-              background: "#ffffff",
+              background: schemaBackgroundCss(schema),
             }}
           >
             {backgroundDataUrl && (
@@ -169,7 +169,24 @@ function boxStyle(field: TemplateField): React.CSSProperties {
     // Canvas layer order. Fields array order is the member FORM order; paint
     // order is zIndex (ties fall back to DOM order = form order).
     zIndex: field.zIndex ?? 0,
+    // Element opacity (0-100, default 100)
+    opacity: field.opacity !== undefined ? Math.max(0, Math.min(100, field.opacity)) / 100 : undefined,
   };
+}
+
+/** Canvas base fill: gradient → color → white. A background image (rendered
+ * as an <img> above this) still wins visually. Shared with the builder's
+ * edit canvas so every surface paints the same base. */
+export function schemaBackgroundCss(
+  schema: Pick<TemplateSchema, "backgroundColor" | "backgroundGradient">,
+): string {
+  const g = schema.backgroundGradient;
+  if (g?.stops.length) {
+    return `linear-gradient(${g.angle}deg, ${g.stops
+      .map((s) => `${s.color} ${Math.round(s.position * 100)}%`)
+      .join(", ")})`;
+  }
+  return schema.backgroundColor || "#ffffff";
 }
 
 export function cornerRadiusCss(field: TemplateField): string | undefined {

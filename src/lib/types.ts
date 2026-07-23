@@ -120,6 +120,8 @@ export interface TemplateField {
   /** Image fields only: rounded corners, rendered identically in the
    * builder, member preview, and PNG export. */
   cornerRadius?: CornerRadius;
+  /** Element opacity, 0–100 (default 100). */
+  opacity?: number;
   /** Figma node this field was imported from (transient import provenance —
    * used to lift the element off the recomposed background). */
   sourceNodeId?: string;
@@ -174,6 +176,10 @@ export interface TemplateSchema {
   canvasWidth: number;
   canvasHeight: number;
   backgroundUrl: string;
+  /** Canvas base fill for blank-built templates. Precedence when rendering:
+   * background image (backgroundUrl) → gradient → color → white. */
+  backgroundColor?: string;
+  backgroundGradient?: TextGradient;
   fields: TemplateField[];
   captionTemplate: string; // "{name} celebrated {years} incredible years!"
   createdAt: string;

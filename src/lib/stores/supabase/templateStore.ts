@@ -41,6 +41,8 @@ export class SupabaseTemplateStore implements TemplateStore {
         canvas_width: input.canvasWidth,
         canvas_height: input.canvasHeight,
         background_storage_path: input.backgroundUrl || null,
+        background_color: input.backgroundColor ?? null,
+        background_gradient: input.backgroundGradient ?? null,
         caption_template: input.captionTemplate,
       })
       .select()
@@ -61,6 +63,8 @@ export class SupabaseTemplateStore implements TemplateStore {
     if (patch.canvasWidth !== undefined) row.canvas_width = patch.canvasWidth;
     if (patch.canvasHeight !== undefined) row.canvas_height = patch.canvasHeight;
     if (patch.backgroundUrl !== undefined) row.background_storage_path = patch.backgroundUrl || null;
+    if ("backgroundColor" in patch) row.background_color = patch.backgroundColor ?? null;
+    if ("backgroundGradient" in patch) row.background_gradient = patch.backgroundGradient ?? null;
     if (patch.captionTemplate !== undefined) row.caption_template = patch.captionTemplate;
     const { error } = await supabase().from("templates").update(row).eq("id", id);
     if (error) throw error;

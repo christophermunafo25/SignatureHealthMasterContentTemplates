@@ -6,6 +6,7 @@ import type {
   BrandKit,
   CanvasPreset,
   Company,
+  DailyActivityPoint,
   DesignImportResult,
   NewTemplateInput,
   TemplateSchema,
@@ -70,6 +71,8 @@ export interface UsageStore {
   /** Fire-and-forget from SchemaRenderer; failures must never break the UI. */
   record(companyId: string, templateId: string, action: UsageAction, userId?: string): Promise<void>;
   getUsageSummary(companyId: string): Promise<UsageSummary>;
+  /** Zero-filled day buckets for the Insights trend chart. */
+  getDailyActivity(companyId: string, days: number): Promise<DailyActivityPoint[]>;
 }
 
 export interface DesignImportProvider {

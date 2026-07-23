@@ -19,6 +19,7 @@ import type {
   TemplateStore,
   UsageStore,
 } from "../interfaces";
+import { bucketDailyActivity } from "../dailyActivity";
 import { fileToDataUrl, mutate, newId, readDb } from "./db";
 
 // Mirrors supabase/seed.sql — v1 enables only the square preset.
@@ -180,6 +181,13 @@ export class LocalUsageStore implements UsageStore {
       (a, b) => b.downloads - a.downloads || b.opens - a.opens,
     );
     return { rows, totalDownloads: rows.reduce((n, r) => n + r.downloads, 0) };
+  }
+  async getDailyActivity(companyId: string, days: number) {
+    const db = readDb();
+    return bucketDailyActivity(
+      (db.usageEvents as UsageEventRec[]).filter((e) => e.companyId === companyId),
+      days,
+    );
   }
 }
 

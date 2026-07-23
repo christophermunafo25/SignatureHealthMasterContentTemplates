@@ -19,8 +19,9 @@ import { useRouter, type Route } from "../router";
 const LS_COLLAPSED = "sp-sidebar-collapsed";
 
 /** The SocialPaint mark — five bars resolving into a solid square. Recolors
- * via currentColor: lime on dark chrome, deep green on light. */
-function BrandMark({ width = 28 }: { width?: number }) {
+ * via currentColor: lime on dark chrome, deep green on light. Exported for
+ * DS empty states (the mark at low opacity behind the text). */
+export function BrandMark({ width = 28 }: { width?: number }) {
   return (
     <svg viewBox="0 0 164 78" fill="currentColor" style={{ width, height: "auto", display: "block" }} aria-hidden>
       <rect x="0" y="0" width="7" height="78" />

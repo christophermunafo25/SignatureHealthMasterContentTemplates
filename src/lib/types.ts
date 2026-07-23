@@ -191,6 +191,13 @@ export interface UsageSummary {
   totalDownloads: number;
 }
 
+/** One day of activity for the Insights trend chart (date = YYYY-MM-DD). */
+export interface DailyActivityPoint {
+  date: string;
+  opens: number;
+  downloads: number;
+}
+
 /** The values a member has entered for a template's fields, keyed by fieldKey.
  * Image fields hold a data URL. */
 export type FieldValues = Record<string, string>;

@@ -1,16 +1,75 @@
 import React, { useEffect, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Download } from "lucide-react";
-import type { UsageSummary } from "@/lib/types";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Download, Eye, Layers, Percent } from "lucide-react";
+import type { DailyActivityPoint, UsageSummary } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { BrandMark } from "../Sidebar";
 
-/** Admin usage dashboard: most-used templates (downloads primary, opens
- * secondary), per-template table, total exports. Events are recorded inside
- * SchemaRenderer. */
+const TREND_DAYS = 30;
+
+const mono: React.CSSProperties = { fontFamily: "var(--font-mono)" };
+
+const fmtDay = (iso: string) =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+const relativeDay = (iso: string | null): string => {
+  if (!iso) return "—";
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+};
+
+const exportRate = (downloads: number, opens: number): string =>
+  opens === 0 ? "—" : `${Math.round((downloads / opens) * 100)}%`;
+
+interface KpiProps {
+  label: string;
+  value: string;
+  Icon: typeof Download;
+  chip: string; // background token for the icon chip
+}
+
+/** Stat tile — a headline number needs no chart. Values are data → mono. */
+function Kpi({ label, value, Icon, chip }: KpiProps) {
+  return (
+    <div className="sp-card p-5 flex items-center gap-4">
+      <span
+        className="flex items-center justify-center flex-shrink-0"
+        style={{ width: 38, height: 38, borderRadius: "var(--radius-icon)", background: chip }}
+      >
+        <Icon style={{ width: 16, height: 16, color: "#122407" }} />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate" style={{ ...mono, fontSize: 24, lineHeight: 1.1, color: "var(--ink)" }}>
+          {value}
+        </span>
+        <span className="sp-eyebrow block" style={{ marginTop: 3 }}>{label}</span>
+      </span>
+    </div>
+  );
+}
+
+/** Legend chip: colored dot + label + mono total (identity never color-alone). */
+function LegendChip({ color, label, total }: { color: string; label: string; total: number }) {
+  return (
+    <span className="flex items-center gap-1.5" style={{ fontSize: 12, color: "var(--fg-2)" }}>
+      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: color }} />
+      {label}
+      <span style={{ ...mono, fontSize: 11, color: "var(--fg-3)" }}>{total}</span>
+    </span>
+  );
+}
+
+/** Admin usage dashboard: KPI tiles, a 30-day activity trend, a most-used
+ * leaderboard, and the full table. Events are recorded inside SchemaRenderer;
+ * this page only reads. */
 export function Dashboard() {
   const { company } = useAuth();
   const [summary, setSummary] = useState<UsageSummary | null>(null);
+  const [trend, setTrend] = useState<DailyActivityPoint[] | null>(null);
 
   useEffect(() => {
     if (!company) return;
@@ -18,102 +77,197 @@ export function Dashboard() {
       .getUsageSummary(company.id)
       .then(setSummary)
       .catch((e) => console.error("Usage summary failed", e));
+    stores.usage
+      .getDailyActivity(company.id, TREND_DAYS)
+      .then(setTrend)
+      .catch((e) => console.error("Daily activity failed", e));
   }, [company]);
 
   if (!summary) {
     return <p className="text-center py-24" style={{ fontSize: 13, color: "var(--fg-3)" }}>Loading usage…</p>;
   }
 
-  const chartData = summary.rows.slice(0, 10).map((r) => ({
-    name: r.templateName.length > 18 ? `${r.templateName.slice(0, 17)}…` : r.templateName,
-    Downloads: r.downloads,
-    Opens: r.opens,
-  }));
+  const totalOpens = summary.rows.reduce((n, r) => n + r.opens, 0);
+  const activeTemplates = summary.rows.filter((r) => r.opens + r.downloads > 0).length;
+  const trendOpens = (trend ?? []).reduce((n, p) => n + p.opens, 0);
+  const trendDownloads = (trend ?? []).reduce((n, p) => n + p.downloads, 0);
+  const top = summary.rows.slice(0, 8);
+  const maxCount = Math.max(1, ...top.map((r) => Math.max(r.downloads, r.opens)));
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-end justify-between mb-6">
-        <div>
-          <h1 className="sp-page-title">Usage</h1>
-          <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
-            Which templates your team actually uses.
-          </p>
-        </div>
-        <div className="sp-card flex items-center gap-3 px-4 py-3">
-          <span
-            className="flex items-center justify-center"
-            style={{ width: 34, height: 34, borderRadius: "var(--radius-icon)", background: "var(--sand)" }}
-          >
-            <Download style={{ width: 15, height: 15, color: "var(--ink)" }} />
-          </span>
-          <div>
-            <p style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 24, letterSpacing: "-0.5px", color: "var(--ink)", lineHeight: 1 }}>
-              {summary.totalDownloads}
-            </p>
-            <p className="sp-eyebrow" style={{ marginTop: 3 }}>Total exports</p>
-          </div>
-        </div>
+    <div className="max-w-6xl mx-auto px-8 sm:px-12 py-10">
+      <div className="mb-8">
+        <h1 className="sp-page-title">Insights</h1>
+        <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
+          Which templates your team actually uses.
+        </p>
       </div>
 
       {summary.rows.length === 0 ? (
-        <p
-          className="text-center py-20"
-          style={{ fontSize: 13, color: "var(--fg-2)", border: "1.5px dashed var(--hairline-strong)", borderRadius: "var(--radius-card)" }}
-        >
-          No usage yet — events appear as soon as members open and download templates.
-        </p>
+        <div className="sp-card relative overflow-hidden text-center py-20 px-6">
+          <span
+            aria-hidden
+            className="absolute"
+            style={{ right: -40, bottom: -30, opacity: 0.07, color: "var(--ink)" }}
+          >
+            <BrandMark width={280} />
+          </span>
+          <p style={{ fontSize: 14, color: "var(--fg-1)", fontWeight: 500 }}>No usage yet</p>
+          <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 6 }}>
+            Opens and downloads appear here as soon as members start using
+            published templates.
+          </p>
+        </div>
       ) : (
-        <>
-          <div className="sp-card p-5 mb-5">
-            <h2 className="sp-panel-title mb-4">Most-used templates</h2>
-            <div style={{ width: "100%", height: 300 }}>
+        <div className="space-y-5">
+          {/* KPI row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Kpi label="Total exports" value={String(summary.totalDownloads)} Icon={Download} chip="var(--mint)" />
+            <Kpi label="Total opens" value={String(totalOpens)} Icon={Eye} chip="var(--sky)" />
+            <Kpi label="Export rate" value={exportRate(summary.totalDownloads, totalOpens)} Icon={Percent} chip="var(--paper-warm)" />
+            <Kpi label="Templates in use" value={String(activeTemplates)} Icon={Layers} chip="var(--paper-warm)" />
+          </div>
+
+          {/* 30-day trend */}
+          <div className="sp-card p-5">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+              <h2 className="sp-panel-title">Activity — last 30 days</h2>
+              <div className="flex items-center gap-4">
+                <LegendChip color="var(--viz-downloads)" label="Downloads" total={trendDownloads} />
+                <LegendChip color="var(--viz-opens)" label="Opens" total={trendOpens} />
+              </div>
+            </div>
+            <div style={{ width: "100%", height: 220 }}>
               <ResponsiveContainer>
-                <BarChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline)" />
+                <AreaChart data={trend ?? []} margin={{ top: 6, right: 6, left: -18, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="var(--viz-grid)" strokeDasharray="3 3" />
                   <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 11, fontFamily: "var(--font-ui)" }}
-                    interval={0}
-                    angle={-14}
-                    height={50}
-                    textAnchor="end"
+                    dataKey="date"
+                    tickFormatter={fmtDay}
+                    tick={{ fontSize: 10, fontFamily: "var(--font-mono)", fill: "var(--fg-3)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    minTickGap={28}
                   />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fontFamily: "var(--font-ui)" }} />
-                  <Tooltip contentStyle={{ fontFamily: "var(--font-ui)", fontSize: 12, borderRadius: 8, border: "1px solid var(--hairline)" }} />
-                  <Legend wrapperStyle={{ fontSize: 12, fontFamily: "var(--font-ui)" }} />
-                  <Bar dataKey="Downloads" fill="var(--solar)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Opens" fill="var(--amber)" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fontSize: 10, fontFamily: "var(--font-mono)", fill: "var(--fg-3)" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    cursor={{ stroke: "var(--hairline-strong)", strokeDasharray: "3 3" }}
+                    labelFormatter={(v) => fmtDay(String(v))}
+                    contentStyle={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 12,
+                      background: "var(--lift)",
+                      border: "1px solid var(--hairline)",
+                      borderRadius: 10,
+                      color: "var(--ink)",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="downloads"
+                    name="Downloads"
+                    stroke="var(--viz-downloads)"
+                    strokeWidth={2}
+                    fill="var(--viz-downloads)"
+                    fillOpacity={0.14}
+                    dot={false}
+                    activeDot={{ r: 4, strokeWidth: 0 }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="opens"
+                    name="Opens"
+                    stroke="var(--viz-opens)"
+                    strokeWidth={2}
+                    fill="var(--viz-opens)"
+                    fillOpacity={0.14}
+                    dot={false}
+                    activeDot={{ r: 4, strokeWidth: 0 }}
+                  />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="sp-card overflow-hidden overflow-x-auto">
-            <table className="w-full" style={{ fontSize: 13, minWidth: 480 }}>
-              <thead>
-                <tr className="text-left" style={{ borderBottom: "1px solid var(--hairline)" }}>
-                  {["Template", "Opens", "Downloads", "Last used"].map((h) => (
-                    <th key={h} className="sp-eyebrow px-4 py-2.5" style={{ fontWeight: 400 }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {summary.rows.map((r) => (
-                  <tr key={r.templateId} style={{ borderTop: "1px solid var(--hairline)" }}>
-                    <td className="px-4 py-2.5" style={{ color: "var(--ink)", fontWeight: 500 }}>{r.templateName}</td>
-                    <td className="px-4 py-2.5" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--fg-2)" }}>{r.opens}</td>
-                    <td className="px-4 py-2.5" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink)" }}>{r.downloads}</td>
-                    <td className="px-4 py-2.5" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--fg-3)" }}>
-                      {r.lastUsedAt ? new Date(r.lastUsedAt).toLocaleDateString() : "—"}
-                    </td>
-                  </tr>
+          <div className="grid lg:grid-cols-5 gap-5 items-start">
+            {/* Most-used leaderboard */}
+            <div className="sp-card p-5 lg:col-span-2">
+              <h2 className="sp-panel-title mb-4">Most used</h2>
+              <div className="space-y-4">
+                {top.map((r, i) => (
+                  <div key={r.templateId}>
+                    <div className="flex items-baseline justify-between gap-3 mb-1.5">
+                      <span className="flex items-baseline gap-2 min-w-0">
+                        <span style={{ ...mono, fontSize: 10, color: "var(--fg-4)" }}>
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <span className="truncate" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
+                          {r.templateName}
+                        </span>
+                      </span>
+                      <span className="flex-shrink-0" style={{ ...mono, fontSize: 11, color: "var(--fg-3)" }}>
+                        {r.downloads} · {r.opens}
+                      </span>
+                    </div>
+                    {/* thin rounded data bars, 2px apart — downloads then opens */}
+                    <div
+                      aria-hidden
+                      style={{ height: 6, borderRadius: 4, background: "var(--viz-downloads)", width: `${Math.max(2, (r.downloads / maxCount) * 100)}%` }}
+                    />
+                    <div
+                      aria-hidden
+                      style={{ height: 6, borderRadius: 4, background: "var(--viz-opens)", width: `${Math.max(2, (r.opens / maxCount) * 100)}%`, marginTop: 2 }}
+                    />
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+              {summary.rows.length > top.length && (
+                <p className="mt-4" style={{ fontSize: 11, color: "var(--fg-4)" }}>
+                  +{summary.rows.length - top.length} more in the table
+                </p>
+              )}
+              <div className="flex items-center gap-4 mt-5 pt-4" style={{ borderTop: "1px solid var(--hairline)" }}>
+                <LegendChip color="var(--viz-downloads)" label="Downloads" total={summary.totalDownloads} />
+                <LegendChip color="var(--viz-opens)" label="Opens" total={totalOpens} />
+              </div>
+            </div>
+
+            {/* Full table */}
+            <div className="sp-card overflow-hidden overflow-x-auto lg:col-span-3">
+              <table className="w-full" style={{ fontSize: 13, minWidth: 520 }}>
+                <thead>
+                  <tr className="text-left" style={{ borderBottom: "1px solid var(--hairline)" }}>
+                    {["Template", "Opens", "Downloads", "Export rate", "Last used"].map((h) => (
+                      <th key={h} className="sp-eyebrow px-4 py-3" style={{ fontWeight: 400 }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.rows.map((r) => (
+                    <tr key={r.templateId} style={{ borderTop: "1px solid var(--hairline)" }}>
+                      <td className="px-4 py-3" style={{ color: "var(--ink)", fontWeight: 500 }}>{r.templateName}</td>
+                      <td className="px-4 py-3" style={{ ...mono, fontSize: 12, color: "var(--fg-2)" }}>{r.opens}</td>
+                      <td className="px-4 py-3" style={{ ...mono, fontSize: 12, color: "var(--ink)" }}>{r.downloads}</td>
+                      <td className="px-4 py-3" style={{ ...mono, fontSize: 12, color: "var(--fg-2)" }}>
+                        {exportRate(r.downloads, r.opens)}
+                      </td>
+                      <td className="px-4 py-3" style={{ ...mono, fontSize: 12, color: "var(--fg-3)" }}>
+                        {relativeDay(r.lastUsedAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

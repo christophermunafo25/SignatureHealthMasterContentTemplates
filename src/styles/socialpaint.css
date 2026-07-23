@@ -109,6 +109,12 @@
   --btn-primary-fg: #caff5f;
   --btn-primary-bg-hover: color-mix(in srgb, #122407 86%, #fff);
 
+  /* Data-viz series (validated against the light surface — deep green +
+     readable teal; brights are fills-not-marks on light) */
+  --viz-downloads: #122407;
+  --viz-opens: #00919f;
+  --viz-grid: #dddfd4;
+
   /* Sidebar — flat surface (no glass in this system) */
   --sb-width: 264px;
   --sb-width-collapsed: 76px;
@@ -177,6 +183,11 @@
   --btn-primary-bg: #caff5f;
   --btn-primary-fg: #122407;
   --btn-primary-bg-hover: color-mix(in srgb, #caff5f 86%, #fff);
+
+  /* Data-viz series on the dark surface — the brights carry data on dark */
+  --viz-downloads: #caff5f;
+  --viz-opens: #89f6ff;
+  --viz-grid: #333333;
 
   --sb-bg: #242424;
   --sb-border: #333333;

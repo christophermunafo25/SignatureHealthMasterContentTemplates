@@ -1,5 +1,6 @@
-import type { UsageAction, UsageSummary, UsageSummaryRow } from "../../types";
+import type { DailyActivityPoint, UsageAction, UsageSummary, UsageSummaryRow } from "../../types";
 import type { UsageStore } from "../interfaces";
+import { bucketDailyActivity } from "../dailyActivity";
 import { supabase } from "./client";
 
 interface EventRow {
@@ -48,5 +49,24 @@ export class SupabaseUsageStore implements UsageStore {
       (a, b) => b.downloads - a.downloads || b.opens - a.opens,
     );
     return { rows, totalDownloads: rows.reduce((n, r) => n + r.downloads, 0) };
+  }
+
+  async getDailyActivity(companyId: string, days: number): Promise<DailyActivityPoint[]> {
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    since.setDate(since.getDate() - (days - 1));
+    const { data, error } = await supabase()
+      .from("usage_events")
+      .select("action, created_at")
+      .eq("company_id", companyId)
+      .gte("created_at", since.toISOString());
+    if (error) throw error;
+    return bucketDailyActivity(
+      (data as Array<{ action: UsageAction; created_at: string }>).map((e) => ({
+        action: e.action,
+        createdAt: e.created_at,
+      })),
+      days,
+    );
   }
 }

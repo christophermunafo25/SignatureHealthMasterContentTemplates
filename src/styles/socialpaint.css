@@ -207,6 +207,10 @@ html {
   letter-spacing: -0.015em; /* Inter Tight at -1% per the DS body spec */
   color: var(--fg-1);
   background: var(--linen);
+  /* The page never scrolls horizontally — wide content (tables, canvases)
+     scrolls inside its own container. Clipping on html propagates to the
+     viewport, so position: sticky keeps working. */
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

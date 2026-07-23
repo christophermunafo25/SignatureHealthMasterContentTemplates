@@ -6,7 +6,10 @@ import { Sidebar } from "./Sidebar";
  * brand kits style the graphics, never this shell. */
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex" style={{ background: "var(--linen)", fontFamily: "var(--font-ui)" }}>
+    <div
+      className="min-h-screen flex flex-col lg:flex-row"
+      style={{ background: "var(--linen)", fontFamily: "var(--font-ui)" }}
+    >
       <Sidebar />
       <main className="flex-1 min-w-0">{children}</main>
     </div>

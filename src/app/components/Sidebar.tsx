@@ -3,6 +3,7 @@ import {
   BarChart3,
   Frame,
   LogOut,
+  Menu,
   Monitor,
   Moon,
   Paintbrush,
@@ -11,6 +12,7 @@ import {
   Settings,
   Sun,
   Users,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useColorScheme, type ColorScheme } from "@/lib/colorScheme";
@@ -99,53 +101,10 @@ function ThemeToggle() {
   );
 }
 
-/** Persistent app-shell sidebar (Figma KFBFgZBs7Tl9LXovzNUaNP node 13:28):
- * glass panel, full viewport height, right corners rounded, logo + collapse
- * toggle up top, role-gated nav, user block pinned to the bottom. This is
- * SocialPaint product UI — tenant brand kits never re-color it. */
-export function Sidebar() {
+/** Workspace switcher + dev role toggle + user row — shared between the
+ * desktop sidebar's bottom block and the mobile dropdown. */
+function AccountBlock({ onNavigate }: { onNavigate(route: Route): void }) {
   const { company, companies, role, user, isDevAuth, setCompany, setRole, signOut, backend } = useAuth();
-  const { route, navigate } = useRouter();
-  // Narrow viewports (<1024px) always get the icon rail; expanding there
-  // opens the panel as an OVERLAY above the content instead of pushing it —
-  // a 264px panel would otherwise crush a phone's content to a sliver.
-  const [isNarrow, setIsNarrow] = useState(() => window.matchMedia("(max-width: 1023px)").matches);
-  const [overlayOpen, setOverlayOpen] = useState(false);
-  const [collapsedPref, setCollapsedPref] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(LS_COLLAPSED) === "1";
-    } catch {
-      return false;
-    }
-  });
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 1023px)");
-    const onChange = () => {
-      setIsNarrow(mq.matches);
-      setOverlayOpen(false);
-    };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(LS_COLLAPSED, collapsedPref ? "1" : "0");
-    } catch {
-      // persistence is best-effort
-    }
-  }, [collapsedPref]);
-
-  const collapsed = isNarrow ? !overlayOpen : collapsedPref;
-  const toggle = () => (isNarrow ? setOverlayOpen((o) => !o) : setCollapsedPref((c) => !c));
-  /** Close the overlay after any navigation on narrow screens. */
-  const go = (target: Route) => {
-    navigate(target);
-    if (isNarrow) setOverlayOpen(false);
-  };
-
-  const items = NAV.filter((item) => role === "admin" || !item.adminOnly);
   const initials = (user?.email ?? company?.name ?? "?")
     .split(/[@\s._-]+/)
     .filter(Boolean)
@@ -158,94 +117,11 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Scrim behind the narrow-screen overlay panel */}
-      {isNarrow && overlayOpen && (
-        <div
-          className="fixed inset-0"
-          style={{ background: "rgba(26,23,26,0.4)", zIndex: 29 }}
-          onClick={() => setOverlayOpen(false)}
-          aria-hidden
-        />
-      )}
-    {/* The wrapper reserves layout space (always just the rail on narrow
-        screens) so the overlay panel never reflows the content behind it. */}
-    <div
-      className="flex-shrink-0"
-      style={{
-        width: isNarrow || collapsedPref ? "var(--sb-width-collapsed)" : "var(--sb-width)",
-        transition: "width 0.2s ease",
-      }}
-    >
-    <aside
-      className="sp-sidebar flex flex-col"
-      style={{
-        position: isNarrow && overlayOpen ? "fixed" : "sticky",
-        left: isNarrow && overlayOpen ? 0 : undefined,
-        top: 0,
-        width: collapsed ? "var(--sb-width-collapsed)" : "var(--sb-width)",
-        height: "100vh",
-        padding: collapsed ? "20px 12px" : "24px 20px",
-        transition: "width 0.2s ease",
-        zIndex: 30,
-      }}
-    >
-      {/* Logo + collapse toggle */}
-      <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} mb-7`}>
-        {!collapsed && (
-          <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} title="Home" aria-label="SocialPaint — home">
-            <BrandLockup />
-          </button>
-        )}
-        <button
-          onClick={toggle}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="flex items-center justify-center rounded-md flex-shrink-0"
-          style={{ width: 26, height: 26, color: "var(--sb-fg)", border: "1.5px solid var(--sb-border)" }}
-        >
-          <PanelLeft style={{ width: 13, height: 13 }} />
-        </button>
-      </div>
-      {collapsed && (
-        <button
-          onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })}
-          title="SocialPaint — home"
-          className="mx-auto mb-6"
-          style={{ color: "var(--solar)" }}
-        >
-          <BrandMark width={26} />
-        </button>
-      )}
-
-      {/* Nav — scrolls on short viewports so the user block stays reachable */}
-      <nav className="flex flex-col gap-3.5 flex-1 min-h-0 overflow-y-auto" aria-label="Primary">
-        {items.map(({ label, route: target, Icon, matches }) => {
-          const active = matches.includes(route.name);
-          return (
-            <button
-              key={label}
-              onClick={() => go(target)}
-              className="sp-sidebar-item"
-              data-active={active}
-              title={collapsed ? label : undefined}
-              aria-current={active ? "page" : undefined}
-              style={collapsed ? { justifyContent: "center", padding: 0 } : undefined}
-            >
-              <Icon style={{ width: 17, height: 17, flexShrink: 0 }} />
-              {!collapsed && label}
-            </button>
-          );
-        })}
-      </nav>
-
-      <div style={{ height: 16 }} />
-
-      {/* Dev/backends controls + user block pinned to the bottom */}
-      {!collapsed && (companies.length > 1 || isDevAuth) && (
+      {(companies.length > 1 || isDevAuth) && (
         <select
           value={company?.id ?? ""}
           onChange={(e) => {
-            if (e.target.value === "__new__") go({ name: "onboarding" });
+            if (e.target.value === "__new__") onNavigate({ name: "onboarding" });
             else void setCompany(e.target.value);
           }}
           className="sp-input mb-2"
@@ -258,7 +134,7 @@ export function Sidebar() {
           <option value="__new__">+ Create company…</option>
         </select>
       )}
-      {!collapsed && isDevAuth && (
+      {isDevAuth && (
         <div className="flex items-center gap-1 mb-3" role="group" aria-label="Dev role (localStorage backend)">
           {(["admin", "member"] as const).map((r) => (
             <button
@@ -277,50 +153,277 @@ export function Sidebar() {
           ))}
         </div>
       )}
-
-      <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
+      <div className="flex items-center gap-3">
         <span
           className="flex items-center justify-center flex-shrink-0"
           title={`${displayName}${company ? ` · ${company.name}` : ""} · ${role}${backend === "local" ? " · dev backend" : ""}`}
           style={{
-            width: collapsed ? 34 : 42,
-            height: collapsed ? 34 : 42,
+            width: 38,
+            height: 38,
             borderRadius: 999,
             background: "var(--mint)", // flat fill — gradients are banned as surface treatment
             color: "#122407",
-            fontSize: collapsed ? 11 : 13,
+            fontSize: 12,
             fontWeight: 600,
           }}
         >
           {initials}
         </span>
-        {!collapsed && (
-          <>
-            <span className="min-w-0 flex-1 text-left">
-              <span className="block truncate" style={{ fontSize: 13, fontWeight: 500, color: "var(--sb-fg-active)" }}>
-                {displayName}
-              </span>
-              <span className="block truncate" style={{ fontSize: 11, color: "var(--sb-fg)" }}>
-                {user?.email ?? `${company?.name ?? "Workspace"} · ${role}`}
-              </span>
-            </span>
-            <ThemeToggle />
-            {signOut && (
-              <button
-                onClick={() => void signOut()}
-                title="Sign out"
-                aria-label="Sign out"
-                className="flex items-center justify-center rounded-lg flex-shrink-0"
-                style={{ width: 28, height: 28, color: "var(--sb-fg)" }}
-              >
-                <LogOut style={{ width: 14, height: 14 }} />
-              </button>
-            )}
-          </>
+        <span className="min-w-0 flex-1 text-left">
+          <span className="block truncate" style={{ fontSize: 13, fontWeight: 500, color: "var(--sb-fg-active)" }}>
+            {displayName}
+          </span>
+          <span className="block truncate" style={{ fontSize: 11, color: "var(--sb-fg)" }}>
+            {user?.email ?? `${company?.name ?? "Workspace"} · ${role}`}
+          </span>
+        </span>
+        <ThemeToggle />
+        {signOut && (
+          <button
+            onClick={() => void signOut()}
+            title="Sign out"
+            aria-label="Sign out"
+            className="flex items-center justify-center rounded-lg flex-shrink-0"
+            style={{ width: 28, height: 28, color: "var(--sb-fg)" }}
+          >
+            <LogOut style={{ width: 14, height: 14 }} />
+          </button>
         )}
       </div>
-    </aside>
+    </>
+  );
+}
+
+/** App-shell navigation. Desktop (≥1024px): the persistent left sidebar
+ * (Figma node 13:28) with a collapsible icon rail. Mobile: no rail at all —
+ * a slim top bar with the brand and a menu button; the nav drops down
+ * vertically from the top as a panel over a scrim. SocialPaint product UI —
+ * tenant brand kits never re-color it. */
+export function Sidebar() {
+  const { role } = useAuth();
+  const { route, navigate } = useRouter();
+  const [isNarrow, setIsNarrow] = useState(() => window.matchMedia("(max-width: 1023px)").matches);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsedPref, setCollapsedPref] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(LS_COLLAPSED) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const onChange = () => {
+      setIsNarrow(mq.matches);
+      setMenuOpen(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_COLLAPSED, collapsedPref ? "1" : "0");
+    } catch {
+      // persistence is best-effort
+    }
+  }, [collapsedPref]);
+
+  // Escape closes the mobile menu.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
+  const go = (target: Route) => {
+    navigate(target);
+    setMenuOpen(false);
+  };
+
+  const items = NAV.filter((item) => role === "admin" || !item.adminOnly);
+
+  // ── Mobile: top bar + drop-down navigation ──────────────────────────────
+  if (isNarrow) {
+    return (
+      <>
+        {menuOpen && (
+          <div
+            className="fixed inset-0"
+            style={{ background: "rgba(18,36,7,0.4)", zIndex: 39 }}
+            onClick={() => setMenuOpen(false)}
+            aria-hidden
+          />
+        )}
+        <header
+          className="sticky top-0 w-full"
+          style={{ background: "var(--sb-bg)", borderBottom: "1px solid var(--sb-border)", zIndex: 40 }}
+        >
+          <div className="flex items-center justify-between px-4" style={{ height: 56 }}>
+            <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} aria-label="SocialPaint — home">
+              <BrandLockup />
+            </button>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-expanded={menuOpen}
+              aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+              className="flex items-center justify-center rounded-md"
+              style={{ width: 36, height: 36, color: "var(--sb-fg-active)", border: "1px solid var(--sb-border)" }}
+            >
+              {menuOpen ? <X style={{ width: 16, height: 16 }} /> : <Menu style={{ width: 16, height: 16 }} />}
+            </button>
+          </div>
+
+          {/* Drop-down panel — slides down from under the bar */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateRows: menuOpen ? "1fr" : "0fr",
+              transition: "grid-template-rows var(--dur-panel) var(--ease)",
+            }}
+          >
+            <div style={{ overflow: "hidden" }}>
+              <nav
+                aria-label="Primary"
+                className="px-3 pb-3 pt-1"
+                style={{ maxHeight: "calc(100vh - 72px)", overflowY: "auto" }}
+              >
+                <div className="flex flex-col gap-1.5">
+                  {items.map(({ label, route: target, Icon, matches }) => {
+                    const active = matches.includes(route.name);
+                    return (
+                      <button
+                        key={label}
+                        onClick={() => go(target)}
+                        className="sp-sidebar-item"
+                        data-active={active}
+                        aria-current={active ? "page" : undefined}
+                      >
+                        <Icon style={{ width: 17, height: 17, flexShrink: 0 }} />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--sb-border)" }}>
+                  <AccountBlock onNavigate={go} />
+                </div>
+              </nav>
+            </div>
+          </div>
+        </header>
+      </>
+    );
+  }
+
+  // ── Desktop: persistent left sidebar ────────────────────────────────────
+  const collapsed = collapsedPref;
+  return (
+    <div
+      className="flex-shrink-0"
+      style={{
+        width: collapsed ? "var(--sb-width-collapsed)" : "var(--sb-width)",
+        transition: "width 0.2s ease",
+      }}
+    >
+      <aside
+        className="sp-sidebar flex flex-col sticky top-0"
+        style={{
+          width: collapsed ? "var(--sb-width-collapsed)" : "var(--sb-width)",
+          height: "100vh",
+          padding: collapsed ? "20px 12px" : "24px 20px",
+          transition: "width 0.2s ease",
+          zIndex: 30,
+        }}
+      >
+        {/* Logo + collapse toggle */}
+        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} mb-7`}>
+          {!collapsed && (
+            <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} title="Home" aria-label="SocialPaint — home">
+              <BrandLockup />
+            </button>
+          )}
+          <button
+            onClick={() => setCollapsedPref((c) => !c)}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="flex items-center justify-center rounded-md flex-shrink-0"
+            style={{ width: 26, height: 26, color: "var(--sb-fg)", border: "1.5px solid var(--sb-border)" }}
+          >
+            <PanelLeft style={{ width: 13, height: 13 }} />
+          </button>
+        </div>
+        {collapsed && (
+          <button
+            onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })}
+            title="SocialPaint — home"
+            className="mx-auto mb-6"
+            style={{ color: "var(--solar)" }}
+          >
+            <BrandMark width={26} />
+          </button>
+        )}
+
+        {/* Nav — scrolls on short viewports so the user block stays reachable */}
+        <nav className="flex flex-col gap-3.5 flex-1 min-h-0 overflow-y-auto" aria-label="Primary">
+          {items.map(({ label, route: target, Icon, matches }) => {
+            const active = matches.includes(route.name);
+            return (
+              <button
+                key={label}
+                onClick={() => go(target)}
+                className="sp-sidebar-item"
+                data-active={active}
+                title={collapsed ? label : undefined}
+                aria-current={active ? "page" : undefined}
+                style={collapsed ? { justifyContent: "center", padding: 0 } : undefined}
+              >
+                <Icon style={{ width: 17, height: 17, flexShrink: 0 }} />
+                {!collapsed && label}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div style={{ height: 16 }} />
+
+        {!collapsed ? (
+          <AccountBlock onNavigate={go} />
+        ) : (
+          <div className="flex justify-center">
+            <span
+              className="flex items-center justify-center"
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 999,
+                background: "var(--mint)",
+                color: "#122407",
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+            >
+              <CollapsedInitials />
+            </span>
+          </div>
+        )}
+      </aside>
     </div>
+  );
+}
+
+function CollapsedInitials() {
+  const { company, user } = useAuth();
+  return (
+    <>
+      {(user?.email ?? company?.name ?? "?")
+        .split(/[@\s._-]+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((s) => s[0]!.toUpperCase())
+        .join("")}
     </>
   );
 }

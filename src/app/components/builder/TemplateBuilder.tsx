@@ -8,8 +8,10 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Redo2,
   Save,
   Send,
+  Undo2,
   Upload,
 } from "lucide-react";
 import type {
@@ -21,6 +23,7 @@ import type {
 } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
+import { useHistory } from "@/lib/useHistory";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { ErrorState } from "../ErrorState";
@@ -57,6 +60,8 @@ import { composeFigmaBackground } from "@/lib/figma/composeLayers";
  * The member path (Portal / TemplateUsePage) stays fully responsive. */
 const BUILDER_MIN_VIEWPORT_PX = 1024;
 
+const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+
 function useViewportAtLeast(px: number): boolean {
   const [matches, setMatches] = useState(
     () => window.matchMedia(`(min-width: ${px}px)`).matches,
@@ -88,7 +93,19 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     [templateId],
   );
   const [savedId, setSavedId] = useState<string | null>(templateId);
-  const [draft, setDraft] = useState<NewTemplateInput>(() => ({
+  // Draft state lives inside the history hook so EVERY mutation path —
+  // setFields, patchField, deletes, background, name/caption/details — is
+  // undoable. setDraft keeps the setState signature; the optional second
+  // argument is a coalesce key for keystroke-stream sources.
+  const {
+    state: draft,
+    set: setDraft,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    reset: resetHistory,
+  } = useHistory<NewTemplateInput>(() => ({
     companyId: company?.id ?? "",
     name: "",
     description: "",
@@ -132,18 +149,19 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     // dimensions always flow preset → schema → renderer/export.
     if (presetsState.status !== "ready" || templateId) return;
     const first = presetsState.data[0];
-    if (first) setDraft((d) => ({ ...d, canvasWidth: first.width, canvasHeight: first.height }));
-  }, [presetsState, templateId]);
+    // Baseline, not an edit: applying the preset dims must not be undoable.
+    if (first) resetHistory((d) => ({ ...d, canvasWidth: first.width, canvasHeight: first.height }));
+  }, [presetsState, templateId, resetHistory]);
 
   useEffect(() => {
     if (templateState.status !== "ready" || !templateState.data) return;
     const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = templateState.data;
-    setDraft(rest);
+    resetHistory(rest); // loading installs a fresh baseline — no undo across it
     savedSnapshotRef.current = JSON.stringify(rest);
     // Editing an existing template: every step is already completed.
     setVisited(new Set<WizardStep>(["name", "fields", "caption", "details"]));
     setStep("fields");
-  }, [templateState]);
+  }, [templateState, resetHistory]);
 
   const sourceChosen = started || Boolean(draft.backgroundUrl);
   const nameComplete = Boolean(draft.name.trim());
@@ -194,16 +212,22 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   /** Patch one field; when the patch re-derives the merge tag, rewrite the
    * caption template so existing {old_key} references follow the rename. */
   const patchField = useCallback((id: string, patch: Partial<TemplateField>) => {
-    setDraft((d) => {
-      const prev = d.fields.find((f) => f.id === id);
-      const fields = d.fields.map((f) => (f.id === id ? { ...f, ...patch } : f));
-      const captionTemplate =
-        prev && patch.fieldKey && patch.fieldKey !== prev.fieldKey
-          ? retagCaption(d.captionTemplate, prev.fieldKey, patch.fieldKey)
-          : d.captionTemplate;
-      return { ...d, fields, captionTemplate };
-    });
-  }, []);
+    setDraft(
+      (d) => {
+        const prev = d.fields.find((f) => f.id === id);
+        const fields = d.fields.map((f) => (f.id === id ? { ...f, ...patch } : f));
+        const captionTemplate =
+          prev && patch.fieldKey && patch.fieldKey !== prev.fieldKey
+            ? retagCaption(d.captionTemplate, prev.fieldKey, patch.fieldKey)
+            : d.captionTemplate;
+        return { ...d, fields, captionTemplate };
+      },
+      // Same field + same properties inside the window = one undo entry, so a
+      // keystroke stream in the label input or a color scrub isn't forty
+      // steps. Distinct properties (or a pause) still push separately.
+      `patch:${id}:${Object.keys(patch).sort().join(",")}`,
+    );
+  }, [setDraft]);
 
   const maxZ = (fields: TemplateField[]) => fields.reduce((m, f) => Math.max(m, f.zIndex ?? 0), 0);
 
@@ -307,10 +331,16 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   useEffect(() => {
     if (step !== "fields" || mode !== "edit") return;
     const handler = (e: KeyboardEvent) => {
-      if (isTypingTarget(e)) return;
+      if (isTypingTarget(e)) return; // native text undo stays native
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
-      if (mod && key === "c" && selectedIds.length) {
+      if (mod && key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((mod && key === "z" && e.shiftKey) || (mod && key === "y")) {
+        e.preventDefault();
+        redo();
+      } else if (mod && key === "c" && selectedIds.length) {
         e.preventDefault();
         copyFields(selectedIds);
       } else if (mod && key === "x" && selectedIds.length) {
@@ -331,7 +361,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [step, mode, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, deleteFields]);
+  }, [step, mode, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, deleteFields, undo, redo]);
 
   // -------------------------------------------------------------------------
   // Source, save, publish
@@ -371,7 +401,9 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         ? await stores.templates.update(savedId, payload)
         : await stores.templates.create(payload);
       setSavedId(saved.id);
-      setDraft((d) => {
+      // A save is a history boundary: undo must not cross back into a field
+      // set the store no longer has.
+      resetHistory((d) => {
         const next = { ...d, status: saved.status };
         savedSnapshotRef.current = JSON.stringify(next);
         return next;
@@ -740,7 +772,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                 <input
                   autoFocus
                   value={draft.name}
-                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }), "text:name")}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && nameComplete) goTo("fields");
                   }}
@@ -777,7 +809,32 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                         ? "Drag elements from the palette onto the canvas. Drag to move, handles resize, top handle rotates. Right-click for copy/paste."
                         : "Member preview — placeholder content, locked styling."}
                     </p>
-                    <div className="flex rounded-lg overflow-hidden flex-shrink-0" style={{ border: "1px solid var(--hairline-strong)" }}>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                    {mode === "edit" && (
+                      <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--hairline-strong)" }}>
+                        <button
+                          onClick={undo}
+                          disabled={!canUndo}
+                          title={`Undo (${isMac ? "⌘" : "Ctrl+"}Z)`}
+                          aria-label="Undo"
+                          className="px-2.5 py-1.5"
+                          style={{ background: "var(--lift)", color: canUndo ? "var(--fg-2)" : "var(--fg-4)", cursor: canUndo ? "pointer" : "default" }}
+                        >
+                          <Undo2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={redo}
+                          disabled={!canRedo}
+                          title={`Redo (${isMac ? "⇧⌘" : "Ctrl+Shift+"}Z)`}
+                          aria-label="Redo"
+                          className="px-2.5 py-1.5"
+                          style={{ background: "var(--lift)", color: canRedo ? "var(--fg-2)" : "var(--fg-4)", cursor: canRedo ? "pointer" : "default", borderLeft: "1px solid var(--hairline)" }}
+                        >
+                          <Redo2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--hairline-strong)" }}>
                       {(["edit", "preview"] as const).map((m) => (
                         <button
                           key={m}
@@ -794,6 +851,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                           {m}
                         </button>
                       ))}
+                    </div>
                     </div>
                   </div>
                   {mode === "edit" ? (
@@ -877,7 +935,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                       <ColorControl
                         ariaLabel="Template background color"
                         value={draft.backgroundColor ?? "#ffffff"}
-                        onChange={(hex) => setDraft((d) => ({ ...d, backgroundColor: hex }))}
+                        onChange={(hex) => setDraft((d) => ({ ...d, backgroundColor: hex }), "bg:color")}
                       />
                     </div>
                     <GradientEditor
@@ -887,7 +945,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                         { position: 0, color: kit?.colors[0]?.hex ?? "#CAFF5F" },
                         { position: 1, color: kit?.colors[1]?.hex ?? "#122407" },
                       ]}
-                      onChange={(backgroundGradient) => setDraft((d) => ({ ...d, backgroundGradient }))}
+                      onChange={(backgroundGradient) => setDraft((d) => ({ ...d, backgroundGradient }), "bg:gradient")}
                     />
                     <div className="space-y-2">
                       <label className="sp-eyebrow block">Background image</label>
@@ -951,7 +1009,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                 <CaptionEditor
                   value={draft.captionTemplate}
                   fields={draft.fields}
-                  onChange={(captionTemplate) => setDraft((d) => ({ ...d, captionTemplate }))}
+                  onChange={(captionTemplate) => setDraft((d) => ({ ...d, captionTemplate }), "text:caption")}
                 />
               </div>
             </div>
@@ -971,24 +1029,27 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                 </div>
                 <input
                   value={draft.description}
-                  onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+                  onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }), "text:description")}
                   placeholder="Short description shown on the portal card"
                   className="sp-input"
                 />
                 <div className="grid grid-cols-2 gap-3">
                   <input
                     value={draft.category}
-                    onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
+                    onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }), "text:category")}
                     placeholder="Category"
                     className="sp-input"
                   />
                   <input
                     value={draft.tags.join(", ")}
                     onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean),
-                      }))
+                      setDraft(
+                        (d) => ({
+                          ...d,
+                          tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean),
+                        }),
+                        "text:tags",
+                      )
                     }
                     placeholder="Tags (comma-separated)"
                     className="sp-input"

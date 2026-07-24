@@ -15,7 +15,6 @@ import {
 import type {
   CanvasPreset,
   DesignImportResult,
-  FieldType,
   NewTemplateInput,
   TemplateField,
   TemplateSchema,
@@ -219,9 +218,10 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   };
 
   /** Primary path: a palette element dropped (or clicked) onto the canvas —
-   * pre-sized, pre-typed, and immediately open for naming. */
-  const addPaletteField = (type: FieldType, at?: { x: number; y: number }) => {
-    const item = PALETTE_ITEMS.find((p) => p.type === type);
+   * pre-sized, pre-typed; fields immediately open for naming (shapes don't
+   * need a name — they're design-only). */
+  const addPaletteField = (paletteId: string, at?: { x: number; y: number }) => {
+    const item = PALETTE_ITEMS.find((p) => p.id === paletteId);
     if (!item) return;
     const point = at ?? { x: draft.canvasWidth / 2, y: draft.canvasHeight / 2 };
     const field = fieldFromPalette(item, point, draft.fields, kit, {
@@ -230,7 +230,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     });
     setFields([...draft.fields, field]);
     setSelectedIds([field.id]);
-    setFocusLabelFieldId(field.id);
+    if (item.type !== "shape") setFocusLabelFieldId(field.id);
   };
 
   // The naming focus applies only while the just-added field stays the sole
@@ -699,7 +699,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           {step === "fields" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
               <div className="lg:col-span-3 space-y-4 w-full max-w-xl mx-auto lg:max-w-none">
-                {mode === "edit" && <ElementPalette onAdd={(type) => addPaletteField(type)} />}
+                {mode === "edit" && <ElementPalette onAdd={(id) => addPaletteField(id)} />}
                 <FieldListPanel
                   fields={draft.fields}
                   selectedIds={selectedIds}
@@ -751,7 +751,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                       onSelect={setSelectedIds}
                       onChange={setFields}
                       onDraw={addDrawnField}
-                      onDropElement={(type, at) => addPaletteField(type, at)}
+                      onDropElement={(id, at) => addPaletteField(id, at)}
                       onContextMenu={(pos, fieldId, canvasPoint) =>
                         setMenu({ x: pos.x, y: pos.y, fieldId, canvasPoint })
                       }

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Moveable from "react-moveable";
-import type { FieldType, TemplateField } from "@/lib/types";
+import type { TemplateField } from "@/lib/types";
 import { useDataUrl } from "@/lib/render/useDataUrl";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { loadGoogleFonts } from "@/lib/render/fonts";
@@ -21,7 +21,7 @@ interface FieldOverlayEditorProps {
   /** Secondary path: the admin drew a raw box (canvas-space rect). */
   onDraw(rect: { x: number; y: number; width: number; height: number }): void;
   /** Primary path: a palette element was dropped at a canvas point. */
-  onDropElement(type: FieldType, at: { x: number; y: number }): void;
+  onDropElement(paletteId: string, at: { x: number; y: number }): void;
   /** Right-click on a field (id) or empty canvas (null, with canvas point). */
   onContextMenu(pos: { x: number; y: number }, fieldId: string | null, canvasPoint: { x: number; y: number }): void;
 }
@@ -178,10 +178,10 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
         }
       }}
       onDrop={(e) => {
-        const type = e.dataTransfer.getData(PALETTE_MIME) as FieldType;
-        if (!type) return;
+        const paletteId = e.dataTransfer.getData(PALETTE_MIME);
+        if (!paletteId) return;
         e.preventDefault();
-        onDropElement(type, toCanvas(e));
+        onDropElement(paletteId, toCanvas(e));
       }}
       onContextMenu={(e) => {
         const target = e.target as HTMLElement;

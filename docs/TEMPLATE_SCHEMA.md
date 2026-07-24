@@ -46,6 +46,11 @@ Types:
   renders identically in the builder, member preview, and PNG export because
   all three go through `SchemaRenderer`.
 - `select` — fixed `options` list.
+- `shape` — decorative design element (`shape`: rect | ellipse | triangle |
+  star; a "Line" is a thin rect). Fill reuses the text pipeline (`colorHex` /
+  brand `colorKey` / `textGradient`); rects honor `cornerRadius`; non-rects
+  render as inline SVG so gradients survive the PNG export. Always
+  `static: true` — shapes never appear in the member form.
 
 Brand binding (the rules engine — OPTIONAL, an opt-in reuse convenience;
 admins style fields freely and directly by default):

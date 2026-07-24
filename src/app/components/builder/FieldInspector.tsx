@@ -56,6 +56,14 @@ const FIELD_TYPES: Array<{ value: FieldType; label: string }> = [
   { value: "multiline", label: "Text (multi-line)" },
   { value: "image", label: "Image" },
   { value: "select", label: "Dropdown" },
+  { value: "shape", label: "Shape" },
+];
+
+const SHAPE_KINDS: Array<{ value: NonNullable<TemplateField["shape"]>; label: string }> = [
+  { value: "rect", label: "Rectangle" },
+  { value: "ellipse", label: "Ellipse" },
+  { value: "triangle", label: "Triangle" },
+  { value: "star", label: "Star" },
 ];
 
 const labelClass = "sp-eyebrow block mb-1";
@@ -227,6 +235,7 @@ export function FieldInspector({
   const { kit, assets } = useBrand();
   const { company } = useAuth();
   const isText = field.type === "text" || field.type === "multiline" || field.type === "select";
+  const isShape = field.type === "shape";
   const isStatic = Boolean(field.static);
   const boundStyle = getTypeStyle(kit, field.typeStyleKey);
   const locked = lockedProperties(boundStyle);
@@ -337,15 +346,44 @@ export function FieldInspector({
             className={controlClass}
             style={controlStyle}
             value={field.type}
-            onChange={(e) => onChange({ type: e.target.value as FieldType })}
+            onChange={(e) => {
+              const t = e.target.value as FieldType;
+              if (t === "shape") {
+                // Shapes are always static design elements with a fill.
+                onChange({ type: t, shape: field.shape ?? "rect", static: true, colorHex: field.colorHex ?? "#d9d9d9" });
+              } else if (isShape) {
+                onChange({ type: t, shape: undefined, static: undefined, staticValue: undefined });
+              } else {
+                onChange({ type: t });
+              }
+            }}
           >
-            {FIELD_TYPES.filter((t) => !isStatic || t.value !== "select").map((t) => (
+            {FIELD_TYPES.filter((t) => !isStatic || isShape || t.value !== "select").map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
         </div>
 
-        {field.type !== "select" && (
+        {isShape && (
+          <div>
+            <label className={labelClass} style={labelStyle}>Shape</label>
+            <select
+              className={controlClass}
+              style={controlStyle}
+              value={field.shape ?? "rect"}
+              onChange={(e) => onChange({ shape: e.target.value as TemplateField["shape"] })}
+            >
+              {SHAPE_KINDS.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+            <p style={{ fontSize: 11, color: "var(--fg-3)", marginTop: 4 }}>
+              Shapes are design-only — members never see them as fields.
+            </p>
+          </div>
+        )}
+
+        {field.type !== "select" && !isShape && (
           <label
             className="flex items-start gap-2 cursor-pointer"
             style={{ fontSize: 13, color: "var(--ink)" }}
@@ -575,7 +613,7 @@ export function FieldInspector({
             />
           </div>
         </div>
-        {field.type === "image" && (
+        {(field.type === "image" || (isShape && (field.shape ?? "rect") === "rect")) && (
           <CornerRadiusControl
             value={field.cornerRadius}
             onChange={(cornerRadius) => onChange({ cornerRadius })}
@@ -731,8 +769,8 @@ export function FieldInspector({
         </Section>
       )}
 
-      {/* Fill — text color */}
-      {isText && (
+      {/* Fill — text color / shape fill */}
+      {(isText || isShape) && (
         <Section id="fill" title="Fill">
           <ColorControl
             ariaLabel="Field text color"

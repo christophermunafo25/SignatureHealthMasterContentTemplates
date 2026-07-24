@@ -3,27 +3,38 @@
 // The fields ARRAY order is the member form order; paint order is zIndex —
 // two separate concerns, never conflated.
 
-import type { BrandKit, FieldType, TemplateField } from "@/lib/types";
+import type { BrandKit, FieldType, ShapeKind, TemplateField } from "@/lib/types";
 import { newId } from "@/lib/stores/local/db";
 import { suggestFieldKey } from "@/lib/caption";
 
 export interface PaletteItem {
+  /** Stable id carried through drag-and-drop (shapes share type "shape"). */
+  id: string;
   type: FieldType;
+  shape?: ShapeKind;
   label: string;
   width: number;
   height: number;
+  /** Field group vs decorative shape group in the palette. */
+  group: "fields" | "shapes";
 }
 
 /** The draggable element palette. Dropping one creates a pre-sized, pre-typed
- * field that immediately opens for naming. */
+ * element; fields immediately open for naming. Shapes are always static —
+ * design-only, never in the member form. A line is a thin rect. */
 export const PALETTE_ITEMS: PaletteItem[] = [
-  { type: "text", label: "Text", width: 480, height: 90 },
-  { type: "multiline", label: "Multiline text", width: 520, height: 220 },
-  { type: "image", label: "Image", width: 420, height: 420 },
-  { type: "select", label: "Dropdown", width: 480, height: 90 },
+  { id: "text", type: "text", label: "Text", width: 480, height: 90, group: "fields" },
+  { id: "multiline", type: "multiline", label: "Multiline text", width: 520, height: 220, group: "fields" },
+  { id: "image", type: "image", label: "Image", width: 420, height: 420, group: "fields" },
+  { id: "select", type: "select", label: "Dropdown", width: 480, height: 90, group: "fields" },
+  { id: "rect", type: "shape", shape: "rect", label: "Rectangle", width: 420, height: 300, group: "shapes" },
+  { id: "ellipse", type: "shape", shape: "ellipse", label: "Ellipse", width: 320, height: 320, group: "shapes" },
+  { id: "triangle", type: "shape", shape: "triangle", label: "Triangle", width: 320, height: 280, group: "shapes" },
+  { id: "star", type: "shape", shape: "star", label: "Star", width: 320, height: 320, group: "shapes" },
+  { id: "line", type: "shape", shape: "rect", label: "Line", width: 480, height: 8, group: "shapes" },
 ];
 
-/** dataTransfer MIME key for palette drags. */
+/** dataTransfer MIME key for palette drags (payload = PaletteItem.id). */
 export const PALETTE_MIME = "application/x-sp-element";
 
 const maxZ = (fields: TemplateField[]) =>
@@ -42,7 +53,7 @@ export function fieldFromPalette(
   const height = Math.min(item.height, canvas.height);
   const x = Math.round(Math.max(0, Math.min(canvas.width - width, at.x - width / 2)));
   const y = Math.round(Math.max(0, Math.min(canvas.height - height, at.y - height / 2)));
-  const isText = item.type !== "image";
+  const isText = item.type !== "image" && item.type !== "shape";
   return {
     id: newId(),
     label: item.label,
@@ -60,6 +71,13 @@ export function fieldFromPalette(
           colorKey: kit?.colors.find((c) => c.key === "text")?.key ?? kit?.colors[0]?.key,
           align: "left" as const,
           autoFit: true,
+        }
+      : {}),
+    ...(item.type === "shape"
+      ? {
+          shape: item.shape ?? ("rect" as const),
+          colorHex: "#d9d9d9", // design-tool default grey; recolor in Fill
+          static: true, // shapes are design-only — never in the member form
         }
       : {}),
     ...(item.type === "select" ? { options: [] } : {}),

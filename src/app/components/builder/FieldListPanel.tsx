@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { AlignLeft, ChevronDown, GripVertical, Image as ImageIcon, Pin, Type as TypeIcon } from "lucide-react";
+import { AlignLeft, ChevronDown, GripVertical, Image as ImageIcon, Pin, Shapes, Type as TypeIcon } from "lucide-react";
 import type { FieldType, TemplateField } from "@/lib/types";
 
 const ICONS: Record<FieldType, React.ComponentType<{ style?: React.CSSProperties }>> = {
@@ -7,6 +7,7 @@ const ICONS: Record<FieldType, React.ComponentType<{ style?: React.CSSProperties
   multiline: AlignLeft,
   image: ImageIcon,
   select: ChevronDown,
+  shape: Shapes,
 };
 
 interface FieldListPanelProps {

@@ -174,6 +174,13 @@ function boxStyle(field: TemplateField): React.CSSProperties {
   };
 }
 
+/** CSS linear-gradient from the shared gradient shape. */
+export function gradientCss(g: { angle: number; stops: Array<{ position: number; color: string }> }): string {
+  return `linear-gradient(${g.angle}deg, ${g.stops
+    .map((s) => `${s.color} ${Math.round(s.position * 100)}%`)
+    .join(", ")})`;
+}
+
 /** Canvas base fill: gradient → color → white. A background image (rendered
  * as an <img> above this) still wins visually. Shared with the builder's
  * edit canvas so every surface paints the same base. */
@@ -181,11 +188,7 @@ export function schemaBackgroundCss(
   schema: Pick<TemplateSchema, "backgroundColor" | "backgroundGradient">,
 ): string {
   const g = schema.backgroundGradient;
-  if (g?.stops.length) {
-    return `linear-gradient(${g.angle}deg, ${g.stops
-      .map((s) => `${s.color} ${Math.round(s.position * 100)}%`)
-      .join(", ")})`;
-  }
+  if (g?.stops.length) return gradientCss(g);
   return schema.backgroundColor || "#ffffff";
 }
 
@@ -206,10 +209,58 @@ interface FieldBoxProps {
 export function FieldBox({ field, value, brandKit }: FieldBoxProps) {
   // Static elements carry their own fixed content — member values never apply.
   const effective = field.static ? field.staticValue : value;
+  if (field.type === "shape") {
+    return <ShapeFieldBox field={field} brandKit={brandKit} />;
+  }
   if (field.type === "image") {
     return <ImageFieldBox field={field} value={effective} />;
   }
   return <TextFieldBox field={field} value={effective} brandKit={brandKit} />;
+}
+
+/** 5-point star, unit square. */
+const STAR_POINTS = "50,0 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35";
+
+/** Decorative shape: fill = gradient → brand color key → hex. Rects render
+ * as plain divs (corner radius applies); ellipse/triangle/star render as
+ * inline SVG so gradients survive the PNG export. */
+function ShapeFieldBox({ field, brandKit }: { field: TemplateField; brandKit: BrandKit | null }) {
+  const kind = field.shape ?? "rect";
+  const solid = resolveColor(field.colorKey, field.colorHex, brandKit);
+  const g = field.textGradient?.stops.length ? field.textGradient : undefined;
+
+  if (kind === "rect") {
+    return (
+      <div
+        style={{
+          ...boxStyle(field),
+          background: g ? gradientCss(g) : solid,
+          borderRadius: cornerRadiusCss(field),
+        }}
+      />
+    );
+  }
+
+  const gradId = `sp-shape-grad-${field.id}`;
+  const paint = g ? `url(#${gradId})` : solid;
+  return (
+    <div style={boxStyle(field)}>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block" }}>
+        {g && (
+          <defs>
+            <linearGradient id={gradId} gradientTransform={`rotate(${((g.angle - 90) % 360 + 360) % 360}, 0.5, 0.5)`}>
+              {g.stops.map((s, i) => (
+                <stop key={i} offset={`${Math.round(s.position * 100)}%`} stopColor={s.color} />
+              ))}
+            </linearGradient>
+          </defs>
+        )}
+        {kind === "ellipse" && <ellipse cx="50" cy="50" rx="50" ry="50" fill={paint} />}
+        {kind === "triangle" && <polygon points="50,0 100,100 0,100" fill={paint} />}
+        {kind === "star" && <polygon points={STAR_POINTS} fill={paint} />}
+      </svg>
+    </div>
+  );
 }
 
 function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {

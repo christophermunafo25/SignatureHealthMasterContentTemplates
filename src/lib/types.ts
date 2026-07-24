@@ -83,7 +83,10 @@ export interface TextGradient {
   stops: Array<{ position: number; color: string }>; // position 0..1, #RRGGBB
 }
 
-export type FieldType = "text" | "multiline" | "image" | "select";
+export type FieldType = "text" | "multiline" | "image" | "select" | "shape";
+
+/** Decorative shape kinds (a "line" is a thin rect). */
+export type ShapeKind = "rect" | "ellipse" | "triangle" | "star";
 
 /** Per-corner radius for image fields (px, canvas space). Uniform radius is
  * simply all four corners equal — the builder's link toggle edits them
@@ -122,6 +125,10 @@ export interface TemplateField {
   cornerRadius?: CornerRadius;
   /** Element opacity, 0–100 (default 100). */
   opacity?: number;
+  /** Shape fields only: which shape to draw. Fill comes from colorHex /
+   * colorKey / textGradient (same fill pipeline as text); rects also honor
+   * cornerRadius. Shapes are always static — never member-editable. */
+  shape?: ShapeKind;
   /** Figma node this field was imported from (transient import provenance —
    * used to lift the element off the recomposed background). */
   sourceNodeId?: string;

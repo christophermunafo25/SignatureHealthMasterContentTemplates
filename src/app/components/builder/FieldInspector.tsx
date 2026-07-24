@@ -305,12 +305,6 @@ export function FieldInspector({
       <div className="flex items-center justify-between">
         <h3 className="sp-panel-title">Field settings</h3>
         <div className="flex items-center gap-2.5">
-          <button onClick={onBringToFront} title="Bring to front (canvas layer)">
-            <ArrowUpToLine className="w-4 h-4" style={{ color: "var(--fg-2)" }} />
-          </button>
-          <button onClick={onSendToBack} title="Send to back (canvas layer)">
-            <ArrowDownToLine className="w-4 h-4" style={{ color: "var(--fg-2)" }} />
-          </button>
           <button onClick={onDelete} title="Delete field">
             <Trash2 className="w-4 h-4" style={{ color: "var(--destructive)" }} />
           </button>
@@ -518,6 +512,22 @@ export function FieldInspector({
             <option value="topLeft">Top-left (X/Y = box corner)</option>
             <option value="center">Center (X/Y = box center)</option>
           </select>
+        </div>
+        <div>
+          <label className={labelClass} style={labelStyle}>Layer order</label>
+          <p style={{ fontSize: 10.5, color: "var(--fg-4)", marginBottom: 6 }}>
+            What sits on top on the graphic.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button className="sp-btn sp-btn-ghost" onClick={onBringToFront}>
+              <ArrowUpToLine className="w-3.5 h-3.5" />
+              To front
+            </button>
+            <button className="sp-btn sp-btn-ghost" onClick={onSendToBack}>
+              <ArrowDownToLine className="w-3.5 h-3.5" />
+              To back
+            </button>
+          </div>
         </div>
       </Section>
 

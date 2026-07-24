@@ -43,8 +43,8 @@ export function FieldListPanel({ fields, selectedIds, onSelect, onReorder, onCon
   return (
     <div className="sp-card p-3 space-y-2">
       <div className="flex items-baseline justify-between">
-        <h3 className="sp-eyebrow">Fields</h3>
-        <span style={{ fontSize: 10, color: "var(--fg-3)" }}>drag to set form order</span>
+        <h3 className="sp-eyebrow">Form order</h3>
+        <span style={{ fontSize: 10, color: "var(--fg-3)" }}>The order your team fills these in.</span>
       </div>
       {fields.length === 0 ? (
         <p className="py-4 text-center" style={{ fontSize: 12, color: "var(--fg-3)" }}>
@@ -138,8 +138,8 @@ export function FieldListPanel({ fields, selectedIds, onSelect, onReorder, onCon
         </div>
       )}
       <p style={{ fontSize: 10.5, color: "var(--fg-3)" }}>
-        This order is the order members fill fields in. Canvas layering is
-        separate — use "To front / To back" in the inspector.
+        Drag to reorder. Layer order — what sits on top on the graphic — is
+        separate: use "To front / To back" in the inspector.
       </p>
     </div>
   );

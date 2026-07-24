@@ -52,6 +52,24 @@ import {
 } from "./fieldOps";
 import { composeFigmaBackground } from "@/lib/figma/composeLayers";
 
+/** The builder is a desktop tool: below this width the canvas + inspector
+ * layout breaks, so we explain rather than attempt a responsive builder.
+ * The member path (Portal / TemplateUsePage) stays fully responsive. */
+const BUILDER_MIN_VIEWPORT_PX = 1024;
+
+function useViewportAtLeast(px: number): boolean {
+  const [matches, setMatches] = useState(
+    () => window.matchMedia(`(min-width: ${px}px)`).matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${px}px)`);
+    const onChange = () => setMatches(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [px]);
+  return matches;
+}
+
 /** Admin Template Builder: a guided wizard. Pick the source (PNG upload or
  * Figma import), then Step 1 Name → Step 2 Fields (element palette + canvas +
  * field list + inspector) → Step 3 Caption (optional) → Step 4 Tags & details
@@ -61,6 +79,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   const { company } = useAuth();
   const { kit } = useBrand();
   const { navigate } = useRouter();
+  const viewportOk = useViewportAtLeast(BUILDER_MIN_VIEWPORT_PX);
 
   const presetsState = useAsync<CanvasPreset[]>(() => stores.companies.listCanvasPresets(), []);
   const presets = presetsState.status === "ready" ? presetsState.data : [];
@@ -429,6 +448,31 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     ];
   }, [menu, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, reorderLayer, deleteFields]);
 
+  if (!viewportOk) {
+    return (
+      <div className="max-w-md mx-auto text-center py-24 px-6 space-y-4">
+        <p
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 800,
+            textTransform: "uppercase" as const,
+            fontSize: 18,
+            color: "var(--ink)",
+          }}
+        >
+          The builder needs a bigger screen
+        </p>
+        <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--fg-2)" }}>
+          Building templates takes a canvas, palette, and inspector side by side, so it
+          works on laptop and desktop screens. Your team can still browse and fill in
+          templates right here on this device.
+        </p>
+        <button className="sp-btn sp-btn-primary" onClick={() => navigate({ name: "adminTemplates" })}>
+          Back to templates
+        </button>
+      </div>
+    );
+  }
   if (templateId && templateState.status === "loading") {
     return <p className="text-center py-24 text-sm" style={{ color: "var(--muted-foreground)" }}>Loading…</p>;
   }

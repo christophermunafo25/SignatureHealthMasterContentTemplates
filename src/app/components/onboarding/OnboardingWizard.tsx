@@ -84,8 +84,10 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
         primaryLogoAssetId,
       });
 
-      // TODO(auth): real auth creates the admin membership server-side; the
-      // dev switcher simply lands the creator in the Admin role.
+      // Real auth already created the admin membership server-side: under
+      // RLS, stores.companies.create only works via the security-definer
+      // create_company_with_admin RPC (company + admin membership, atomic).
+      // setRole is the dev switcher and a no-op under real auth.
       await refresh();
       await setCompany(company.id);
       setRole("admin");

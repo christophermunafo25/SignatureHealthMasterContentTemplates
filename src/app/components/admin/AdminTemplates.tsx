@@ -5,6 +5,7 @@ import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "../../router";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { ErrorState } from "../ErrorState";
 import { TemplateThumbnail } from "../TemplateThumbnail";
 
@@ -26,14 +27,26 @@ export function AdminTemplates() {
     reload();
   };
 
-  const remove = async (t: TemplateSchema) => {
-    if (!window.confirm(`Delete template "${t.name}"? This cannot be undone.`)) return;
-    await stores.templates.delete(t.id);
+  /** Template pending delete confirmation. */
+  const [deleting, setDeleting] = useState<TemplateSchema | null>(null);
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    await stores.templates.delete(deleting.id);
+    setDeleting(null);
     reload();
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      <ConfirmDialog
+        open={deleting !== null}
+        title={`Delete template "${deleting?.name ?? ""}"?`}
+        description="This cannot be undone."
+        confirmLabel="Delete template"
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => void confirmDelete()}
+      />
       <div className="flex items-end justify-between mb-6">
         <div>
           <h1 className="sp-page-title">Builder</h1>
@@ -98,7 +111,7 @@ export function AdminTemplates() {
                 <button onClick={() => navigate({ name: "builder", templateId: t.id })} title="Edit">
                   <Pencil style={{ width: 15, height: 15, color: "var(--fg-3)" }} />
                 </button>
-                <button onClick={() => void remove(t)} title="Delete">
+                <button onClick={() => setDeleting(t)} title="Delete">
                   <Trash2 style={{ width: 15, height: 15, color: "var(--danger)" }} />
                 </button>
               </div>

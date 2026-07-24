@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { Send, Trash2 } from "lucide-react";
 import type { Role } from "@/lib/types";
+import type { Member } from "@/lib/stores/interfaces";
 import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { ErrorState } from "../ErrorState";
 
 /** Team management: invite by email, change roles, remove. Invites are sent
@@ -25,6 +27,18 @@ export function PeopleAdmin() {
   );
   const members = membersState.status === "ready" ? membersState.data : [];
 
+  /** Member pending remove confirmation. */
+  const [removing, setRemoving] = useState<Member | null>(null);
+
+  const confirmRemove = () => {
+    if (!company || !removing) return;
+    void stores.people
+      .remove(company.id, removing.userId)
+      .then(reload)
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed."));
+    setRemoving(null);
+  };
+
   const invite = async () => {
     if (!company || !email.trim()) return;
     setBusy(true);
@@ -44,6 +58,13 @@ export function PeopleAdmin() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
+      <ConfirmDialog
+        open={removing !== null}
+        title={`Remove ${removing?.email ?? ""} from ${company?.name ?? "this company"}?`}
+        confirmLabel="Remove member"
+        onCancel={() => setRemoving(null)}
+        onConfirm={confirmRemove}
+      />
       <h1 className="sp-page-title">People</h1>
       <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4, marginBottom: 24 }}>
         Admins build and manage the brand; members use the portal to fill in templates.
@@ -129,15 +150,7 @@ export function PeopleAdmin() {
               </select>
               <button
                 disabled={m.userId === user?.id}
-                onClick={() => {
-                  if (!company) return;
-                  if (window.confirm(`Remove ${m.email} from ${company.name}?`)) {
-                    void stores.people
-                      .remove(company.id, m.userId)
-                      .then(reload)
-                      .catch((err) => setError(err instanceof Error ? err.message : "Failed."));
-                  }
-                }}
+                onClick={() => setRemoving(m)}
                 aria-label={`Remove ${m.email}`}
                 style={{ opacity: m.userId === user?.id ? 0.3 : 1 }}
               >

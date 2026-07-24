@@ -46,11 +46,16 @@ function AlertDialogOverlay({
 
 function AlertDialogContent({
   className,
+  onOverlayClick,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
+  /** AlertDialog blocks the default outside-dismiss; pass this to let an
+   * overlay click cancel a controlled dialog. */
+  onOverlayClick?: () => void;
+}) {
   return (
     <AlertDialogPortal>
-      <AlertDialogOverlay />
+      <AlertDialogOverlay onClick={onOverlayClick} />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         className={cn(

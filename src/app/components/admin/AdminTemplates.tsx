@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
-import type { TemplateSchema } from "@/lib/types";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { CheckCircle2, Copy, Eye, EyeOff, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import type { TemplateSchema, UsageSummary } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -9,7 +9,20 @@ import { ConfirmDialog } from "../ConfirmDialog";
 import { ErrorState } from "../ErrorState";
 import { TemplateThumbnail } from "../TemplateThumbnail";
 
-/** Admin template list: drafts + published, publish toggle, edit, delete. */
+type StatusFilter = "all" | "published" | "draft";
+type SortKey = "recent" | "name" | "downloads";
+
+const lastUsed = (iso: string | null): string => {
+  if (!iso) return "";
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+};
+
+/** Admin template list: drafts + published, search/filter/sort, usage on the
+ * card, publish toggle, edit, duplicate, delete. */
 export function AdminTemplates() {
   const { company } = useAuth();
   const { navigate } = useRouter();
@@ -21,6 +34,48 @@ export function AdminTemplates() {
     [company, version],
   );
   const templates = templatesState.status === "ready" ? templatesState.data : [];
+
+  // Usage rides along so revise-or-retire decisions don't need Insights.
+  // If it's slow or fails, cards render without the usage line.
+  const usageState = useAsync<UsageSummary | null>(
+    () => (company ? stores.usage.getUsageSummary(company.id) : Promise.resolve(null)),
+    [company, version],
+  );
+  const usageByTemplate = useMemo(() => {
+    const rows = usageState.status === "ready" ? usageState.data?.rows ?? [] : [];
+    return new Map(rows.map((r) => [r.templateId, r]));
+  }, [usageState]);
+
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sort, setSort] = useState<SortKey>("recent");
+
+  const publishedCount = templates.filter((t) => t.status === "published").length;
+  const draftCount = templates.length - publishedCount;
+
+  const visible = useMemo(() => {
+    let list =
+      statusFilter === "all" ? templates : templates.filter((t) => t.status === statusFilter);
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      list = list.filter(
+        (t) =>
+          t.name.toLowerCase().includes(q) ||
+          t.description.toLowerCase().includes(q) ||
+          t.category.toLowerCase().includes(q) ||
+          t.tags.some((tag) => tag.toLowerCase().includes(q)),
+      );
+    }
+    const sorted = [...list];
+    if (sort === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
+    else if (sort === "downloads")
+      sorted.sort(
+        (a, b) =>
+          (usageByTemplate.get(b.id)?.downloads ?? 0) - (usageByTemplate.get(a.id)?.downloads ?? 0),
+      );
+    // "recent" keeps the store order (updatedAt desc on both backends).
+    return sorted;
+  }, [templates, statusFilter, query, sort, usageByTemplate]);
 
   const toggleStatus = async (t: TemplateSchema) => {
     await stores.templates.setStatus(t.id, t.status === "published" ? "draft" : "published");
@@ -92,6 +147,66 @@ export function AdminTemplates() {
         </button>
       </div>
 
+      {templatesState.status === "ready" && templates.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <div className="relative" style={{ width: 280 }}>
+            <Search
+              className="absolute"
+              style={{ left: 12, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--fg-3)", zIndex: 1 }}
+            />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search templates…"
+              aria-label="Search templates"
+              className="sp-input"
+              style={{ padding: "8px 12px 8px 34px", fontSize: 13 }}
+            />
+          </div>
+          <div
+            className="flex rounded-lg overflow-hidden"
+            role="group"
+            aria-label="Filter by status"
+            style={{ border: "1px solid var(--hairline-strong)" }}
+          >
+            {(
+              [
+                ["all", `All ${templates.length}`],
+                ["published", `Published ${publishedCount}`],
+                ["draft", `Drafts ${draftCount}`],
+              ] as [StatusFilter, string][]
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setStatusFilter(key)}
+                aria-pressed={statusFilter === key}
+                className="px-3 py-1.5"
+                style={{
+                  fontSize: 12,
+                  ...(statusFilter === key
+                    ? { background: "var(--ink)", color: "var(--fg-on-dark-1)" }
+                    : { background: "var(--lift)", color: "var(--fg-2)" }),
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            aria-label="Sort templates"
+            className="sp-input"
+            style={{ width: "auto", padding: "8px 10px", fontSize: 12 }}
+          >
+            <option value="recent">Recently edited</option>
+            <option value="name">Name</option>
+            <option value="downloads">Most downloaded</option>
+          </select>
+        </div>
+      )}
+
       {templatesState.status === "loading" ? (
         <p className="text-center py-20" style={{ fontSize: 13, color: "var(--fg-3)" }}>Loading…</p>
       ) : templatesState.status === "error" ? (
@@ -112,9 +227,17 @@ export function AdminTemplates() {
             Upload a PNG or import a Figma frame, map the editable fields, and publish it for your team.
           </p>
         </div>
+      ) : visible.length === 0 ? (
+        <p className="text-center py-20" style={{ fontSize: 14, color: "var(--fg-2)" }}>
+          {query.trim()
+            ? "No templates match that search."
+            : statusFilter === "draft"
+              ? "No drafts."
+              : "Nothing published yet."}
+        </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {templates.map((t) => (
+          {visible.map((t) => (
             <div key={t.id} className="sp-card overflow-hidden flex flex-col" style={{ borderRadius: "var(--radius-card-sm)" }}>
               <button
                 onClick={() => navigate({ name: "builder", templateId: t.id })}
@@ -132,6 +255,15 @@ export function AdminTemplates() {
                   >
                     {t.status}
                   </span>
+                  {usageState.status === "ready" && (
+                    <p style={{ fontSize: 11, color: "var(--fg-3)", marginTop: 2 }}>
+                      {(() => {
+                        const u = usageByTemplate.get(t.id);
+                        if (!u || u.downloads === 0) return "Not used yet";
+                        return `${u.downloads} download${u.downloads === 1 ? "" : "s"} · last used ${lastUsed(u.lastUsedAt)}`;
+                      })()}
+                    </p>
+                  )}
                 </div>
                 <button onClick={() => void toggleStatus(t)} title={t.status === "published" ? "Unpublish" : "Publish"}>
                   {t.status === "published" ? (

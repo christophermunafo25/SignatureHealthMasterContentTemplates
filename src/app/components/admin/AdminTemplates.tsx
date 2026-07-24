@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { CheckCircle2, Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
 import type { TemplateSchema } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
@@ -37,8 +37,40 @@ export function AdminTemplates() {
     reload();
   };
 
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  const duplicateTemplate = async (t: TemplateSchema) => {
+    // "<name> copy", then "<name> copy 2", 3, … on collision.
+    const names = new Set(templates.map((x) => x.name));
+    const base = `${t.name} copy`;
+    let name = base;
+    for (let n = 2; names.has(name); n++) name = `${base} ${n}`;
+    try {
+      const copy = await stores.templates.duplicate(t.id, name);
+      setToast("Duplicated.");
+      reload();
+      // The person duplicating is about to edit it — the toast covers the hop.
+      toastTimer.current = window.setTimeout(
+        () => navigate({ name: "builder", templateId: copy.id }),
+        600,
+      );
+    } catch (e) {
+      console.error("Duplicate failed", e);
+      setToast("Couldn't duplicate. Try again.");
+      toastTimer.current = window.setTimeout(() => setToast(null), 4000);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      {toast && (
+        <div className="sp-toast" role="status" aria-live="polite">
+          <CheckCircle2 style={{ width: 16, height: 16, color: "var(--success)", flexShrink: 0, marginTop: 1 }} />
+          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{toast}</span>
+        </div>
+      )}
       <ConfirmDialog
         open={deleting !== null}
         title={`Delete template "${deleting?.name ?? ""}"?`}
@@ -110,6 +142,9 @@ export function AdminTemplates() {
                 </button>
                 <button onClick={() => navigate({ name: "builder", templateId: t.id })} title="Edit">
                   <Pencil style={{ width: 15, height: 15, color: "var(--fg-3)" }} />
+                </button>
+                <button onClick={() => void duplicateTemplate(t)} title="Duplicate">
+                  <Copy style={{ width: 15, height: 15, color: "var(--fg-3)" }} />
                 </button>
                 <button onClick={() => setDeleting(t)} title="Delete">
                   <Trash2 style={{ width: 15, height: 15, color: "var(--danger)" }} />

@@ -31,6 +31,9 @@ export interface TemplateStore {
   /** Fields are replaced wholesale (delete + insert) on each builder save. */
   update(id: string, patch: Partial<NewTemplateInput>): Promise<TemplateSchema>;
   setStatus(id: string, status: TemplateStatus): Promise<void>;
+  /** Deep copy: new template row, new field rows, same fieldKeys so the
+   *  captionTemplate stays valid. Always lands as a draft. */
+  duplicate(id: string, name: string): Promise<TemplateSchema>;
   delete(id: string): Promise<void>;
   uploadBackground(companyId: string, file: Blob, name: string): Promise<string>; // → public URL
 }

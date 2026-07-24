@@ -81,6 +81,16 @@ export class SupabaseTemplateStore implements TemplateStore {
     if (ins.error) throw ins.error;
   }
 
+  async duplicate(id: string, name: string): Promise<TemplateSchema> {
+    const source = await this.get(id);
+    if (!source) throw new Error(`Template ${id} not found`);
+    const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = source;
+    // create() inserts fields via fieldToRow, which omits ids — the database
+    // mints new field row ids. fieldKeys stay EXACTLY as-is so caption merge
+    // tags keep working; backgroundUrl is copied by reference.
+    return this.create({ ...rest, name, status: "draft" });
+  }
+
   async setStatus(id: string, status: TemplateStatus): Promise<void> {
     const { error } = await supabase()
       .from("templates")

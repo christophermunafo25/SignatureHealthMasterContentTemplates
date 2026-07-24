@@ -86,6 +86,19 @@ export class LocalTemplateStore implements TemplateStore {
   async setStatus(id: string, status: TemplateStatus): Promise<void> {
     await this.update(id, { status });
   }
+  async duplicate(id: string, name: string): Promise<TemplateSchema> {
+    const source = await this.get(id);
+    if (!source) throw new Error(`Template ${id} not found`);
+    const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = source;
+    return this.create({
+      ...rest,
+      name,
+      status: "draft",
+      // New field ids; fieldKeys stay EXACTLY as-is so caption merge tags
+      // keep working. backgroundUrl is copied by reference, not re-uploaded.
+      fields: source.fields.map((f) => ({ ...f, id: newId() })),
+    });
+  }
   async delete(id: string): Promise<void> {
     mutate((db) => {
       db.templates = (db.templates as TemplateSchema[]).filter((t) => t.id !== id);

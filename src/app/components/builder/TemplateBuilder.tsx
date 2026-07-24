@@ -116,7 +116,9 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     reset: resetHistory,
   } = useHistory<NewTemplateInput>(() => ({
     companyId: company?.id ?? "",
-    name: "",
+    // Marketers name things last — the default lets them reach the canvas
+    // immediately; publish demands a real name.
+    name: "Untitled template",
     description: "",
     category: "",
     tags: [],
@@ -174,7 +176,14 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
 
   const sourceChosen = started || Boolean(draft.backgroundUrl);
   const nameComplete = Boolean(draft.name.trim());
+  /** Publishing needs a REAL name, not the placeholder default. */
+  const hasRealName = Boolean(draft.name.trim()) && draft.name.trim() !== "Untitled template";
   const fieldsComplete = draft.fields.length > 0;
+  /** Set when Publish was pressed while the name is still the default. */
+  const [nameNeeded, setNameNeeded] = useState(false);
+  useEffect(() => {
+    if (hasRealName) setNameNeeded(false);
+  }, [hasRealName]);
 
   const complete = useMemo(() => {
     const s = new Set<WizardStep>();
@@ -457,9 +466,11 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
 
   const save = (status?: "draft" | "published") => doSave(status, false);
 
-  // Warn on close/reload while the draft differs from what's saved.
+  // Warn on close/reload while the draft differs from what's saved. The
+  // default name alone is not content — an untouched blank canvas should
+  // neither warn nor autosave.
   const dirty =
-    Boolean(draft.backgroundUrl || draft.fields.length || draft.name.trim()) &&
+    Boolean(draft.backgroundUrl || draft.fields.length || hasRealName) &&
     JSON.stringify(draft) !== savedSnapshotRef.current;
   useUnsavedChangesWarning(dirty);
 
@@ -485,6 +496,12 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   /** Publish: processing indicator → success marker → back to the Builder
    * page (create new / edit existing). */
   const publish = async () => {
+    if (!hasRealName) {
+      // Name at the end is fine — but published templates need a real one.
+      setNameNeeded(true);
+      goTo("name"); // the name input autofocuses on mount
+      return;
+    }
     setPublishState("publishing");
     const saved = await save("published");
     if (!saved) {
@@ -786,7 +803,9 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
             <button
               onClick={() => {
                 setStarted(true);
-                goTo("name");
+                // Straight to the canvas — the default name unblocks the
+                // wizard, and publish asks for a real one.
+                goTo("fields");
               }}
               className="p-8 text-center transition-all flex flex-col items-center justify-center gap-3"
               style={{
@@ -849,6 +868,11 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                   autoFocus
                   value={draft.name}
                   onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }), "text:name")}
+                  onFocus={(e) => {
+                    // The default is a placeholder, not a choice — typing
+                    // should replace it, not append to it.
+                    if (e.target.value.trim() === "Untitled template") e.target.select();
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && nameComplete) goTo("fields");
                   }}
@@ -856,6 +880,12 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                   className="sp-input"
                   style={{ fontSize: 16, padding: "12px 14px" }}
                 />
+                {nameNeeded && (
+                  <p role="alert" style={{ fontSize: 12, color: "var(--solar)" }}>
+                    Name the template before publishing — members find it by
+                    this name in their gallery.
+                  </p>
+                )}
               </div>
             </div>
           )}

@@ -1,8 +1,30 @@
 import React, { useCallback, useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { useDropzone, type FileRejection } from "react-dropzone";
 import { RefreshCw, Upload } from "lucide-react";
 import type { TemplateField } from "@/lib/types";
+import { downscaleImage } from "@/lib/render/downscaleImage";
 import { ImageCropper } from "./ImageCropper";
+
+/** Hard cap on member photo uploads — referenced in the rejection copy. */
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
+
+/** Uploads are downscaled to this long edge before cropping. Templates render
+ * at schema canvas size (1440 today), so anything past 2048 costs memory in
+ * three places (original, crop, double toPng) and adds no visible quality. */
+const MAX_UPLOAD_EDGE_PX = 2048;
+
+const rejectionMessage = (code: string | undefined): string => {
+  switch (code) {
+    case "file-too-large":
+      return "That image is over 10MB. Try a smaller one.";
+    case "file-invalid-type":
+      return "That file type isn't supported. Use a JPG, PNG, or WEBP.";
+    case "too-many-files":
+      return "Please add one image at a time.";
+    default:
+      return "We couldn't read that file. Try a different image.";
+  }
+};
 
 interface FieldInputProps {
   field: TemplateField;
@@ -56,22 +78,38 @@ export function FieldInput({ field, value, onChange }: FieldInputProps) {
 function ImageFieldInput({ field, value, onChange }: FieldInputProps) {
   const [original, setOriginal] = useState<string | null>(null);
   const [cropping, setCropping] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const onDrop = useCallback((accepted: File[]) => {
     const file = accepted[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setOriginal(reader.result as string);
-      setCropping(true);
+      downscaleImage(reader.result as string, MAX_UPLOAD_EDGE_PX)
+        .then((scaled) => {
+          setUploadError(null);
+          setOriginal(scaled);
+          setCropping(true);
+        })
+        .catch((e) => {
+          console.error("Upload decode failed", e);
+          setUploadError(rejectionMessage(undefined));
+        });
     };
+    reader.onerror = () => setUploadError(rejectionMessage(undefined));
     reader.readAsDataURL(file);
+  }, []);
+
+  const onDropRejected = useCallback((rejections: FileRejection[]) => {
+    setUploadError(rejectionMessage(rejections[0]?.errors[0]?.code));
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected,
     accept: { "image/*": [".png", ".jpg", ".jpeg", ".webp"] },
     maxFiles: 1,
+    maxSize: MAX_UPLOAD_BYTES,
   });
 
   const aspect = field.aspectRatio ?? field.width / field.height;
@@ -122,6 +160,9 @@ function ImageFieldInput({ field, value, onChange }: FieldInputProps) {
           {value ? "Replace image" : "Click or drag to upload"}
         </p>
       </div>
+      {uploadError && (
+        <p style={{ fontSize: 12, color: "var(--solar)", marginTop: 6 }}>{uploadError}</p>
+      )}
     </>
   );
 }

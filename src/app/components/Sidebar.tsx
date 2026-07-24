@@ -61,11 +61,11 @@ interface NavItem {
   matches: string[];
 }
 
-/** Figma order: Brand Templates · Template Builder · Insights & Analytics ·
+/** Figma order: Brand templates · Templates · Insights & Analytics ·
  * Brand Studio · People · Settings & Admin. Members see only the first. */
 const NAV: NavItem[] = [
-  { label: "Brand Templates", route: { name: "portal" }, Icon: Paintbrush, adminOnly: false, matches: ["portal", "template"] },
-  { label: "Template Builder", route: { name: "adminTemplates" }, Icon: Frame, adminOnly: true, matches: ["adminTemplates", "builder"] },
+  { label: "Brand templates", route: { name: "portal" }, Icon: Paintbrush, adminOnly: false, matches: ["portal", "template"] },
+  { label: "Templates", route: { name: "adminTemplates" }, Icon: Frame, adminOnly: true, matches: ["adminTemplates", "builder"] },
   { label: "Insights & Analytics", route: { name: "dashboard" }, Icon: BarChart3, adminOnly: true, matches: ["dashboard"] },
   { label: "Brand Studio", route: { name: "brandStudio" }, Icon: PencilRuler, adminOnly: true, matches: ["brandStudio"] },
   { label: "People", route: { name: "people" }, Icon: Users, adminOnly: true, matches: ["people"] },

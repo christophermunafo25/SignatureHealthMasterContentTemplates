@@ -136,9 +136,9 @@ export function AdminTemplates() {
       />
       <div className="flex items-end justify-between mb-6">
         <div>
-          <h1 className="sp-page-title">Builder</h1>
+          <h1 className="sp-page-title">Templates</h1>
           <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
-            Create a new template or edit an existing one — published templates appear in Templates.
+            Create, edit, and publish — published templates appear in your team's Brand templates.
           </p>
         </div>
         <button className="sp-btn sp-btn-primary" onClick={() => navigate({ name: "builder", templateId: null })}>

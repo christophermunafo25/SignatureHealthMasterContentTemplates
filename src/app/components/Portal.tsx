@@ -49,7 +49,7 @@ export function Portal() {
             marginBottom: 10,
           }}
         >
-          Choose a template
+          Brand templates
         </h1>
         <p style={{ fontFamily: "var(--font-body)", color: "var(--fg-2)", fontSize: 15, maxWidth: 420, marginBottom: 24 }}>
           Pick a template, fill in the details, and download a ready-to-post on-brand graphic.

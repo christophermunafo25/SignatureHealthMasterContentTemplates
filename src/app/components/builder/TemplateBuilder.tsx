@@ -493,7 +493,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, dirty, sourceChosen]);
 
-  /** Publish: processing indicator → success marker → back to the Builder
+  /** Publish: processing indicator → success marker → back to Templates
    * page (create new / edit existing). */
   const publish = async () => {
     if (!hasRealName) {
@@ -575,7 +575,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           templates right here on this device.
         </p>
         <button className="sp-btn sp-btn-primary" onClick={() => navigate({ name: "adminTemplates" })}>
-          Back to templates
+          Back to Templates
         </button>
       </div>
     );
@@ -642,8 +642,8 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                   Template published
                 </p>
                 <p style={{ fontSize: 12, color: "var(--fg-3)" }}>
-                  "{draft.name.trim() || "Untitled template"}" is live. Taking you back to the
-                  Builder…
+                  "{draft.name.trim() || "Untitled template"}" is live. Taking you back to
+                  Templates…
                 </p>
               </>
             )}
@@ -672,7 +672,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           style={{ fontSize: 13, color: "var(--fg-2)", display: "flex", alignItems: "center", gap: 6 }}
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Builder
+          Templates
         </button>
         <span
           className="flex-1 min-w-[200px] truncate"

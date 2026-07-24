@@ -62,6 +62,15 @@ const BUILDER_MIN_VIEWPORT_PX = 1024;
 
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
+/** "Saved just now" → "Saved N minutes ago". nowTick only forces re-renders. */
+function savedAgo(savedAt: number, _nowTick: number): string {
+  const mins = Math.floor((Date.now() - savedAt) / 60_000);
+  if (mins < 1) return "Saved just now";
+  if (mins === 1) return "Saved 1 minute ago";
+  if (mins < 60) return `Saved ${mins} minutes ago`;
+  return "Saved over an hour ago";
+}
+
 function useViewportAtLeast(px: number): boolean {
   const [matches, setMatches] = useState(
     () => window.matchMedia(`(min-width: ${px}px)`).matches,
@@ -386,43 +395,92 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     [company],
   );
 
-  const save = async (status?: "draft" | "published") => {
-    if (!company) return null;
+  /** Latest draft, readable from timer closures without staleness. */
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  /** One save at a time — also the guard against a double CREATE racing on a
+   * brand-new template. */
+  const saveInFlight = useRef(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  // Keeps "Saved N minutes ago" honest without any other state changing.
+  const [nowTick, setNowTick] = useState(0);
+  useEffect(() => {
+    if (lastSavedAt === null) return;
+    const iv = window.setInterval(() => setNowTick((t) => t + 1), 30_000);
+    return () => window.clearInterval(iv);
+  }, [lastSavedAt]);
+
+  const doSave = async (status: "draft" | "published" | undefined, quiet: boolean) => {
+    if (!company || saveInFlight.current) return null;
+    saveInFlight.current = true;
     setSaving(true);
-    setError(null);
+    if (!quiet) setError(null);
+    const snapshot = draftRef.current;
     try {
       const payload: NewTemplateInput = {
-        ...draft,
+        ...snapshot,
         companyId: company.id,
-        status: status ?? draft.status,
-        name: draft.name.trim() || "Untitled template",
+        status: status ?? snapshot.status,
+        name: snapshot.name.trim() || "Untitled template",
       };
       const saved = savedId
         ? await stores.templates.update(savedId, payload)
         : await stores.templates.create(payload);
       setSavedId(saved.id);
-      // A save is a history boundary: undo must not cross back into a field
-      // set the store no longer has.
-      resetHistory((d) => {
-        const next = { ...d, status: saved.status };
-        savedSnapshotRef.current = JSON.stringify(next);
-        return next;
-      });
+      setLastSavedAt(Date.now());
+      setSaveFailed(false);
+      if (quiet) {
+        // Autosave: the store now matches what was sent; history stays —
+        // undoing past an autosave is safe because the undone state simply
+        // autosaves again (field rows are replaced wholesale on save).
+        savedSnapshotRef.current = JSON.stringify({ ...snapshot, status: saved.status });
+      } else {
+        // A deliberate save/publish is a history boundary.
+        resetHistory((d) => {
+          const next = { ...d, status: saved.status };
+          savedSnapshotRef.current = JSON.stringify(next);
+          return next;
+        });
+      }
       return saved;
     } catch (e) {
       console.error("Save failed", e);
-      setError(e instanceof Error ? e.message : "Save failed.");
+      if (quiet) setSaveFailed(true);
+      else setError(e instanceof Error ? e.message : "Save failed.");
       return null;
     } finally {
+      saveInFlight.current = false;
       setSaving(false);
     }
   };
+
+  const save = (status?: "draft" | "published") => doSave(status, false);
 
   // Warn on close/reload while the draft differs from what's saved.
   const dirty =
     Boolean(draft.backgroundUrl || draft.fields.length || draft.name.trim()) &&
     JSON.stringify(draft) !== savedSnapshotRef.current;
   useUnsavedChangesWarning(dirty);
+
+  // Autosave drafts ~2s after the last change. Published templates NEVER
+  // autosave — those keep the explicit save and the unsaved indicator.
+  // Failures keep the work in state and retry on the next change.
+  useEffect(() => {
+    if (!sourceChosen || draft.status !== "draft" || !dirty) return;
+    const timer = window.setTimeout(function fire() {
+      if (saveInFlight.current) {
+        // A save is mid-flight; try again shortly rather than dropping the
+        // trailing edit.
+        window.setTimeout(fire, 1000);
+        return;
+      }
+      if (JSON.stringify(draftRef.current) === savedSnapshotRef.current) return;
+      void doSave(undefined, true);
+    }, 2000);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, dirty, sourceChosen]);
 
   /** Publish: processing indicator → success marker → back to the Builder
    * page (create new / edit existing). */
@@ -612,10 +670,28 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           {recomposing ? " · lifting elements off background…" : ""}
         </span>
         {sourceChosen && (
-          <button onClick={() => void save()} disabled={saving} className="sp-btn sp-btn-ghost">
-            <Save className="w-3.5 h-3.5" />
-            Save draft
-          </button>
+          <>
+            <span role="status" style={{ fontSize: 12, color: saveFailed ? "var(--solar)" : "var(--fg-3)" }}>
+              {saving
+                ? "Saving…"
+                : saveFailed
+                  ? "Couldn't save — retrying"
+                  : dirty
+                    ? "Unsaved changes"
+                    : lastSavedAt
+                      ? savedAgo(lastSavedAt, nowTick)
+                      : null}
+            </span>
+            {saveFailed && !saving && (
+              <button onClick={() => void doSave(undefined, true)} className="sp-btn sp-btn-ghost">
+                Retry
+              </button>
+            )}
+            <button onClick={() => void save()} disabled={saving} className="sp-btn sp-btn-ghost">
+              <Save className="w-3.5 h-3.5" />
+              Save draft
+            </button>
+          </>
         )}
       </div>
 

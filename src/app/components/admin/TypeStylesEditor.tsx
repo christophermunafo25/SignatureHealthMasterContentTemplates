@@ -9,6 +9,9 @@ interface TypeStylesEditorProps {
   colors: BrandColor[];
   customFamilies: string[];
   onChange(styles: BrandTypeStyle[]): void;
+  /** Blast radius per style key, e.g. "Used by 14 fields in 9 templates";
+   * null hides the line (usage not loaded). */
+  usageLabelFor?: (key: string) => string | null;
 }
 
 const slugKey = (name: string, taken: BrandTypeStyle[]): string => {
@@ -22,7 +25,7 @@ const slugKey = (name: string, taken: BrandTypeStyle[]): string => {
 /** The brand rules engine's editor: unlimited named type styles. Every
  * property a style defines becomes an enforced rule — fields bound to the
  * style render with it and end users can't break it. */
-export function TypeStylesEditor({ styles, colors, customFamilies, onChange }: TypeStylesEditorProps) {
+export function TypeStylesEditor({ styles, colors, customFamilies, onChange, usageLabelFor }: TypeStylesEditorProps) {
   const [open, setOpen] = useState<string | null>(styles[0]?.key ?? null);
 
   const update = (key: string, patch: Partial<BrandTypeStyle>) =>
@@ -47,6 +50,9 @@ export function TypeStylesEditor({ styles, colors, customFamilies, onChange }: T
                 <ChevronRight style={{ width: 14, height: 14, color: "var(--fg-3)" }} />
               )}
               <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{s.name}</span>
+              {usageLabelFor?.(s.key) && (
+                <span style={{ fontSize: 11, color: "var(--fg-3)" }}>{usageLabelFor(s.key)}</span>
+              )}
               <span className="sp-eyebrow ml-auto" style={{ fontSize: 9 }}>
                 {rules.length} rule{rules.length !== 1 ? "s" : ""}
               </span>

@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Plus, Star, Trash2, Upload } from "lucide-react";
-import type { BrandColor, BrandTypeStyle, FontRef } from "@/lib/types";
+import type { BrandColor, BrandTypeStyle, FontRef, TemplateSchema } from "@/lib/types";
 import { stores } from "@/lib/stores";
+import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { GOOGLE_FONTS, loadGoogleFonts, registerCustomFont } from "@/lib/render/fonts";
@@ -10,7 +11,19 @@ import { DEFAULT_PALETTE, DEFAULT_TYPE_STYLES } from "@/lib/theme";
 import { TypeStylesEditor } from "./TypeStylesEditor";
 import { DesignSystemImportPanel } from "./DesignSystemImportPanel";
 import { ColorControl } from "../ColorControl";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { useUnsavedChangesWarning } from "@/lib/useUnsavedChangesWarning";
+
+/** Fields/templates bound to one style or color key. */
+interface BindingUsage {
+  fields: number;
+  templateNames: string[];
+}
+
+const usageLabel = (u: BindingUsage | undefined): string =>
+  !u || u.fields === 0
+    ? "Not used yet"
+    : `Used by ${u.fields} field${u.fields === 1 ? "" : "s"} in ${u.templateNames.length} template${u.templateNames.length === 1 ? "" : "s"}`;
 
 /** Brand Studio: the company's palette, fonts (Google + uploaded), and logos.
  * Every template field styles itself from here — nothing is hardcoded. */
@@ -46,6 +59,70 @@ export function BrandStudio() {
 
   const fontAssets = assets.filter((a) => a.kind === "font");
   const logoAssets = assets.filter((a) => a.kind === "logo");
+
+  // The blast radius: which fields across which templates bind to each type
+  // style (typeStyleKey) and palette color (colorKey). Loaded alongside the
+  // kit; if it's slow or fails, rows simply render without counts.
+  const templatesState = useAsync<TemplateSchema[]>(
+    () => (company ? stores.templates.listAll(company.id) : Promise.resolve([])),
+    [company],
+  );
+  const templates = templatesState.status === "ready" ? templatesState.data : null;
+  const bindings = useMemo(() => {
+    const styleUse = new Map<string, BindingUsage>();
+    const colorUse = new Map<string, BindingUsage>();
+    const add = (map: Map<string, BindingUsage>, key: string, templateName: string) => {
+      const u = map.get(key) ?? { fields: 0, templateNames: [] };
+      u.fields += 1;
+      if (!u.templateNames.includes(templateName)) u.templateNames.push(templateName);
+      map.set(key, u);
+    };
+    for (const t of templates ?? []) {
+      for (const f of t.fields) {
+        if (f.typeStyleKey) add(styleUse, f.typeStyleKey, t.name);
+        if (f.colorKey) add(colorUse, f.colorKey, t.name);
+      }
+    }
+    return { styleUse, colorUse };
+  }, [templates]);
+
+  /** Pending impact confirmation for a save that restyles bound fields. */
+  const [impact, setImpact] = useState<{
+    fields: number;
+    templateNames: string[];
+    removals: boolean;
+  } | null>(null);
+
+  /** Diff the working copy against the saved kit; keys that changed or
+   * disappeared AND are bound somewhere are the blast radius. */
+  const computeImpact = () => {
+    if (!kit || !templates) return null; // no baseline or unknown usage → don't block
+    const affected: BindingUsage[] = [];
+    let removals = false;
+    for (const prev of kit.typeStyles ?? []) {
+      const next = typeStyles.find((s) => s.key === prev.key);
+      const use = bindings.styleUse.get(prev.key);
+      if (!use || use.fields === 0) continue;
+      if (!next) removals = true;
+      if (!next || JSON.stringify(next) !== JSON.stringify(prev)) affected.push(use);
+    }
+    for (const prev of kit.colors ?? []) {
+      const next = colors.find((c) => c.key === prev.key);
+      const use = bindings.colorUse.get(prev.key);
+      if (!use || use.fields === 0) continue;
+      if (!next) removals = true;
+      if (!next || next.hex !== prev.hex) affected.push(use);
+    }
+    if (!affected.length) return null;
+    const names = [...new Set(affected.flatMap((u) => u.templateNames))];
+    return { fields: affected.reduce((n, u) => n + u.fields, 0), templateNames: names, removals };
+  };
+
+  const requestSave = () => {
+    const i = computeImpact();
+    if (i) setImpact(i);
+    else void save();
+  };
 
   // Warn on close/reload while the working copy differs from the saved kit.
   const savedShape = JSON.stringify({
@@ -157,7 +234,7 @@ export function BrandStudio() {
           </p>
         </div>
         <button
-          onClick={() => void save()}
+          onClick={requestSave}
           disabled={saving}
           className="sp-btn sp-btn-primary"
         >
@@ -165,6 +242,34 @@ export function BrandStudio() {
           {savedTick ? "Saved" : saving ? "Saving…" : "Save brand"}
         </button>
       </div>
+
+      <ConfirmDialog
+        open={impact !== null}
+        title="Apply brand changes?"
+        tone="primary"
+        description={
+          impact && (
+            <>
+              This restyles {impact.fields} field{impact.fields === 1 ? "" : "s"} across{" "}
+              {impact.templateNames.length} template{impact.templateNames.length === 1 ? "" : "s"}.
+              {impact.templateNames.length <= 10 && (
+                <span className="block mt-2">{impact.templateNames.join(" · ")}</span>
+              )}
+              {impact.removals && (
+                <span className="block mt-2">
+                  Removed styles and colors release their fields back to each field's own settings.
+                </span>
+              )}
+            </>
+          )
+        }
+        confirmLabel="Apply changes"
+        onCancel={() => setImpact(null)}
+        onConfirm={() => {
+          setImpact(null);
+          void save();
+        }}
+      />
 
       {error && (
         <p className="mb-5 text-sm rounded-xl px-4 py-3" style={{ background: "var(--fill-danger-bg)", color: "var(--destructive)" }}>
@@ -184,12 +289,19 @@ export function BrandStudio() {
                   value={c.hex}
                   onChange={(hex) => setColors(colors.map((x, j) => (j === i ? { ...x, hex } : x)))}
                 />
-                <input
-                  value={c.name}
-                  onChange={(e) => setColors(colors.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
-                  className="text-sm font-semibold flex-1 bg-transparent outline-none"
-                  style={{ color: "var(--foreground)" }}
-                />
+                <div className="flex-1 min-w-0">
+                  <input
+                    value={c.name}
+                    onChange={(e) => setColors(colors.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+                    className="text-sm font-semibold w-full bg-transparent outline-none"
+                    style={{ color: "var(--foreground)" }}
+                  />
+                  {templates && (
+                    <p style={{ fontSize: 11, color: "var(--fg-3)" }}>
+                      {usageLabel(bindings.colorUse.get(c.key))}
+                    </p>
+                  )}
+                </div>
                 {!DEFAULT_PALETTE.some((d) => d.key === c.key) && (
                   <button onClick={() => setColors(colors.filter((_, j) => j !== i))} aria-label={`Remove ${c.name}`}>
                     <Trash2 className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
@@ -319,6 +431,7 @@ export function BrandStudio() {
             colors={colors}
             customFamilies={fontAssets.map((a) => a.metadata.family ?? a.name)}
             onChange={setTypeStyles}
+            usageLabelFor={templates ? (key) => usageLabel(bindings.styleUse.get(key)) : undefined}
           />
         </section>
 

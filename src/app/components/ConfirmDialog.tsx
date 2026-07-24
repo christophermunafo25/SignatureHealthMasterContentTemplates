@@ -19,13 +19,17 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
+  tone = "danger",
   onCancel,
   onConfirm,
 }: {
   open: boolean;
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   confirmLabel: string;
+  /** danger = destructive red; primary = a consequential-but-constructive
+   * confirm (e.g. applying brand changes). */
+  tone?: "danger" | "primary";
   onCancel(): void;
   onConfirm(): void;
 }) {
@@ -59,8 +63,8 @@ export function ConfirmDialog({
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
-            className="sp-btn"
-            style={{ background: "var(--danger)", color: "#fff" }}
+            className={tone === "primary" ? "sp-btn sp-btn-primary" : "sp-btn"}
+            style={tone === "danger" ? { background: "var(--danger)", color: "#fff" } : undefined}
             onClick={onConfirm}
           >
             {confirmLabel}

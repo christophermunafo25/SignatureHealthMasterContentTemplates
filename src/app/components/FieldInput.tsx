@@ -30,19 +30,23 @@ interface FieldInputProps {
   field: TemplateField;
   value: string;
   onChange(value: string): void;
+  /** DOM id for the control so the page can associate a real <label>. */
+  inputId?: string;
 }
 
 /** Member input for one template field. Enforces the field's guardrails
  * (maxLength, aspect-ratio crop, fixed options) — content only, never style. */
-export function FieldInput({ field, value, onChange }: FieldInputProps) {
+export function FieldInput({ field, value, onChange, inputId }: FieldInputProps) {
   switch (field.type) {
     case "text":
       return (
         <input
+          id={inputId}
           type="text"
           value={value}
           maxLength={field.maxLength}
           placeholder={field.placeholder ?? field.label}
+          aria-required={field.required || undefined}
           onChange={(e) => onChange(e.target.value)}
           className="sp-input"
         />
@@ -50,9 +54,11 @@ export function FieldInput({ field, value, onChange }: FieldInputProps) {
     case "multiline":
       return (
         <textarea
+          id={inputId}
           value={value}
           maxLength={field.maxLength}
           placeholder={field.placeholder ?? field.label}
+          aria-required={field.required || undefined}
           onChange={(e) => onChange(e.target.value)}
           rows={3}
           className="sp-input"
@@ -61,7 +67,13 @@ export function FieldInput({ field, value, onChange }: FieldInputProps) {
       );
     case "select":
       return (
-        <select value={value} onChange={(e) => onChange(e.target.value)} className="sp-input">
+        <select
+          id={inputId}
+          value={value}
+          aria-required={field.required || undefined}
+          onChange={(e) => onChange(e.target.value)}
+          className="sp-input"
+        >
           <option value="">Select…</option>
           {(field.options ?? []).map((o) => (
             <option key={o} value={o}>
@@ -71,11 +83,11 @@ export function FieldInput({ field, value, onChange }: FieldInputProps) {
         </select>
       );
     case "image":
-      return <ImageFieldInput field={field} value={value} onChange={onChange} />;
+      return <ImageFieldInput field={field} value={value} onChange={onChange} inputId={inputId} />;
   }
 }
 
-function ImageFieldInput({ field, value, onChange }: FieldInputProps) {
+function ImageFieldInput({ field, value, onChange, inputId }: FieldInputProps) {
   const [original, setOriginal] = useState<string | null>(null);
   const [cropping, setCropping] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -128,7 +140,11 @@ function ImageFieldInput({ field, value, onChange }: FieldInputProps) {
         />
       )}
       <div
-        {...getRootProps()}
+        {...getRootProps({
+          role: "button",
+          "aria-label": `${field.label}: upload a JPG, PNG, or WEBP image up to 10MB`,
+          "aria-required": field.required || undefined,
+        })}
         className="text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
         style={{
           border: `1.5px dashed ${isDragActive ? "var(--solar)" : "var(--hairline-strong)"}`,
@@ -137,7 +153,11 @@ function ImageFieldInput({ field, value, onChange }: FieldInputProps) {
           padding: 14,
         }}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps({ id: inputId })} />
+        {/* Non-visual counterpart of the drag-active highlight. */}
+        <span className="sr-only" role="status" aria-live="polite">
+          {isDragActive ? "Drop the image to upload" : ""}
+        </span>
         {value ? (
           <div
             className="relative w-16 h-16 overflow-hidden"
@@ -161,7 +181,9 @@ function ImageFieldInput({ field, value, onChange }: FieldInputProps) {
         </p>
       </div>
       {uploadError && (
-        <p style={{ fontSize: 12, color: "var(--solar)", marginTop: 6 }}>{uploadError}</p>
+        <p role="alert" style={{ fontSize: 12, color: "var(--solar)", marginTop: 6 }}>
+          {uploadError}
+        </p>
       )}
     </>
   );

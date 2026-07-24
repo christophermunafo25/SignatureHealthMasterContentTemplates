@@ -61,6 +61,7 @@ export function Portal() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search templates…"
+            aria-label="Search templates"
             className="sp-input"
             style={{ padding: "10px 14px 10px 38px" }}
           />
@@ -105,6 +106,7 @@ export function Portal() {
                 <button
                   key={t.id}
                   onClick={() => navigate({ name: "template", templateId: t.id })}
+                  aria-label={t.category ? `${t.name} — ${t.category}` : t.name}
                   className="group text-left overflow-hidden transition-all flex flex-col"
                   style={{
                     background: "var(--lift)",

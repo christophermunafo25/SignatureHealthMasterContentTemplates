@@ -124,7 +124,12 @@ export function ImageCropper({ imageSrc, onCancel, onCropComplete, aspect = 1 }:
   }, [imageSrc, croppedAreaPixels, onCropComplete]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 p-4 animate-in fade-in duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Crop image"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 p-4 animate-in fade-in duration-200"
+    >
       <div className="relative w-full max-w-2xl h-[60vh] bg-neutral-900 rounded-xl overflow-hidden border border-white/10 shadow-2xl">
         <Cropper
           image={imageSrc}
@@ -139,14 +144,14 @@ export function ImageCropper({ imageSrc, onCancel, onCropComplete, aspect = 1 }:
       
       <div className="w-full max-w-2xl mt-6 space-y-6">
         <div className="flex items-center gap-4 text-white">
-          <span className="text-sm font-medium text-neutral-400">Zoom</span>
+          <span id="crop-zoom-label" className="text-sm font-medium text-neutral-400">Zoom</span>
           <input
             type="range"
             value={zoom}
             min={1}
             max={3}
             step={0.1}
-            aria-labelledby="Zoom"
+            aria-labelledby="crop-zoom-label"
             onChange={(e) => setZoom(Number(e.target.value))}
             className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[var(--ring-color)]"
           />
@@ -155,6 +160,7 @@ export function ImageCropper({ imageSrc, onCancel, onCropComplete, aspect = 1 }:
         <div className="flex justify-end gap-3">
           <button
             onClick={onCancel}
+            autoFocus
             className="px-6 py-2.5 text-sm font-medium text-white bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors border border-white/10"
           >
             Cancel

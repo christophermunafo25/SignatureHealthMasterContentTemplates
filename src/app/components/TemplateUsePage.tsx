@@ -94,8 +94,8 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
         <div
           className="sp-toast"
           data-tone={exportToast === "error" ? "danger" : undefined}
-          role="status"
-          aria-live="polite"
+          role={exportToast === "error" ? "alert" : "status"}
+          aria-live={exportToast === "error" ? "assertive" : "polite"}
         >
           {exportToast === "error" ? (
             <AlertTriangle style={{ width: 16, height: 16, color: "var(--danger)", flexShrink: 0, marginTop: 1 }} />
@@ -137,16 +137,31 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
 
           {formFields.map((field, i) => {
             const maxLength = resolveFieldStyle(field, kit).maxLength;
+            const inputId = `field-${field.id}`;
             return (
             <div key={field.id} className="p-4 space-y-2.5" style={panel}>
               <div>
                 <p className="sp-eyebrow">Step {String(i + 1).padStart(2, "0")}</p>
-                <h2 style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", marginTop: 2 }}>
+                <label
+                  htmlFor={inputId}
+                  className="block"
+                  style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", marginTop: 2 }}
+                >
                   {field.label}
-                  {field.required && <span style={{ color: "var(--solar)" }}> *</span>}
-                </h2>
+                  {field.required && (
+                    <>
+                      <span aria-hidden style={{ color: "var(--solar)" }}> *</span>
+                      <span className="sr-only"> (required)</span>
+                    </>
+                  )}
+                </label>
                 {maxLength && (
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--fg-3)", marginTop: 2 }}>
+                  <p
+                    role="status"
+                    aria-live="polite"
+                    aria-label={`${(values[field.fieldKey] ?? "").length} of ${maxLength} characters used`}
+                    style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--fg-3)", marginTop: 2 }}
+                  >
                     {(values[field.fieldKey] ?? "").length}/{maxLength}
                   </p>
                 )}
@@ -155,6 +170,7 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
                 field={{ ...field, maxLength }}
                 value={values[field.fieldKey] ?? ""}
                 onChange={(v) => setValues((prev) => ({ ...prev, [field.fieldKey]: v }))}
+                inputId={inputId}
               />
             </div>
             );
@@ -178,6 +194,7 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
                 value={shownCaption}
                 onChange={(e) => setCaption(e.target.value)}
                 rows={4}
+                aria-label="Suggested caption"
                 className="sp-input"
                 style={{ resize: "vertical" }}
               />
@@ -193,6 +210,7 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
             <button
               onClick={handleDownload}
               disabled={exporting || missingRequired.length > 0}
+              aria-describedby={missingRequired.length > 0 ? "download-blocked-reason" : undefined}
               className="sp-btn sp-btn-primary w-full"
               style={{ padding: "11px 14px" }}
             >
@@ -200,7 +218,13 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
               {exporting ? "Generating…" : "Download graphic"}
             </button>
             {missingRequired.length > 0 && (
-              <p className="text-center" style={{ fontSize: 12, color: "var(--fg-3)" }}>
+              <p
+                id="download-blocked-reason"
+                role="status"
+                aria-live="polite"
+                className="text-center"
+                style={{ fontSize: 12, color: "var(--fg-3)" }}
+              >
                 Fill required: {missingRequired.map((f) => f.label).join(", ")}
               </p>
             )}

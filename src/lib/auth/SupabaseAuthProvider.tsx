@@ -23,6 +23,9 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [membershipsReady, setMembershipsReady] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [tick, setTick] = useState(0);
+  const retry = useCallback(() => setTick((t) => t + 1), []);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [roleByCompany, setRoleByCompany] = useState<Record<string, Role>>({});
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -96,15 +99,19 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     // Only re-gate the UI when the ACCOUNT actually changed.
     if (prevUserId !== userId) setMembershipsReady(false);
     let cancelled = false;
+    setError(null);
     loadMemberships()
-      .catch((e) => console.error("Membership load failed", e))
+      .catch((e) => {
+        console.error("Membership load failed", e);
+        if (!cancelled) setError(e instanceof Error ? e : new Error(String(e)));
+      })
       .finally(() => {
         if (!cancelled) setMembershipsReady(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [userId, loadMemberships]);
+  }, [userId, loadMemberships, tick]);
 
   const setCompany = useCallback(async (companyId: string) => {
     setSelectedId(companyId);
@@ -121,6 +128,8 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const value = useMemo<AuthState>(
     () => ({
       loading,
+      error,
+      retry,
       company,
       role: (company && roleByCompany[company.id]) ?? "member",
       user: session?.user ? { id: session.user.id, email: session.user.email ?? "" } : null,
@@ -132,7 +141,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       refresh: loadMemberships,
       signOut,
     }),
-    [loading, company, roleByCompany, session, companies, setCompany, loadMemberships, signOut],
+    [loading, error, retry, company, roleByCompany, session, companies, setCompany, loadMemberships, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

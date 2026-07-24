@@ -20,8 +20,10 @@ import type {
   TemplateSchema,
 } from "@/lib/types";
 import { stores } from "@/lib/stores";
+import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBrand } from "@/lib/brand/BrandContext";
+import { ErrorState } from "../ErrorState";
 import { newId } from "@/lib/stores/local/db";
 import { retagCaption, suggestFieldKey } from "@/lib/caption";
 import { useUnsavedChangesWarning } from "@/lib/useUnsavedChangesWarning";
@@ -60,8 +62,12 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   const { kit } = useBrand();
   const { navigate } = useRouter();
 
-  const [presets, setPresets] = useState<CanvasPreset[]>([]);
-  const [loaded, setLoaded] = useState(templateId === null);
+  const presetsState = useAsync<CanvasPreset[]>(() => stores.companies.listCanvasPresets(), []);
+  const presets = presetsState.status === "ready" ? presetsState.data : [];
+  const templateState = useAsync<TemplateSchema | null>(
+    () => (templateId ? stores.templates.get(templateId) : Promise.resolve(null)),
+    [templateId],
+  );
   const [savedId, setSavedId] = useState<string | null>(templateId);
   const [draft, setDraft] = useState<NewTemplateInput>(() => ({
     companyId: company?.id ?? "",
@@ -103,36 +109,22 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   } | null>(null);
 
   useEffect(() => {
-    stores.companies
-      .listCanvasPresets()
-      .then((list) => {
-        setPresets(list);
-        // v1: the creation picker is locked to the single enabled preset, but
-        // dimensions always flow preset → schema → renderer/export.
-        if (!templateId && list[0]) {
-          setDraft((d) => ({ ...d, canvasWidth: list[0].width, canvasHeight: list[0].height }));
-        }
-      })
-      .catch((e) => console.error("Preset load failed", e));
-  }, [templateId]);
+    // v1: the creation picker is locked to the single enabled preset, but
+    // dimensions always flow preset → schema → renderer/export.
+    if (presetsState.status !== "ready" || templateId) return;
+    const first = presetsState.data[0];
+    if (first) setDraft((d) => ({ ...d, canvasWidth: first.width, canvasHeight: first.height }));
+  }, [presetsState, templateId]);
 
   useEffect(() => {
-    if (!templateId) return;
-    stores.templates
-      .get(templateId)
-      .then((t) => {
-        if (t) {
-          const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = t;
-          setDraft(rest);
-          savedSnapshotRef.current = JSON.stringify(rest);
-          // Editing an existing template: every step is already completed.
-          setVisited(new Set<WizardStep>(["name", "fields", "caption", "details"]));
-          setStep("fields");
-        }
-      })
-      .catch((e) => console.error("Template load failed", e))
-      .finally(() => setLoaded(true));
-  }, [templateId]);
+    if (templateState.status !== "ready" || !templateState.data) return;
+    const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = templateState.data;
+    setDraft(rest);
+    savedSnapshotRef.current = JSON.stringify(rest);
+    // Editing an existing template: every step is already completed.
+    setVisited(new Set<WizardStep>(["name", "fields", "caption", "details"]));
+    setStep("fields");
+  }, [templateState]);
 
   const sourceChosen = started || Boolean(draft.backgroundUrl);
   const nameComplete = Boolean(draft.name.trim());
@@ -437,8 +429,28 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     ];
   }, [menu, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, reorderLayer, deleteFields]);
 
-  if (!loaded) {
+  if (templateId && templateState.status === "loading") {
     return <p className="text-center py-24 text-sm" style={{ color: "var(--muted-foreground)" }}>Loading…</p>;
+  }
+  if (templateId && templateState.status === "error") {
+    return (
+      <ErrorState
+        title="We couldn't load this template."
+        detail="Check your connection and try again."
+        onRetry={templateState.retry}
+      />
+    );
+  }
+  // A new template needs the canvas presets before the source picker makes
+  // sense; when editing, dimensions come from the loaded template instead.
+  if (!templateId && presetsState.status === "error") {
+    return (
+      <ErrorState
+        title="We couldn't load the canvas sizes."
+        detail="Check your connection and try again."
+        onRetry={presetsState.retry}
+      />
+    );
   }
 
   return (

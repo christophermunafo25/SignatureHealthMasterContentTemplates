@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Copy, Download, RefreshCw } from "lucide-react";
-import type { FieldValues, TemplateSchema } from "@/lib/types";
+import type { FieldValues } from "@/lib/types";
 import { stores } from "@/lib/stores";
+import { useAsync } from "@/lib/useAsync";
 import { mergeCaption } from "@/lib/caption";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { useRouter } from "../router";
 import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
+import { ErrorState } from "./ErrorState";
 import { SchemaRenderer, type SchemaRendererHandle } from "./SchemaRenderer";
 import { FieldInput } from "./FieldInput";
 
@@ -20,8 +22,8 @@ const panel: React.CSSProperties = {
 export function TemplateUsePage({ templateId }: { templateId: string }) {
   const { kit } = useBrand();
   const { navigate } = useRouter();
-  const [template, setTemplate] = useState<TemplateSchema | null>(null);
-  const [loading, setLoading] = useState(true);
+  const templateState = useAsync(() => stores.templates.get(templateId), [templateId]);
+  const template = templateState.status === "ready" ? templateState.data : null;
   const [values, setValues] = useState<FieldValues>({});
   const [caption, setCaption] = useState<string | null>(null); // null → follow suggestion
   const [copied, setCopied] = useState(false);
@@ -39,15 +41,6 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
     toastTimer.current = window.setTimeout(() => setExportToast(null), kind === "error" ? 6000 : 4000);
   };
 
-  useEffect(() => {
-    setLoading(true);
-    stores.templates
-      .get(templateId)
-      .then(setTemplate)
-      .catch((e) => console.error("Template load failed", e))
-      .finally(() => setLoading(false));
-  }, [templateId]);
-
   const suggestedCaption = template ? mergeCaption(template, values) : "";
   const shownCaption = caption ?? suggestedCaption;
 
@@ -59,8 +52,17 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
     [formFields, values],
   );
 
-  if (loading) {
+  if (templateState.status === "loading") {
     return <p className="text-center py-24" style={{ fontSize: 13, color: "var(--fg-3)" }}>Loading template…</p>;
+  }
+  if (templateState.status === "error") {
+    return (
+      <ErrorState
+        title="We couldn't load this template."
+        detail="Check your connection and try again."
+        onRetry={templateState.retry}
+      />
+    );
   }
   if (!template) {
     return <p className="text-center py-24" style={{ fontSize: 13, color: "var(--fg-3)" }}>Template not found.</p>;

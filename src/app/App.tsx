@@ -4,10 +4,11 @@ import { SupabaseAuthProvider } from "@/lib/auth/SupabaseAuthProvider";
 import { stores } from "@/lib/stores";
 import { AuthPage } from "./components/auth/AuthPage";
 import { PeopleAdmin } from "./components/admin/PeopleAdmin";
-import { BrandProvider } from "@/lib/brand/BrandContext";
+import { BrandProvider, useBrand } from "@/lib/brand/BrandContext";
 import { ColorSchemeProvider } from "@/lib/colorScheme";
 import { RouterProvider, useRouter } from "./router";
 import { AppShell } from "./components/AppShell";
+import { ErrorState } from "./components/ErrorState";
 import { Portal } from "./components/Portal";
 import { TemplateUsePage } from "./components/TemplateUsePage";
 import { OnboardingWizard } from "./components/onboarding/OnboardingWizard";
@@ -18,7 +19,8 @@ import { Dashboard } from "./components/admin/Dashboard";
 import { SettingsAdmin } from "./components/admin/SettingsAdmin";
 
 function Screen() {
-  const { loading, company, role, user, backend } = useAuth();
+  const { loading, error, retry, company, role, user, backend } = useAuth();
+  const brand = useBrand();
   const { route } = useRouter();
 
   if (loading) {
@@ -29,9 +31,37 @@ function Screen() {
     );
   }
 
+  // A failed identity/membership load is an ERROR — never treat it as
+  // "signed out" or "no company" (both would point the user at the wrong fix).
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
+        <ErrorState
+          title="We couldn't load your account."
+          detail="Check your connection and try again."
+          onRetry={retry}
+        />
+      </div>
+    );
+  }
+
   // Real auth: no session → sign in / sign up.
   if (backend === "supabase" && !user) {
     return <AuthPage />;
+  }
+
+  // Same rule for the brand kit: don't render brand-aware screens against a
+  // kit that failed to load.
+  if (!brand.loading && brand.error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
+        <ErrorState
+          title="We couldn't load your brand."
+          detail="Check your connection and try again."
+          onRetry={brand.retry}
+        />
+      </div>
+    );
   }
 
   // No company for this identity (or "Create company") → onboarding.

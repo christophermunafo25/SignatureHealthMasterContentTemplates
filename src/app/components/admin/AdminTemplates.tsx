@@ -1,39 +1,35 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
 import type { TemplateSchema } from "@/lib/types";
 import { stores } from "@/lib/stores";
+import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "../../router";
+import { ErrorState } from "../ErrorState";
 import { TemplateThumbnail } from "../TemplateThumbnail";
 
 /** Admin template list: drafts + published, publish toggle, edit, delete. */
 export function AdminTemplates() {
   const { company } = useAuth();
   const { navigate } = useRouter();
-  const [templates, setTemplates] = useState<TemplateSchema[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    if (!company) return;
-    setTemplates(await stores.templates.listAll(company.id));
-  }, [company]);
-
-  useEffect(() => {
-    setLoading(true);
-    load()
-      .catch((e) => console.error("Template list failed", e))
-      .finally(() => setLoading(false));
-  }, [load]);
+  /** Bumped after mutations so the list reloads through the same hook. */
+  const [version, setVersion] = useState(0);
+  const reload = () => setVersion((v) => v + 1);
+  const templatesState = useAsync(
+    () => (company ? stores.templates.listAll(company.id) : Promise.resolve([])),
+    [company, version],
+  );
+  const templates = templatesState.status === "ready" ? templatesState.data : [];
 
   const toggleStatus = async (t: TemplateSchema) => {
     await stores.templates.setStatus(t.id, t.status === "published" ? "draft" : "published");
-    await load();
+    reload();
   };
 
   const remove = async (t: TemplateSchema) => {
     if (!window.confirm(`Delete template "${t.name}"? This cannot be undone.`)) return;
     await stores.templates.delete(t.id);
-    await load();
+    reload();
   };
 
   return (
@@ -51,8 +47,14 @@ export function AdminTemplates() {
         </button>
       </div>
 
-      {loading ? (
+      {templatesState.status === "loading" ? (
         <p className="text-center py-20" style={{ fontSize: 13, color: "var(--fg-3)" }}>Loading…</p>
+      ) : templatesState.status === "error" ? (
+        <ErrorState
+          title="We couldn't load your templates."
+          detail="Check your connection and try again."
+          onRetry={templatesState.retry}
+        />
       ) : templates.length === 0 ? (
         <div
           className="text-center py-24"

@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Download, Eye, Layers, Percent } from "lucide-react";
 import type { DailyActivityPoint, UsageSummary } from "@/lib/types";
 import { stores } from "@/lib/stores";
+import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { ErrorState } from "../ErrorState";
 import { BrandMark } from "../Sidebar";
 
 const TREND_DAYS = 30;
@@ -68,24 +70,32 @@ function LegendChip({ color, label, total }: { color: string; label: string; tot
  * this page only reads. */
 export function Dashboard() {
   const { company } = useAuth();
-  const [summary, setSummary] = useState<UsageSummary | null>(null);
-  const [trend, setTrend] = useState<DailyActivityPoint[] | null>(null);
+  const summaryState = useAsync<UsageSummary | null>(
+    () => (company ? stores.usage.getUsageSummary(company.id) : Promise.resolve(null)),
+    [company],
+  );
+  const trendState = useAsync<DailyActivityPoint[]>(
+    () => (company ? stores.usage.getDailyActivity(company.id, TREND_DAYS) : Promise.resolve([])),
+    [company],
+  );
 
-  useEffect(() => {
-    if (!company) return;
-    stores.usage
-      .getUsageSummary(company.id)
-      .then(setSummary)
-      .catch((e) => console.error("Usage summary failed", e));
-    stores.usage
-      .getDailyActivity(company.id, TREND_DAYS)
-      .then(setTrend)
-      .catch((e) => console.error("Daily activity failed", e));
-  }, [company]);
-
+  if (summaryState.status === "loading") {
+    return <p className="text-center py-24" style={{ fontSize: 13, color: "var(--fg-3)" }}>Loading usage…</p>;
+  }
+  if (summaryState.status === "error") {
+    return (
+      <ErrorState
+        title="We couldn't load your usage data."
+        detail="Check your connection and try again."
+        onRetry={summaryState.retry}
+      />
+    );
+  }
+  const summary = summaryState.data;
   if (!summary) {
     return <p className="text-center py-24" style={{ fontSize: 13, color: "var(--fg-3)" }}>Loading usage…</p>;
   }
+  const trend = trendState.status === "ready" ? trendState.data : null;
 
   const totalOpens = summary.rows.reduce((n, r) => n + r.opens, 0);
   const activeTemplates = summary.rows.filter((r) => r.opens + r.downloads > 0).length;
@@ -137,6 +147,14 @@ export function Dashboard() {
                 <LegendChip color="var(--viz-opens)" label="Opens" total={trendOpens} />
               </div>
             </div>
+            {trendState.status === "error" ? (
+              <div className="flex flex-col items-center justify-center gap-3" style={{ height: 220 }}>
+                <p style={{ fontSize: 13, color: "var(--fg-3)" }}>We couldn't load the activity trend.</p>
+                <button className="sp-btn sp-btn-ghost" onClick={trendState.retry}>
+                  Try again
+                </button>
+              </div>
+            ) : (
             <div style={{ width: "100%", height: 220 }}>
               <ResponsiveContainer>
                 <AreaChart data={trend ?? []} margin={{ top: 6, right: 6, left: -18, bottom: 0 }}>
@@ -192,6 +210,7 @@ export function Dashboard() {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
+            )}
           </div>
 
           <div className="grid lg:grid-cols-5 gap-5 items-start">

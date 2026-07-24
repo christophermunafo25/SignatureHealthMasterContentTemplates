@@ -10,10 +10,15 @@ import { loadBrandFonts } from "../render/fonts";
  * builder, studio, chrome) reads from here. */
 interface BrandState {
   loading: boolean;
+  /** Set when the initial load failed — consumers should show an error state
+   * (with `retry`) instead of rendering against a missing brand kit. */
+  error: Error | null;
   kit: BrandKit | null;
   assets: BrandAsset[];
   primaryLogoUrl: string | null;
   refresh(): Promise<void>;
+  /** Re-runs the failed load in place. */
+  retry(): void;
 }
 
 const BrandContext = createContext<BrandState | null>(null);
@@ -21,8 +26,11 @@ const BrandContext = createContext<BrandState | null>(null);
 export function BrandProvider({ children }: { children: React.ReactNode }) {
   const { company } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [kit, setKit] = useState<BrandKit | null>(null);
   const [assets, setAssets] = useState<BrandAsset[]>([]);
+  const [tick, setTick] = useState(0);
+  const retry = useCallback(() => setTick((t) => t + 1), []);
 
   const refresh = useCallback(async () => {
     if (!company) {
@@ -47,11 +55,21 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   }, [company]);
 
   useEffect(() => {
+    let alive = true;
     setLoading(true);
+    setError(null);
     refresh()
-      .catch((e) => console.error("Brand load failed", e))
-      .finally(() => setLoading(false));
-  }, [refresh]);
+      .catch((e) => {
+        console.error("Brand load failed", e);
+        if (alive) setError(e instanceof Error ? e : new Error(String(e)));
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [refresh, tick]);
 
   const primaryLogoUrl = useMemo(() => {
     const primary = assets.find((a) => a.id === kit?.primaryLogoAssetId);
@@ -59,8 +77,8 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   }, [assets, kit]);
 
   const value = useMemo<BrandState>(
-    () => ({ loading, kit, assets, primaryLogoUrl, refresh }),
-    [loading, kit, assets, primaryLogoUrl, refresh],
+    () => ({ loading, error, kit, assets, primaryLogoUrl, refresh, retry }),
+    [loading, error, kit, assets, primaryLogoUrl, refresh, retry],
   );
 
   return <BrandContext.Provider value={value}>{children}</BrandContext.Provider>;

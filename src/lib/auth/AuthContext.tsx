@@ -12,6 +12,12 @@ import { stores } from "../stores";
  */
 export interface AuthState {
   loading: boolean;
+  /** Set when the identity/membership load failed — the app should show an
+   * error state (with `retry`) instead of treating the user as signed out or
+   * companyless. */
+  error: Error | null;
+  /** Re-runs the failed load in place. */
+  retry(): void;
   /** null after loading completes → no company for this identity → onboarding. */
   company: Company | null;
   role: Role;
@@ -35,6 +41,9 @@ const LS_ROLE = "brand-portal-dev-role";
 
 export function DevAuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [tick, setTick] = useState(0);
+  const retry = useCallback(() => setTick((t) => t + 1), []);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [company, setCompanyState] = useState<Company | null>(null);
   const [role, setRoleState] = useState<Role>(
@@ -52,10 +61,21 @@ export function DevAuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError(null);
     load()
-      .catch((e) => console.error("Auth load failed", e))
-      .finally(() => setLoading(false));
-  }, [load]);
+      .catch((e) => {
+        console.error("Auth load failed", e);
+        if (alive) setError(e instanceof Error ? e : new Error(String(e)));
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [load, tick]);
 
   const setCompany = useCallback(async (companyId: string) => {
     const c = (await stores.companies.get(companyId)) ?? null;
@@ -71,6 +91,8 @@ export function DevAuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthState>(
     () => ({
       loading,
+      error,
+      retry,
       company,
       role,
       user: null,
@@ -81,7 +103,7 @@ export function DevAuthProvider({ children }: { children: React.ReactNode }) {
       setRole,
       refresh: load,
     }),
-    [loading, company, role, companies, setCompany, setRole, load],
+    [loading, error, retry, company, role, companies, setCompany, setRole, load],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { ArrowRight, Search } from "lucide-react";
-import type { TemplateSchema } from "@/lib/types";
 import { stores } from "@/lib/stores";
+import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "../router";
+import { ErrorState } from "./ErrorState";
 import { TemplateThumbnail } from "./TemplateThumbnail";
 
 /** Member-facing, company-scoped searchable template grid. SocialPaint
@@ -13,18 +14,11 @@ export function Portal() {
   const { company, role } = useAuth();
   const { navigate } = useRouter();
   const [query, setQuery] = useState("");
-  const [templates, setTemplates] = useState<TemplateSchema[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!company) return;
-    setLoading(true);
-    stores.templates
-      .listPublished(company.id)
-      .then(setTemplates)
-      .catch((e) => console.error("Template load failed", e))
-      .finally(() => setLoading(false));
-  }, [company]);
+  const templatesState = useAsync(
+    () => (company ? stores.templates.listPublished(company.id) : Promise.resolve([])),
+    [company],
+  );
+  const templates = templatesState.status === "ready" ? templatesState.data : [];
 
   const filtered = useMemo(() => {
     if (!query.trim()) return templates;
@@ -75,10 +69,16 @@ export function Portal() {
 
       {/* Grid */}
       <div className="max-w-7xl mx-auto px-8 sm:px-12 py-10">
-        {loading ? (
+        {templatesState.status === "loading" ? (
           <p className="text-center py-20" style={{ fontSize: 13, color: "var(--fg-3)" }}>
             Loading templates…
           </p>
+        ) : templatesState.status === "error" ? (
+          <ErrorState
+            title="We couldn't load your templates."
+            detail="Check your connection and try again."
+            onRetry={templatesState.retry}
+          />
         ) : templates.length === 0 ? (
           <div className="text-center py-20 space-y-3">
             <p style={{ fontSize: 14, color: "var(--fg-2)" }}>No templates published yet.</p>

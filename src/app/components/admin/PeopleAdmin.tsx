@@ -1,33 +1,29 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Send, Trash2 } from "lucide-react";
 import type { Role } from "@/lib/types";
-import type { Member } from "@/lib/stores/interfaces";
 import { stores } from "@/lib/stores";
+import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { ErrorState } from "../ErrorState";
 
 /** Team management: invite by email, change roles, remove. Invites are sent
  * by the invite-member Edge Function (admin-verified server-side). */
 export function PeopleAdmin() {
   const { company, user, isDevAuth } = useAuth();
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("member");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!company) return;
-    setMembers(await stores.people.list(company.id));
-  }, [company]);
-
-  useEffect(() => {
-    setLoading(true);
-    load()
-      .catch((e) => console.error("People load failed", e))
-      .finally(() => setLoading(false));
-  }, [load]);
+  /** Bumped after mutations so the list reloads through the same hook. */
+  const [version, setVersion] = useState(0);
+  const reload = () => setVersion((v) => v + 1);
+  const membersState = useAsync(
+    () => (company ? stores.people.list(company.id) : Promise.resolve([])),
+    [company, version],
+  );
+  const members = membersState.status === "ready" ? membersState.data : [];
 
   const invite = async () => {
     if (!company || !email.trim()) return;
@@ -38,7 +34,7 @@ export function PeopleAdmin() {
       await stores.people.invite(company.id, email.trim().toLowerCase(), role);
       setNotice(`Invite sent to ${email.trim()}.`);
       setEmail("");
-      await load();
+      reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Invite failed.");
     } finally {
@@ -82,8 +78,14 @@ export function PeopleAdmin() {
       {notice && <p style={{ fontSize: 12, color: "var(--success)", marginBottom: 8 }}>{notice}</p>}
 
       <div className="sp-card overflow-hidden mt-4">
-        {loading ? (
+        {membersState.status === "loading" ? (
           <p className="px-4 py-8 text-center" style={{ fontSize: 13, color: "var(--fg-3)" }}>Loading…</p>
+        ) : membersState.status === "error" ? (
+          <ErrorState
+            title="We couldn't load your team."
+            detail="Check your connection and try again."
+            onRetry={membersState.retry}
+          />
         ) : members.length === 0 ? (
           <p className="px-4 py-8 text-center" style={{ fontSize: 13, color: "var(--fg-3)" }}>
             No members yet.
@@ -118,7 +120,7 @@ export function PeopleAdmin() {
                   if (!company) return;
                   void stores.people
                     .setRole(company.id, m.userId, e.target.value as Role)
-                    .then(load)
+                    .then(reload)
                     .catch((err) => setError(err instanceof Error ? err.message : "Failed."));
                 }}
               >
@@ -132,7 +134,7 @@ export function PeopleAdmin() {
                   if (window.confirm(`Remove ${m.email} from ${company.name}?`)) {
                     void stores.people
                       .remove(company.id, m.userId)
-                      .then(load)
+                      .then(reload)
                       .catch((err) => setError(err instanceof Error ? err.message : "Failed."));
                   }
                 }}

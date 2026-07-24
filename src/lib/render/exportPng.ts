@@ -33,12 +33,15 @@ export async function exportSchemaPng(
   await new Promise((resolve) => setTimeout(resolve, 150));
   const dataUrl = await toPng(node, options);
 
+  // One Blob serves both branches; browsers handle multi-megabyte base64
+  // hrefs inconsistently, so the data URL is dropped as early as possible.
+  const blob = await (await fetch(dataUrl)).blob();
+
   const fileName = `${schema.name.replace(/[^a-zA-Z0-9_-]+/g, "_") || "graphic"}.png`;
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   if (isMobile && navigator.share) {
     try {
-      const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], fileName, { type: "image/png" });
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: schema.name });
@@ -49,9 +52,11 @@ export async function exportSchemaPng(
     }
   }
 
+  const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.download = fileName;
-  link.href = dataUrl;
+  link.href = objectUrl;
   link.click();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
   return "downloaded";
 }

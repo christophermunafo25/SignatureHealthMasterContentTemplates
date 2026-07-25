@@ -5,7 +5,7 @@ import { useDataUrl } from "@/lib/render/useDataUrl";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { loadGoogleFonts } from "@/lib/render/fonts";
 import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
-import { cornerRadiusCss, FieldBox } from "../SchemaRenderer";
+import { cornerRadiusCss, FieldBoxContent } from "../SchemaRenderer";
 import { PALETTE_MIME } from "./fieldOps";
 
 interface FieldOverlayEditorProps {
@@ -247,13 +247,6 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
           />
         )}
-        {/* Real field content (name/placeholder, real styling, dimmed) — the
-            same FieldBox the preview/member page/export renders, so the edit
-            canvas always matches. Lives in the scaled canvas layer, so it
-            tracks the boxes exactly. */}
-        {fields.map((f) => (
-          <FieldBox key={f.id} field={f} value={undefined} brandKit={kit} />
-        ))}
       </div>
 
       {/* Field boxes (screen space = canvas × scale; z = canvas layer order) */}
@@ -293,12 +286,30 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
               transform: f.rotation ? `rotate(${f.rotation}deg)` : undefined,
               border: isSelected ? "1.5px solid #2563EB" : "1.5px dashed rgba(37,99,235,0.65)",
               borderRadius: f.type === "image" ? cornerRadiusCss(f) : undefined,
-              // Content renders beneath in the canvas layer — keep the
-              // interactive box a near-transparent outline so text stays legible.
-              background: isSelected ? "rgba(37,99,235,0.06)" : "transparent",
+              // Content lives INSIDE the box now — no fill, the outline and
+              // handles carry selection.
+              background: "transparent",
               cursor: "move",
             }}
           >
+            {/* The field's real appearance, riding inside the interaction box
+                so the browser moves/rotates it with the box — drags are
+                visually correct by construction. Sized in canvas units and
+                scaled down to the box; pointer events stay on the box. */}
+            <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+              <div
+                data-field-content
+                style={{
+                  width: f.width,
+                  height: f.height,
+                  transform: `scale(${scale})`,
+                  transformOrigin: "top left",
+                  pointerEvents: "none",
+                }}
+              >
+                <FieldBoxContent field={f} value={undefined} brandKit={kit} />
+              </div>
+            </div>
             <span
               className="absolute -top-5 left-0 text-[10px] font-bold px-1 rounded whitespace-nowrap"
               style={{ background: "#2563EB", color: "white", pointerEvents: "none" }}
@@ -342,8 +353,19 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
             e.target.style.height = `${e.height}px`;
             e.target.style.left = `${e.drag.left}px`;
             e.target.style.top = `${e.drag.top}px`;
+            // Stretch the content live with the box (canvas units → the box's
+            // current screen size); the exact font math commits on release.
+            const content = e.target.querySelector<HTMLElement>("[data-field-content]");
+            if (content && single.width > 0 && single.height > 0) {
+              content.style.transform = `scale(${e.width / single.width}, ${e.height / single.height})`;
+            }
           }}
           onResizeEnd={(e) => {
+            // React won't rewrite an unchanged transform prop, so undo the
+            // manual stretch before state re-renders the content at its
+            // committed size.
+            const content = e.target.querySelector<HTMLElement>("[data-field-content]");
+            if (content) content.style.transform = `scale(${scale})`;
             if (!e.lastEvent) return;
             const w = Math.max(16, Math.round(e.lastEvent.width / scale));
             const h = Math.max(16, Math.round(e.lastEvent.height / scale));

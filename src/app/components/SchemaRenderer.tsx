@@ -156,6 +156,8 @@ function resolveColor(
 function boxStyle(field: TemplateField): React.CSSProperties {
   // Three positioning patterns from the reference generators: plain absolute
   // boxes, center-anchored boxes (translate(-50%,-50%)), rotated content.
+  // Positioning ONLY — appearance (including opacity) lives on the content,
+  // so the builder can host content inside its own screen-space boxes.
   const transforms: string[] = [];
   if (field.anchor === "center") transforms.push("translate(-50%, -50%)");
   if (field.rotation) transforms.push(`rotate(${field.rotation}deg)`);
@@ -169,6 +171,15 @@ function boxStyle(field: TemplateField): React.CSSProperties {
     // Canvas layer order. Fields array order is the member FORM order; paint
     // order is zIndex (ties fall back to DOM order = form order).
     zIndex: field.zIndex ?? 0,
+  };
+}
+
+/** Appearance base for a field's content: fills the positioning parent (the
+ * FieldBox wrapper or a builder interaction box) and carries element opacity. */
+function contentBaseStyle(field: TemplateField): React.CSSProperties {
+  return {
+    width: "100%",
+    height: "100%",
     // Element opacity (0-100, default 100)
     opacity: field.opacity !== undefined ? Math.max(0, Math.min(100, field.opacity)) / 100 : undefined,
   };
@@ -204,9 +215,21 @@ interface FieldBoxProps {
   brandKit: BrandKit | null;
 }
 
-/** Exported for the builder's edit canvas, which paints the same placeholder
- * content underneath its transform boxes so fields are never empty outlines. */
+/** Positioning wrapper (boxStyle) around the field's visual content. The
+ * single member-preview/export render path — behavior must stay identical. */
 export function FieldBox({ field, value, brandKit }: FieldBoxProps) {
+  return (
+    <div style={boxStyle(field)}>
+      <FieldBoxContent field={field} value={value} brandKit={brandKit} />
+    </div>
+  );
+}
+
+/** Content-only variant: identical visuals rendered at the origin, filling a
+ * parent sized to field.width × field.height. The builder hosts this inside
+ * its screen-space interaction boxes so content moves with the box during
+ * drags — no second source of truth, no catch-up jump on release. */
+export function FieldBoxContent({ field, value, brandKit }: FieldBoxProps) {
   // Static elements carry their own fixed content — member values never apply.
   const effective = field.static ? field.staticValue : value;
   if (field.type === "shape") {
@@ -233,7 +256,7 @@ function ShapeFieldBox({ field, brandKit }: { field: TemplateField; brandKit: Br
     return (
       <div
         style={{
-          ...boxStyle(field),
+          ...contentBaseStyle(field),
           background: g ? gradientCss(g) : solid,
           borderRadius: cornerRadiusCss(field),
         }}
@@ -244,7 +267,7 @@ function ShapeFieldBox({ field, brandKit }: { field: TemplateField; brandKit: Br
   const gradId = `sp-shape-grad-${field.id}`;
   const paint = g ? `url(#${gradId})` : solid;
   return (
-    <div style={boxStyle(field)}>
+    <div style={contentBaseStyle(field)}>
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block" }}>
         {g && (
           <defs>
@@ -286,7 +309,7 @@ function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {
   return (
     <div
       style={{
-        ...boxStyle(field),
+        ...contentBaseStyle(field),
         display: "flex",
         alignItems,
         justifyContent: justify,
@@ -330,7 +353,7 @@ function ImageFieldBox({ field, value }: { field: TemplateField; value: string |
   return (
     <div
       style={{
-        ...boxStyle(field),
+        ...contentBaseStyle(field),
         overflow: "hidden",
         borderRadius: cornerRadiusCss(field),
         display: "flex",

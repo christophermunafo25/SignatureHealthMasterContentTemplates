@@ -62,6 +62,15 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
   const boxRefs = useRef(new Map<string, HTMLDivElement>());
   const [scale, setScale] = useState(0.4);
   const [draw, setDraw] = useState<DrawState | null>(null);
+  /** Chips show on hover + selection only — twelve fields ≠ twelve chips. */
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  /** Canvas-space dimensions shown under the selection while manipulating. */
+  const [manipDims, setManipDims] = useState<{ w: number; h: number } | null>(null);
+  const showDims = useCallback(
+    (w: number, h: number) =>
+      setManipDims((prev) => (prev && prev.w === w && prev.h === h ? prev : { w, h })),
+    [],
+  );
   const resizeStart = useRef<{ height: number; fontSize?: number; corner: boolean }>({ height: 0, corner: false });
   const backgroundDataUrl = useDataUrl(backgroundUrl || undefined);
 
@@ -276,6 +285,8 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
               if (!isSelected) onSelect([f.id]);
               onContextMenu({ x: e.clientX, y: e.clientY }, f.id, toCanvas(e));
             }}
+            onMouseEnter={() => setHoveredId(f.id)}
+            onMouseLeave={() => setHoveredId((id) => (id === f.id ? null : id))}
             style={{
               position: "absolute",
               left: displayX(f) * scale,
@@ -284,7 +295,9 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
               height: f.height * scale,
               zIndex: (f.zIndex ?? 0) + 1, // +1 keeps every box above the background
               transform: f.rotation ? `rotate(${f.rotation}deg)` : undefined,
-              border: isSelected ? "1.5px solid #2563EB" : "1.5px dashed rgba(37,99,235,0.65)",
+              border: isSelected
+                ? "var(--editor-line) solid var(--editor-accent)"
+                : "var(--editor-line) dashed color-mix(in srgb, var(--editor-accent) 65%, transparent)",
               borderRadius: f.type === "image" ? cornerRadiusCss(f) : undefined,
               // Content lives INSIDE the box now — no fill, the outline and
               // handles carry selection.
@@ -310,12 +323,50 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
                 <FieldBoxContent field={f} value={undefined} brandKit={kit} />
               </div>
             </div>
-            <span
-              className="absolute -top-5 left-0 text-[10px] font-bold px-1 rounded whitespace-nowrap"
-              style={{ background: "#2563EB", color: "white", pointerEvents: "none" }}
-            >
-              {f.label} · {f.static ? "fixed" : f.type}
-            </span>
+            {(isSelected || hoveredId === f.id) && (
+              <span
+                className="absolute -top-4 left-0 rounded whitespace-nowrap"
+                style={{
+                  background: "var(--editor-accent)",
+                  color: "#fff",
+                  fontSize: 9,
+                  fontWeight: 500,
+                  padding: "1px 4px",
+                  pointerEvents: "none",
+                }}
+              >
+                {f.label}
+                {(() => {
+                  // "Image · image" says nothing — suppress the type when it
+                  // duplicates the label. "fixed" always carries information.
+                  const segment = f.static
+                    ? "fixed"
+                    : f.label.trim().toLowerCase() === f.type
+                      ? null
+                      : f.type;
+                  return segment ? ` · ${segment}` : "";
+                })()}
+              </span>
+            )}
+            {isSelected && single?.id === f.id && manipDims && (
+              <span
+                className="absolute whitespace-nowrap rounded"
+                style={{
+                  top: "100%",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  marginTop: 6,
+                  background: "var(--editor-accent)",
+                  color: "#fff",
+                  fontSize: 9,
+                  fontWeight: 500,
+                  padding: "1px 4px",
+                  pointerEvents: "none",
+                }}
+              >
+                {manipDims.w} × {manipDims.h}
+              </span>
+            )}
           </div>
         );
       })}
@@ -336,8 +387,10 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
           onDrag={(e) => {
             e.target.style.left = `${e.left}px`;
             e.target.style.top = `${e.top}px`;
+            showDims(single.width, single.height);
           }}
           onDragEnd={(e) => {
+            setManipDims(null);
             if (!e.lastEvent) return;
             patchFields(new Map([[single.id, commitPos(single, e.lastEvent.left, e.lastEvent.top)]]));
           }}
@@ -359,8 +412,11 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
             if (content && single.width > 0 && single.height > 0) {
               content.style.transform = `scale(${e.width / single.width}, ${e.height / single.height})`;
             }
+            // Canvas pixels, never screen pixels — the person designs at 1440.
+            showDims(Math.round(e.width / scale), Math.round(e.height / scale));
           }}
           onResizeEnd={(e) => {
+            setManipDims(null);
             // React won't rewrite an unchanged transform prop, so undo the
             // manual stretch before state re-renders the content at its
             // committed size.
@@ -418,8 +474,8 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
             top: draw.y * scale,
             width: draw.w * scale,
             height: draw.h * scale,
-            border: "2px dashed #2563EB",
-            background: "rgba(37,99,235,0.08)",
+            border: "var(--editor-line) dashed var(--editor-accent)",
+            background: "color-mix(in srgb, var(--editor-accent) 8%, transparent)",
             pointerEvents: "none",
             zIndex: 10000,
           }}

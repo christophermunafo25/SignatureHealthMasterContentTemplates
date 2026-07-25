@@ -370,3 +370,50 @@ button, input, select, textarea, optgroup {
   border-color: var(--sb-active-border);
   color: var(--sb-fg-active);
 }
+
+/* --- Canvas editor chrome (Template builder) ------------------------------
+   Tokens for the design-canvas overlay: selection outlines, Moveable
+   transform controls, label chips, and the dimension badge. The chrome
+   paints over the template canvas — which stays paper-white in both app
+   themes — so the accent holds a single value; both theme blocks declare it
+   the way the --sb-* sidebar tokens do. */
+:root {
+  --editor-accent: #0d99ff;
+  --editor-line: 1px;
+  --editor-handle: 7px;
+}
+.dark {
+  --editor-accent: #0d99ff;
+}
+
+/* Scoped to the builder canvas so a future Moveable elsewhere keeps its own
+   look. Figma-grade: 1px lines, small square handles filled white with a
+   thin accent border; the rotation handle stays circular so it reads as a
+   different affordance. */
+[data-overlay-root] .moveable-control-box {
+  --moveable-color: var(--editor-accent);
+}
+[data-overlay-root] .moveable-line.moveable-line {
+  width: var(--editor-line);
+  height: var(--editor-line);
+}
+[data-overlay-root] .moveable-control.moveable-control {
+  width: var(--editor-handle);
+  height: var(--editor-handle);
+  margin-top: calc(var(--editor-handle) / -2);
+  margin-left: calc(var(--editor-handle) / -2);
+  border-radius: 0;
+  background: #fff;
+  border: 1px solid var(--editor-accent);
+}
+/* The painted square is small; the hit target is not. */
+[data-overlay-root] .moveable-control.moveable-control::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+[data-overlay-root] .moveable-rotation-control.moveable-rotation-control {
+  border-radius: 50%;
+  background: #fff;
+  border-color: var(--editor-accent);
+}

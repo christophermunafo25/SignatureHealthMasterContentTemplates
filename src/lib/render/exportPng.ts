@@ -1,6 +1,6 @@
 import { toPng } from "html-to-image";
-import type { TemplateSchema } from "../types";
-import { buildFontEmbedCss, ensureSchemaFontsLoaded } from "./fonts";
+import type { BrandKit, TemplateSchema } from "../types";
+import { buildExportFontEmbedCss, ensureSchemaFontsLoaded } from "./fonts";
 
 export type ExportOutcome = "downloaded" | "shared" | "canceled";
 
@@ -10,21 +10,26 @@ export type ExportOutcome = "downloaded" | "shared" | "canceled";
  *  - dimensions come from the SCHEMA, never a literal
  *  - toPng runs twice with a short pause (Safari image-decode warm-up)
  *  - mobile tries navigator.share with a File, falling back to a download
- * Custom uploaded fonts are embedded via fontEmbedCSS; Google fonts render
- * from the document font cache (skipFonts), matching the proven export path.
+ * EVERY font the schema renders with (uploaded AND Google, type-style-bound
+ * included) is embedded via fontEmbedCSS — the snapshot SVG rasterizes in an
+ * isolated context on Safari/Firefox with no access to the document's font
+ * cache, so anything not embedded exports as a system fallback.
  */
 export async function exportSchemaPng(
   schema: TemplateSchema,
   node: HTMLElement,
+  brandKit?: BrandKit | null,
 ): Promise<ExportOutcome> {
-  await ensureSchemaFontsLoaded(schema);
-  const fontEmbedCss = buildFontEmbedCss(schema);
+  await ensureSchemaFontsLoaded(schema, brandKit);
+  const fontEmbedCss = await buildExportFontEmbedCss(schema, brandKit);
   const options = {
     width: schema.canvasWidth,
     height: schema.canvasHeight,
     pixelRatio: 1,
     canvasWidth: schema.canvasWidth,
     canvasHeight: schema.canvasHeight,
+    // We embed fonts ourselves; never let html-to-image walk the document's
+    // stylesheets (slow, and it would inline the app shell fonts too).
     skipFonts: !fontEmbedCss,
     ...(fontEmbedCss ? { fontEmbedCSS: fontEmbedCss } : {}),
   };

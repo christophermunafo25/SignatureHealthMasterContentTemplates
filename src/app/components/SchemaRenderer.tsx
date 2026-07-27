@@ -55,10 +55,11 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
     }, [schema.canvasWidth, schema.canvasHeight]);
 
     // Best-effort load of every family the schema references (imported
-    // Figma fonts included) so fields render in their designed typeface.
+    // Figma fonts and type-style-bound fonts included) so fields render in
+    // their designed typeface.
     useEffect(() => {
-      loadGoogleFonts(schemaFontFamilies(schema));
-    }, [schema]);
+      loadGoogleFonts(schemaFontFamilies(schema, brandKit));
+    }, [schema, brandKit]);
 
     // Fixed-width fitting measures real glyphs — re-render once webfonts
     // finish loading so measurements switch from the fallback font's metrics.
@@ -78,13 +79,13 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
 
     const exportPng = useCallback(async () => {
       if (!canvasRef.current) throw new Error("Canvas not mounted");
-      const outcome = await exportSchemaPng(schema, canvasRef.current);
+      const outcome = await exportSchemaPng(schema, canvasRef.current, brandKit);
       // A dismissed share sheet produced no graphic — don't count it.
       if (instrument && outcome !== "canceled") {
         void stores.usage.record(schema.companyId, schema.id, "download");
       }
       return outcome;
-    }, [schema, instrument]);
+    }, [schema, instrument, brandKit]);
 
     useImperativeHandle(ref, () => ({ exportPng }), [exportPng]);
 

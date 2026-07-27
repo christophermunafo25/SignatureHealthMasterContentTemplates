@@ -73,7 +73,8 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
     setExporting(true);
     try {
       const outcome = await rendererRef.current.exportPng();
-      showToast(outcome);
+      // Canceling the share sheet needs no confirmation of anything.
+      if (outcome !== "canceled") showToast(outcome);
     } catch (e) {
       console.error("Export failed", e);
       showToast("error");

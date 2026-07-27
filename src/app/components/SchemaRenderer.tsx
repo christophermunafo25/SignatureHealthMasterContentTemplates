@@ -79,7 +79,10 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
     const exportPng = useCallback(async () => {
       if (!canvasRef.current) throw new Error("Canvas not mounted");
       const outcome = await exportSchemaPng(schema, canvasRef.current);
-      if (instrument) void stores.usage.record(schema.companyId, schema.id, "download");
+      // A dismissed share sheet produced no graphic — don't count it.
+      if (instrument && outcome !== "canceled") {
+        void stores.usage.record(schema.companyId, schema.id, "download");
+      }
       return outcome;
     }, [schema, instrument]);
 

@@ -2,7 +2,7 @@ import { toPng } from "html-to-image";
 import type { TemplateSchema } from "../types";
 import { buildFontEmbedCss, ensureSchemaFontsLoaded } from "./fonts";
 
-export type ExportOutcome = "downloaded" | "shared";
+export type ExportOutcome = "downloaded" | "shared" | "canceled";
 
 /** Export a rendered schema node to PNG and hand it to the user.
  *
@@ -48,6 +48,11 @@ export async function exportSchemaPng(
         return "shared";
       }
     } catch (e) {
+      // Closing the share sheet is a decision, not a failure — don't force
+      // a download the person just declined.
+      if (e instanceof DOMException && e.name === "AbortError") return "canceled";
+      // Anything else (e.g. the render outlived the tap's transient
+      // activation → NotAllowedError) falls back to a plain download.
       console.log("Share failed, falling back to download", e);
     }
   }
@@ -57,6 +62,9 @@ export async function exportSchemaPng(
   link.download = fileName;
   link.href = objectUrl;
   link.click();
-  setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+  // Mobile browsers start blob downloads ASYNCHRONOUSLY after click() —
+  // revoking on the next tick aborts them (failed or zero-byte files on
+  // iOS Safari). Keep the URL alive well past any plausible start.
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
   return "downloaded";
 }

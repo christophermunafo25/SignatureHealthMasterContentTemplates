@@ -14,18 +14,28 @@ const loadedGoogleFamilies = new Set<string>();
 const registeredCustomAssets = new Set<string>();
 const customFaceCss = new Map<string, string>(); // family → @font-face css (data-URL src)
 
-/** Load Google font families via the css2 API (link injection). */
+/** Load Google font families via the css2 API (link injection).
+ *
+ * One <link> PER family, never a batch: callers pass every family a schema
+ * references, which can include uploaded custom families or Figma-imported
+ * names Google doesn't know — and css2 answers 400 for the ENTIRE request if
+ * any one family is invalid. Batched, one custom font silently killed every
+ * Google font that shared its link. Families already registered as custom
+ * @font-faces are skipped outright. */
 export function loadGoogleFonts(families: string[]): void {
-  const fresh = families.filter((f) => f && !loadedGoogleFamilies.has(f));
-  if (!fresh.length) return;
-  fresh.forEach((f) => loadedGoogleFamilies.add(f));
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href =
-    "https://fonts.googleapis.com/css2?" +
-    fresh.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, "+")}:wght@400;500;600;700;800`).join("&") +
-    "&display=swap";
-  document.head.appendChild(link);
+  const fresh = families.filter(
+    (f) => f && !loadedGoogleFamilies.has(f) && !customFaceCss.has(f),
+  );
+  for (const family of fresh) {
+    loadedGoogleFamilies.add(family);
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href =
+      "https://fonts.googleapis.com/css2?family=" +
+      `${encodeURIComponent(family).replace(/%20/g, "+")}:wght@400;500;600;700;800` +
+      "&display=swap";
+    document.head.appendChild(link);
+  }
 }
 
 /** Register an uploaded font file as a runtime @font-face with a data-URL src,
@@ -66,18 +76,17 @@ export async function registerCustomFont(asset: BrandAsset): Promise<void> {
   }
 }
 
-/** Load every font a brand kit references (Google + custom). */
+/** Load every font a brand kit references (Google + custom).
+ *
+ * EVERY uploaded font asset registers, not just the heading/body picks:
+ * fields and type styles reference uploaded families directly, and a family
+ * without a registered @font-face renders as fallback sans-serif everywhere
+ * and embeds nothing at export. Registration was previously session-local to
+ * the upload — after a reload, only heading/body customs came back. */
 export async function loadBrandFonts(kit: BrandKit, fontAssets: BrandAsset[]): Promise<void> {
   const refs = [kit.headingFont, kit.bodyFont].filter((r): r is FontRef => Boolean(r));
   loadGoogleFonts(refs.filter((r) => r.source === "google").map((r) => r.family));
-  await Promise.all(
-    refs
-      .filter((r) => r.source === "custom")
-      .map((r) => {
-        const asset = fontAssets.find((a) => a.id === r.assetId);
-        return asset ? registerCustomFont(asset) : Promise.resolve();
-      }),
-  );
+  await Promise.all(fontAssets.map((asset) => registerCustomFont(asset)));
 }
 
 /** Families a schema's fields actually use. */

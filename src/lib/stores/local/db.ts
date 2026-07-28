@@ -10,7 +10,7 @@ interface Db {
   usageEvents: unknown[];
 }
 
-const KEY = "brand-portal-dev-db";
+const KEY = "shc-graphics-dev-db";
 
 const empty = (): Db => ({
   companies: [],

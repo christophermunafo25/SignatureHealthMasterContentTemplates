@@ -100,9 +100,9 @@ export function AuthPage() {
       >
         <div className="sp-mesh px-7 pt-7 pb-6">
           <p className="sp-eyebrow mb-1" style={{ color: "rgba(255,255,255,0.85)" }}>
-            Brand template portal
+            Signature HealthCare
           </p>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase", fontSize: 20, letterSpacing: "-0.03em", color: "#f2f3ef" }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase", fontSize: 20, letterSpacing: "0.1em", color: "#f8f1d8" }}>
             {view === "signup" ? "Create your account" : view === "forgot" ? "Reset password" : view === "setPassword" ? "Choose a new password" : "Sign in"}
           </h1>
         </div>

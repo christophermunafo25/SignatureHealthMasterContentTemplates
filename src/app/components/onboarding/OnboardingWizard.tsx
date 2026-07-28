@@ -35,7 +35,7 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
   const [companyName, setCompanyName] = useState("");
   const [colors, setColors] = useState<BrandColor[]>(DEFAULT_PALETTE);
   const [headingGoogle, setHeadingGoogle] = useState("Montserrat");
-  const [bodyGoogle, setBodyGoogle] = useState("Inter");
+  const [bodyGoogle, setBodyGoogle] = useState("Lora");
   const [pendingFonts, setPendingFonts] = useState<PendingFont[]>([]);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);

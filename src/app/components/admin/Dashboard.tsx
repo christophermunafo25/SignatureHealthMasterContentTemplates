@@ -42,7 +42,7 @@ function Kpi({ label, value, Icon, chip }: KpiProps) {
         className="flex items-center justify-center flex-shrink-0"
         style={{ width: 38, height: 38, borderRadius: "var(--radius-icon)", background: chip }}
       >
-        <Icon style={{ width: 16, height: 16, color: "#122407" }} />
+        <Icon style={{ width: 16, height: 16, color: "#003b71" }} />
       </span>
       <span className="min-w-0">
         <span className="block truncate" style={{ ...mono, fontSize: 24, lineHeight: 1.1, color: "var(--ink)" }}>

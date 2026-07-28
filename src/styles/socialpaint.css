@@ -1,79 +1,80 @@
 /* ==========================================================================
-   SocialPaint Design System — platform UI tokens.
-   Implemented from the claude.ai/design "SocialPaint Design System" project
-   (tokens/*.css + readme). Acid lime + deep green lead; cyan and pink
-   support; every neutral carries a green cast — no grey neutrals. Soft
-   containers (20px) against crisp controls (5px). Flat color only: no
-   gradients as surface treatment, no glass, no texture. PLATFORM UI ONLY:
-   tenant brand kits style the template graphics, never this chrome.
+   Signature HealthCare Design System — platform UI tokens.
+   Custom build of the SocialPaint platform re-skinned for Signature
+   HealthCare. Navy (Pantone 541 C) + cream (7499 C) lead; teal (7475 C),
+   plum (5185 C), orange (1375 C) and warm red support; every neutral
+   carries a warm cream cast. Soft containers (20px) against crisp controls
+   (5px). Flat color only: no gradients as surface treatment, no glass, no
+   texture. PLATFORM UI ONLY: tenant brand kits style the template
+   graphics, never this chrome.
 
-   The custom-property NAMES are kept from the previous system so components
-   need no changes — only the VALUES changed.
+   The custom-property NAMES are kept from the SocialPaint system so
+   components need no changes — only the VALUES changed.
+
+   Brand palette:
+     Navy   #003B71 (541 C)      · 50% #7F9DB8
+     Plum   #4C3041 (5185 C)     · 50% #A597A0
+     Teal   #44797B (7475 C)     · 50% #A1BCBD
+     Cream  #F1E4B2 (7499 C)     · 50% #F8F1D8
+     Orange #FF9E18 (1375 C)     · 50% #FFCE8B
+     Red    #FF4438 (Warm Red C) · 50% #FFA19B
+   Type: Montserrat headlines (+100 kerning), Lora body.
    ========================================================================== */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
-
-/* Kurdis Extra Wide Extra Bold — licensed heading face, vendored locally. */
-@font-face {
-  font-family: "Kurdis Extra Wide";
-  src: url("../assets/fonts/kurdis/KurdisExtraWideExtraBold.otf") format("opentype");
-  font-weight: 400 800;
-  font-style: normal;
-  font-display: swap;
-}
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,700;1,400;1,700&family=IBM+Plex+Mono:wght@400;500&display=swap");
 
 :root {
-  /* Surfaces (light: canvas / raised / hover / surface, all green-cast) */
-  --linen: #fafaf9;
-  --paper: #f2f3ee;
-  --paper-warm: #e8eae1;
+  /* Surfaces (light: canvas / raised / hover / surface, all cream-cast) */
+  --linen: #fbf9f2;
+  --paper: #f6f1e1;
+  --paper-warm: #f1e4b2;
   --lift: #ffffff;
-  --ink: #122407;
+  --ink: #003b71;
   --obsidian: #000000;
 
-  /* Accent range (names kept; values are the DS secondary palette) */
-  --orchid: #ff8af5;
-  --mint: #caff5f;
-  --sky: #89f6ff;
-  --sand: #caff5f;
-  --peach: #ff8af5;
+  /* Accent range (names kept; values are the Signature secondary palette) */
+  --orchid: #ffa19b;
+  --mint: #ff9e18;
+  --sky: #a1bcbd;
+  --sand: #ff9e18;
+  --peach: #ffce8b;
 
   /* Brand accents — light mode: --solar is the READABLE accent (brights
      are fills, not text, on light) */
-  --amber: #89f6ff;
-  --solar: #122407;
-  --blush: #ff8af5;
+  --amber: #ffce8b;
+  --solar: #003b71;
+  --blush: #ffa19b;
 
   /* Semantic state */
-  --success: #122407;
-  --danger: #b02015;
+  --success: #44797b;
+  --danger: #c62f24;
 
-  /* Foregrounds on light (green-cast ladder) */
-  --fg-1: #122407;
-  --fg-2: #4a5738;
-  --fg-3: #66754f;
-  --fg-4: #9aa48b;
-  --fg-5: rgba(18, 36, 7, 0.08);
-  --hairline: #dddfd4;
-  --hairline-strong: #b9bea9;
+  /* Foregrounds on light (navy-cast ladder) */
+  --fg-1: #003b71;
+  --fg-2: #3a6285;
+  --fg-3: #5e7f9e;
+  --fg-4: #93a9be;
+  --fg-5: rgba(0, 59, 113, 0.08);
+  --hairline: #e4deca;
+  --hairline-strong: #c6bfa3;
 
-  /* Text on ink-colored surfaces. Light mode's primary construction is deep
-     green fill + LIME text (DS light primary button). */
-  --fg-on-dark-1: #caff5f;
+  /* Text on ink-colored surfaces. Light mode's primary construction is
+     navy fill + CREAM text. */
+  --fg-on-dark-1: #f1e4b2;
   --fg-on-dark-2: rgba(255, 255, 255, 0.78);
   --fg-on-dark-3: rgba(255, 255, 255, 0.55);
 
   /* Accent washes/borders for tinted chrome (active nav, locked-rule boxes) */
-  --accent-wash: color-mix(in srgb, #122407 8%, transparent);
-  --accent-wash-strong: color-mix(in srgb, #122407 16%, transparent);
-  --accent-border: color-mix(in srgb, #122407 35%, transparent);
+  --accent-wash: color-mix(in srgb, #003b71 8%, transparent);
+  --accent-wash-strong: color-mix(in srgb, #003b71 16%, transparent);
+  --accent-border: color-mix(in srgb, #003b71 35%, transparent);
   --fill-danger-bg: #ffd9d5;
 
-  /* Typography families */
-  --font-display: "Kurdis Extra Wide", "Inter Tight", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Inter Tight", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* Typography families — Montserrat headlines/UI, Lora body copy */
+  --font-display: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Lora", Georgia, "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --font-ui: "Inter Tight", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-ui: "Montserrat", ui-sans-serif, system-ui, -apple-system, sans-serif;
 
   /* Shape: soft containers vs crisp controls — hold the gap, never 12px */
   --radius-card: 20px;
@@ -84,13 +85,13 @@
   --radius-pill: 999px;
 
   /* Elevation (light) */
-  --shadow-e1: 0 2px 8px rgba(18, 36, 7, 0.07);
-  --shadow-e2: 0 2px 8px rgba(18, 36, 7, 0.07);
-  --shadow-e3: 0 8px 24px rgba(18, 36, 7, 0.11);
-  --shadow-e4: 0 8px 24px rgba(18, 36, 7, 0.11);
+  --shadow-e1: 0 2px 8px rgba(0, 59, 113, 0.07);
+  --shadow-e2: 0 2px 8px rgba(0, 59, 113, 0.07);
+  --shadow-e3: 0 8px 24px rgba(0, 59, 113, 0.11);
+  --shadow-e4: 0 8px 24px rgba(0, 59, 113, 0.11);
 
-  /* Focus — 2px ring; mid-green on light (lime would vanish on paper) */
-  --ring-color: #122407;
+  /* Focus — 2px ring; navy on light (orange would vanish on cream) */
+  --ring-color: #003b71;
   --focus-ring: 0 0 0 2px var(--ring-color);
   --focus-ring-tight: 0 0 0 2px var(--ring-color);
 
@@ -99,31 +100,31 @@
   --dur-state: 140ms;
   --dur-panel: 220ms;
 
-  /* Brand moment surfaces (names kept from the old mesh; now FLAT deep
-     green — gradients as surface treatment are banned in this system) */
-  --mesh-warm: #122407;
-  --mesh-soft: #122407;
+  /* Brand moment surfaces (names kept; FLAT navy — gradients as surface
+     treatment are banned in this system) */
+  --mesh-warm: #003b71;
+  --mesh-soft: #003b71;
 
-  /* Primary action: light = deep green fill + lime text */
-  --btn-primary-bg: #122407;
-  --btn-primary-fg: #caff5f;
-  --btn-primary-bg-hover: color-mix(in srgb, #122407 86%, #fff);
+  /* Primary action: light = navy fill + cream text */
+  --btn-primary-bg: #003b71;
+  --btn-primary-fg: #f1e4b2;
+  --btn-primary-bg-hover: color-mix(in srgb, #003b71 86%, #fff);
 
-  /* Data-viz series (validated against the light surface — deep green +
-     readable teal; brights are fills-not-marks on light) */
-  --viz-downloads: #122407;
-  --viz-opens: #00919f;
-  --viz-grid: #dddfd4;
+  /* Data-viz series (validated against the light surface — navy + readable
+     teal; brights are fills-not-marks on light) */
+  --viz-downloads: #003b71;
+  --viz-opens: #44797b;
+  --viz-grid: #e4deca;
 
   /* Sidebar — flat surface (no glass in this system) */
   --sb-width: 264px;
   --sb-width-collapsed: 76px;
   --sb-bg: #ffffff;
-  --sb-border: #dddfd4;
-  --sb-shadow: 0 2px 8px rgba(18, 36, 7, 0.07);
-  --sb-fg: #4a5738;
-  --sb-fg-active: #122407;
-  --sb-active-bg: color-mix(in srgb, #122407 8%, transparent);
+  --sb-border: #e4deca;
+  --sb-shadow: 0 2px 8px rgba(0, 59, 113, 0.07);
+  --sb-fg: #3a6285;
+  --sb-fg-active: #003b71;
+  --sb-active-bg: color-mix(in srgb, #003b71 8%, transparent);
   --sb-active-border: transparent;
 }
 
@@ -135,7 +136,7 @@
 }
 
 /* ── Dark mode ──────────────────────────────────────────────────────────────
-   The dark ladder is the DS dark theme: #1A1A1A canvas rising through
+   The dark ladder is unchanged: #1A1A1A canvas rising through
    surface/raised/hover. Dark elevates with surface color — NO shadows.
    Template graphics are untouched: the render canvas is a fixed #fff
    surface and field colors come from tenant brand kits. */
@@ -144,31 +145,31 @@
   --paper: #2e2e2e;
   --paper-warm: #383838;
   --lift: #242424;
-  --ink: #f2f3ef;
+  --ink: #f4f1e9;
   --obsidian: #ffffff;
 
-  --solar: #caff5f; /* brights carry text on dark */
-  --amber: #89f6ff;
-  --blush: #ff8af5;
-  --success: #caff5f;
+  --solar: #ff9e18; /* brights carry text on dark */
+  --amber: #ffce8b;
+  --blush: #ffa19b;
+  --success: #8fbeba;
   --danger: #ff7a6e;
 
-  --fg-1: #f2f3ef;
-  --fg-2: #c3c6bd;
-  --fg-3: #97998f;
-  --fg-4: #5d5f57;
-  --fg-5: rgba(242, 243, 239, 0.08);
+  --fg-1: #f4f1e9;
+  --fg-2: #c9c4b4;
+  --fg-3: #9b978a;
+  --fg-4: #5f5d55;
+  --fg-5: rgba(244, 241, 233, 0.08);
   --hairline: #333333;
   --hairline-strong: #454545;
 
-  /* Ink pills are light in dark mode — text on them goes deep green */
-  --fg-on-dark-1: #122407;
-  --fg-on-dark-2: rgba(18, 36, 7, 0.72);
-  --fg-on-dark-3: rgba(18, 36, 7, 0.5);
+  /* Ink pills are light in dark mode — text on them goes navy */
+  --fg-on-dark-1: #003b71;
+  --fg-on-dark-2: rgba(0, 59, 113, 0.72);
+  --fg-on-dark-3: rgba(0, 59, 113, 0.5);
 
-  --accent-wash: color-mix(in srgb, #caff5f 15%, transparent);
-  --accent-wash-strong: color-mix(in srgb, #caff5f 28%, transparent);
-  --accent-border: color-mix(in srgb, #caff5f 40%, transparent);
+  --accent-wash: color-mix(in srgb, #ff9e18 15%, transparent);
+  --accent-wash-strong: color-mix(in srgb, #ff9e18 28%, transparent);
+  --accent-border: color-mix(in srgb, #ff9e18 40%, transparent);
   --fill-danger-bg: rgba(255, 122, 110, 0.16);
 
   /* Dark mode raises with surface color, never shadow */
@@ -177,34 +178,34 @@
   --shadow-e3: none;
   --shadow-e4: none;
 
-  --ring-color: #caff5f;
+  --ring-color: #ff9e18;
 
-  /* Primary action: dark = lime fill + deep green text */
-  --btn-primary-bg: #caff5f;
-  --btn-primary-fg: #122407;
-  --btn-primary-bg-hover: color-mix(in srgb, #caff5f 86%, #fff);
+  /* Primary action: dark = orange fill + navy text */
+  --btn-primary-bg: #ff9e18;
+  --btn-primary-fg: #003b71;
+  --btn-primary-bg-hover: color-mix(in srgb, #ff9e18 86%, #fff);
 
   /* Data-viz series on the dark surface — the brights carry data on dark */
-  --viz-downloads: #caff5f;
-  --viz-opens: #89f6ff;
+  --viz-downloads: #ff9e18;
+  --viz-opens: #8fbeba;
   --viz-grid: #333333;
 
   --sb-bg: #242424;
   --sb-border: #333333;
   --sb-shadow: none;
-  --sb-fg: #c3c6bd;
-  --sb-fg-active: #f2f3ef;
-  --sb-active-bg: color-mix(in srgb, #caff5f 15%, transparent);
+  --sb-fg: #c9c4b4;
+  --sb-fg-active: #f4f1e9;
+  --sb-active-bg: color-mix(in srgb, #ff9e18 15%, transparent);
   --sb-active-border: transparent;
 }
-.dark ::selection { background: var(--mint); color: #122407; }
-::selection { background: var(--mint); color: #122407; }
+.dark ::selection { background: var(--mint); color: #003b71; }
+::selection { background: var(--mint); color: #003b71; }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
 
 html {
   font-family: var(--font-ui);
-  letter-spacing: -0.015em; /* Inter Tight at -1% per the DS body spec */
+  letter-spacing: normal; /* Montserrat needs no negative tracking */
   color: var(--fg-1);
   background: var(--linen);
   /* The page never scrolls horizontally — wide content (tables, canvases)
@@ -218,7 +219,7 @@ html {
 
 button, input, select, textarea, optgroup {
   font-family: var(--font-ui);
-  letter-spacing: -0.015em;
+  letter-spacing: normal;
 }
 
 /* Focus: 2px ring at 2px offset on every interactive element, both modes. */
@@ -238,14 +239,14 @@ button, input, select, textarea, optgroup {
   font-weight: 400;
 }
 
-/* Headings are Kurdis Extra Wide Extra Bold, UPPERCASE, -3% tracking. The
-   face is broad and heavy, so sizes are compressed. */
+/* Headings are Montserrat Bold, UPPERCASE, +100 kerning (0.1em) per the
+   Signature HealthCare brand spec. */
 .sp-page-title {
   font-family: var(--font-display);
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: -0.03em;
+  letter-spacing: 0.1em;
   color: var(--ink);
 }
 
@@ -253,7 +254,7 @@ button, input, select, textarea, optgroup {
   font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
   color: var(--ink);
 }
 
@@ -261,7 +262,7 @@ button, input, select, textarea, optgroup {
   font-family: var(--font-ui);
   font-weight: 500;
   font-size: 13px;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.01em;
   min-height: 38px;
   padding: 8px 16px;
   border-radius: var(--radius-button);
@@ -278,14 +279,14 @@ button, input, select, textarea, optgroup {
 .sp-btn-primary:hover:not(:disabled) { background: var(--btn-primary-bg-hover); }
 .sp-btn-ghost { background: transparent; color: var(--fg-2); border-color: var(--hairline-strong); }
 .sp-btn-ghost:hover:not(:disabled) { background: var(--paper-warm); color: var(--fg-1); }
-/* Lime CTA — same fill both modes; deep green carries the text */
-.sp-btn-solar { background: #caff5f; color: #122407; }
-.sp-btn-solar:hover:not(:disabled) { background: color-mix(in srgb, #caff5f 86%, #fff); }
+/* Orange CTA — same fill both modes; navy carries the text */
+.sp-btn-solar { background: #ff9e18; color: #003b71; }
+.sp-btn-solar:hover:not(:disabled) { background: color-mix(in srgb, #ff9e18 86%, #fff); }
 
 .sp-input {
   font-family: var(--font-ui);
   font-size: 13px;
-  letter-spacing: -0.015em;
+  letter-spacing: normal;
   width: 100%;
   padding: 9px 12px;
   border-radius: var(--radius-input);
@@ -305,15 +306,15 @@ button, input, select, textarea, optgroup {
   box-shadow: var(--shadow-e1);
 }
 
-/* Brand-moment surface (hero headers, identity chips). Flat deep green with
-   lime as the voice — the old warm mesh + noise treatment is gone. */
+/* Brand-moment surface (hero headers, identity chips). Flat navy with
+   cream + orange as the voice. */
 .sp-mesh {
-  background: #122407;
-  color: #f2f3ef;
+  background: #003b71;
+  color: #f8f1d8;
 }
-.sp-mesh .sp-eyebrow { color: #caff5f; }
+.sp-mesh .sp-eyebrow { color: #ff9e18; }
 
-/* Toast — floating card with the DS's 3px semantic top bar. */
+/* Toast — floating card with the 3px semantic top bar. */
 .sp-toast {
   position: fixed;
   left: 50%;
@@ -358,7 +359,7 @@ button, input, select, textarea, optgroup {
   border: 1px solid transparent;
   font-size: 14px;
   font-weight: 500;
-  letter-spacing: -0.015em;
+  letter-spacing: normal;
   color: var(--sb-fg);
   transition: background var(--dur-state) var(--ease), color var(--dur-state) var(--ease);
   white-space: nowrap;

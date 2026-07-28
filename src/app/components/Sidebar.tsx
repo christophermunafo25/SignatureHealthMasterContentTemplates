@@ -17,38 +17,57 @@ import {
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useColorScheme, type ColorScheme } from "@/lib/colorScheme";
 import { useRouter, type Route } from "../router";
-import logoOnLight from "@/assets/socialpaint/socialpaint-logo-on-light.svg";
-import logoOnDark from "@/assets/socialpaint/socialpaint-logo-on-dark.svg";
-
 const LS_COLLAPSED = "sp-sidebar-collapsed";
 
-/** The SocialPaint mark — five bars and the sparkle square, from the
- * official horizontal logo. One-color via currentColor (the sparkle knocks
- * out to the background). Used where the full lockup doesn't fit: the
- * collapsed rail and DS empty states. */
+/** Signature HealthCare mark — "SH" monogram placeholder rendered in the
+ * display face, one-color via currentColor. Swap for the official logo
+ * asset when it lands in src/assets. Used where the full lockup doesn't
+ * fit: the collapsed rail and DS empty states. */
 export function BrandMark({ width = 28 }: { width?: number }) {
   return (
-    <svg viewBox="0 0 161 87" fill="currentColor" style={{ width, height: "auto", display: "block" }} aria-hidden>
-      <path d="M6.4355 86.5649H0V0H6.4355V86.5649Z" />
-      <path d="M23.5976 86.5649H15.0176V0H23.5976V86.5649Z" />
-      <path d="M40.7597 86.5649H32.1797V0H40.7597V86.5649Z" />
-      <path d="M57.9217 86.5649H47.1952V0H57.9217V86.5649Z" />
-      <path d="M75.0838 86.5649H62.2128V0H75.0838V86.5649Z" />
-      <path d="M149.104 0C155.343 0 160.4 5.05729 160.4 11.2958V86.5649H119.662C119.662 86.5649 121.912 64.2741 130.667 54.972C139.422 45.6706 160.4 43.2813 160.4 43.2813C160.343 43.2748 139.41 40.8815 130.667 31.5929C121.92 22.2997 119.667 0.0428244 119.662 0C119.653 0.090865 117.397 22.3098 108.66 31.5929C99.9181 40.88 78.9913 43.274 78.927 43.2813C78.927 43.2813 99.9047 45.6705 108.66 54.972C117.404 64.2625 119.657 86.5091 119.662 86.5649H78.3049V0H149.104Z" />
-    </svg>
+    <span
+      aria-hidden
+      style={{
+        width,
+        height: width,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: Math.max(5, Math.round(width * 0.18)),
+        border: "0.09em solid currentColor",
+        fontFamily: "var(--font-display)",
+        fontWeight: 700,
+        fontSize: Math.round(width * 0.4),
+        letterSpacing: "0.04em",
+        lineHeight: 1,
+      }}
+    >
+      SH
+    </span>
   );
 }
 
-/** The official horizontal lockup — dark-green artwork on light chrome,
- * lime + white artwork on dark. */
+/** Horizontal lockup — text wordmark placeholder in the display face until
+ * the official logo asset lands in src/assets. Inherits chrome ink so it
+ * works on light and dark. */
 function BrandLockup({ height = 16 }: { height?: number }) {
-  const { resolved } = useColorScheme();
   return (
-    <img
-      src={resolved === "dark" ? logoOnDark : logoOnLight}
-      alt="SocialPaint"
-      style={{ height, width: "auto", display: "block" }}
-    />
+    <span
+      aria-label="Signature HealthCare"
+      style={{
+        display: "block",
+        fontFamily: "var(--font-display)",
+        fontSize: height * 0.82,
+        fontWeight: 700,
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        lineHeight: 1.2,
+        whiteSpace: "nowrap",
+        color: "var(--ink)",
+      }}
+    >
+      Signature&nbsp;<span style={{ fontWeight: 400 }}>HealthCare</span>
+    </span>
   );
 }
 
@@ -157,7 +176,7 @@ function AccountBlock({ onNavigate }: { onNavigate(route: Route): void }) {
             height: 38,
             borderRadius: 999,
             background: "var(--mint)", // flat fill — gradients are banned as surface treatment
-            color: "#122407",
+            color: "#003b71",
             fontSize: 12,
             fontWeight: 600,
           }}
@@ -247,7 +266,7 @@ export function Sidebar() {
         {menuOpen && (
           <div
             className="fixed inset-0"
-            style={{ background: "rgba(18,36,7,0.4)", zIndex: 39 }}
+            style={{ background: "rgba(0,59,113,0.4)", zIndex: 39 }}
             onClick={() => setMenuOpen(false)}
             aria-hidden
           />
@@ -257,7 +276,7 @@ export function Sidebar() {
           style={{ background: "var(--sb-bg)", borderBottom: "1px solid var(--sb-border)", zIndex: 40 }}
         >
           <div className="flex items-center justify-between px-4" style={{ height: 56 }}>
-            <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} aria-label="SocialPaint — home">
+            <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} aria-label="Signature HealthCare — home">
               <BrandLockup height={18} />
             </button>
             <button
@@ -336,7 +355,7 @@ export function Sidebar() {
         {/* Logo + collapse toggle */}
         <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} mb-7`}>
           {!collapsed && (
-            <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} title="Home" aria-label="SocialPaint — home">
+            <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} title="Home" aria-label="Signature HealthCare — home">
               <BrandLockup />
             </button>
           )}
@@ -353,7 +372,7 @@ export function Sidebar() {
         {collapsed && (
           <button
             onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })}
-            title="SocialPaint — home"
+            title="Signature HealthCare — home"
             className="mx-auto mb-6"
             style={{ color: "var(--solar)" }}
           >
@@ -395,7 +414,7 @@ export function Sidebar() {
                 height: 34,
                 borderRadius: 999,
                 background: "var(--mint)",
-                color: "#122407",
+                color: "#003b71",
                 fontSize: 11,
                 fontWeight: 600,
               }}

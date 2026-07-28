@@ -36,8 +36,8 @@ export interface AuthState {
 
 export const AuthContext = createContext<AuthState | null>(null);
 
-export const LS_COMPANY = "brand-portal-company";
-const LS_ROLE = "brand-portal-dev-role";
+export const LS_COMPANY = "shc-graphics-company";
+const LS_ROLE = "shc-graphics-dev-role";
 
 export function DevAuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);

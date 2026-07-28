@@ -44,7 +44,7 @@ export function SettingsAdmin() {
       <div className="sp-card p-5 space-y-3">
         <h2 className="sp-panel-title">Appearance</h2>
         <p style={{ fontSize: 12, color: "var(--fg-3)" }}>
-          Applies to the SocialPaint chrome only — template graphics and
+          Applies to the portal chrome only — template graphics and
           exports are identical in both modes.
         </p>
         <div className="grid grid-cols-3 gap-2">

@@ -26,10 +26,11 @@
 :root {
   color-scheme: light; /* form controls + scrollbars stay light regardless of OS */
 
-  /* Surfaces: white canvas and cards; separation comes from --hairline
-     borders and --shadow-e1, with --paper/--surface-sunken as the only
-     recessed greys. */
-  --linen: #ffffff;
+  /* Surfaces: a soft grey page (--linen) with WHITE cards (--lift) and a
+     white sidebar (--sb-bg) sitting on top of it — the page recedes, the
+     content lifts. --paper/--surface-sunken stay the recessed greys used
+     INSIDE white surfaces. */
+  --linen: #f5f5f5;
   --paper: #f7f8fa;
   --surface-sunken: #eef0f3;
   --lift: #ffffff;

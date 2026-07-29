@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   BarChart3,
   Frame,
+  Inbox,
   Link2,
   LogOut,
   Menu,
@@ -16,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { stores } from "@/lib/stores";
 import { useColorScheme, type ColorScheme } from "@/lib/colorScheme";
 import { useRouter, type Route } from "../router";
 const LS_COLLAPSED = "shc-graphics-sidebar-collapsed";
@@ -86,6 +88,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { label: "Published Templates", route: { name: "portal" }, Icon: Paintbrush, adminOnly: false, matches: ["portal", "template"] },
   { label: "Template Builder", route: { name: "adminTemplates" }, Icon: Frame, adminOnly: true, matches: ["adminTemplates", "builder"] },
+  { label: "Submissions", route: { name: "submissions" }, Icon: Inbox, adminOnly: true, matches: ["submissions", "submissionDetail"] },
   { label: "Insights & Analytics", route: { name: "dashboard" }, Icon: BarChart3, adminOnly: true, matches: ["dashboard"] },
   { label: "Brand Studio", route: { name: "brandStudio" }, Icon: PencilRuler, adminOnly: true, matches: ["brandStudio"] },
   { label: "Facility Links", route: { name: "facilityLinks" }, Icon: Link2, adminOnly: true, matches: ["facilityLinks"] },
@@ -215,9 +218,53 @@ function AccountBlock({ onNavigate }: { onNavigate(route: Route): void }) {
  * a slim top bar with the brand and a menu button; the nav drops down
  * vertically from the top as a panel over a scrim. Platform product UI —
  * tenant brand kits never re-color it. */
+
+/** New-submission count for the sidebar badge — the whole reason the social
+ * team opens the app. Refreshes on navigation. */
+function useNewSubmissionCount(companyId: string | undefined, routeName: string): number {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!companyId) return;
+    let alive = true;
+    stores.submissions
+      .countNew(companyId)
+      .then((n) => alive && setCount(n))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [companyId, routeName]);
+  return count;
+}
+
+function NewBadge({ n }: { n: number }) {
+  if (n <= 0) return null;
+  return (
+    <span
+      className="flex-shrink-0 flex items-center justify-center"
+      style={{
+        minWidth: 18,
+        height: 18,
+        padding: "0 5px",
+        borderRadius: 999,
+        background: "var(--mint)",
+        color: "#003b71",
+        fontFamily: "var(--font-mono)",
+        fontSize: 10,
+        fontWeight: 600,
+        marginLeft: "auto",
+      }}
+      aria-label={`${n} new submissions`}
+    >
+      {n > 99 ? "99+" : n}
+    </span>
+  );
+}
+
 export function Sidebar() {
-  const { role } = useAuth();
+  const { role, company } = useAuth();
   const { route, navigate } = useRouter();
+  const newCount = useNewSubmissionCount(role === "admin" ? company?.id : undefined, route.name);
   const [isNarrow, setIsNarrow] = useState(() => window.matchMedia("(max-width: 1023px)").matches);
   const [menuOpen, setMenuOpen] = useState(false);
   const [collapsedPref, setCollapsedPref] = useState<boolean>(() => {
@@ -319,6 +366,7 @@ export function Sidebar() {
                       >
                         <Icon style={{ width: 17, height: 17, flexShrink: 0 }} />
                         {label}
+                        {label === "Submissions" && <NewBadge n={newCount} />}
                       </button>
                     );
                   })}
@@ -398,6 +446,7 @@ export function Sidebar() {
               >
                 <Icon style={{ width: 17, height: 17, flexShrink: 0 }} />
                 {!collapsed && label}
+                {!collapsed && label === "Submissions" && <NewBadge n={newCount} />}
               </button>
             );
           })}

@@ -19,6 +19,8 @@ import { Dashboard } from "./components/admin/Dashboard";
 import { SettingsAdmin } from "./components/admin/SettingsAdmin";
 import { PublicApp } from "./components/public/PublicApp";
 import { FacilityLinks } from "./components/admin/FacilityLinks";
+import { SubmissionQueue } from "./components/admin/SubmissionQueue";
+import { SubmissionDetail } from "./components/admin/SubmissionDetail";
 
 function Screen() {
   const { loading, error, retry, company, role, user, backend } = useAuth();
@@ -85,9 +87,8 @@ function Screen() {
       {route.name === "people" && adminOnly(<PeopleAdmin />)}
       {route.name === "settings" && adminOnly(<SettingsAdmin />)}
       {route.name === "facilityLinks" && adminOnly(<FacilityLinks />)}
-      {/* Routes shipped in later phases of v2 — fall back to the portal
-       * until their screens land so a deep link never renders blank. */}
-      {(route.name === "submissions" || route.name === "submissionDetail") && adminOnly(<Portal />)}
+      {route.name === "submissions" && adminOnly(<SubmissionQueue />)}
+      {route.name === "submissionDetail" && adminOnly(<SubmissionDetail submissionId={route.submissionId} />)}
     </AppShell>
   );
 }

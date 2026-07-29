@@ -76,9 +76,23 @@ export interface Member {
 
 /** Team management under real auth (invites go through the invite-member
  * Edge Function so the service role never reaches the client). */
+export interface InviteResult {
+  /** The address already had an account — membership was added to it. */
+  existing: boolean;
+  /** Link mode only: the one-time URL to hand the person directly. */
+  actionLink: string | null;
+}
+
 export interface PeopleStore {
   list(companyId: string): Promise<Member[]>;
-  invite(companyId: string, email: string, role: import("../types").Role): Promise<void>;
+  /** `mode: "link"` mints the invite URL without sending mail — the auth
+   * mailer is rate-limited, and onboarding a team shouldn't wait on it. */
+  invite(
+    companyId: string,
+    email: string,
+    role: import("../types").Role,
+    mode?: "email" | "link",
+  ): Promise<InviteResult>;
   setRole(companyId: string, userId: string, role: import("../types").Role): Promise<void>;
   remove(companyId: string, userId: string): Promise<void>;
 }

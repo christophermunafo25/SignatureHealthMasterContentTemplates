@@ -405,7 +405,7 @@ export class LocalPeopleStore {
   async list(): Promise<never[]> {
     return [];
   }
-  async invite(): Promise<void> {
+  async invite(): Promise<never> {
     throw new Error("Inviting people requires the Supabase backend with auth enabled.");
   }
   async setRole(): Promise<void> {

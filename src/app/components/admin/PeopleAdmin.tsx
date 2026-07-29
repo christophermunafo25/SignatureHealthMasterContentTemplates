@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Send, Trash2 } from "lucide-react";
+import { Check, Copy, Link2, Send, Trash2 } from "lucide-react";
 import type { Role } from "@/lib/types";
 import type { Member } from "@/lib/stores/interfaces";
 import { stores } from "@/lib/stores";
@@ -17,6 +17,9 @@ export function PeopleAdmin() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** Link-mode result: the one-time URL to hand over directly. */
+  const [inviteLink, setInviteLink] = useState<{ email: string; url: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   /** Bumped after mutations so the list reloads through the same hook. */
   const [version, setVersion] = useState(0);
@@ -39,14 +42,25 @@ export function PeopleAdmin() {
     setRemoving(null);
   };
 
-  const invite = async () => {
+  const invite = async (mode: "email" | "link") => {
     if (!company || !email.trim()) return;
+    const address = email.trim().toLowerCase();
     setBusy(true);
     setError(null);
     setNotice(null);
+    setInviteLink(null);
     try {
-      await stores.people.invite(company.id, email.trim().toLowerCase(), role);
-      setNotice(`Invite sent to ${email.trim()}.`);
+      const result = await stores.people.invite(company.id, address, role, mode);
+      if (mode === "link" && result.actionLink) {
+        setInviteLink({ email: address, url: result.actionLink });
+        setNotice(null);
+      } else {
+        setNotice(
+          result.existing
+            ? `${address} already had an account — added to this workspace as ${role}.`
+            : `Invite sent to ${address}.`,
+        );
+      }
       setEmail("");
       reload();
     } catch (e) {
@@ -77,26 +91,79 @@ export function PeopleAdmin() {
         </p>
       )}
 
-      <div className="flex gap-2 mb-2">
+      <div className="flex flex-wrap gap-2 mb-2">
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && void invite()}
+          onKeyDown={(e) => e.key === "Enter" && void invite("email")}
           placeholder="person@company.com"
           className="sp-input flex-1"
+          style={{ minWidth: 200 }}
         />
         <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="sp-input" style={{ width: "auto" }}>
           <option value="member">Member</option>
           <option value="admin">Admin</option>
         </select>
-        <button className="sp-btn sp-btn-primary" disabled={busy || !email.trim() || isDevAuth} onClick={() => void invite()}>
+        <button className="sp-btn sp-btn-primary" disabled={busy || !email.trim() || isDevAuth} onClick={() => void invite("email")}>
           <Send style={{ width: 13, height: 13 }} />
-          {busy ? "Inviting…" : "Invite"}
+          {busy ? "Working…" : "Email invite"}
+        </button>
+        <button
+          className="sp-btn sp-btn-ghost"
+          disabled={busy || !email.trim() || isDevAuth}
+          onClick={() => void invite("link")}
+          title="Creates the account and gives you a link to send yourself — no email is sent, so this is never rate-limited"
+        >
+          <Link2 style={{ width: 13, height: 13 }} />
+          Get invite link
         </button>
       </div>
       {error && <p style={{ fontSize: 12, color: "var(--danger)", marginBottom: 8 }}>{error}</p>}
       {notice && <p style={{ fontSize: 12, color: "var(--success)", marginBottom: 8 }}>{notice}</p>}
+      {inviteLink && (
+        <div className="sp-card p-4 mb-3 space-y-2">
+          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+            Invite link for {inviteLink.email}
+          </p>
+          <p style={{ fontSize: 12, color: "var(--fg-3)" }}>
+            They're already added to the workspace. Send them this link — it
+            opens account setup, works once, and expires. No email was sent.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <code
+              className="truncate flex-1"
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                color: "var(--ink)",
+                background: "var(--paper)",
+                border: "1px solid var(--hairline)",
+                borderRadius: 8,
+                padding: "8px 12px",
+                minWidth: 220,
+              }}
+            >
+              {inviteLink.url}
+            </code>
+            <button
+              className="sp-btn sp-btn-ghost"
+              style={{ minHeight: 34 }}
+              onClick={async () => {
+                await navigator.clipboard.writeText(inviteLink.url);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1600);
+              }}
+            >
+              {copied ? <Check style={{ width: 13, height: 13 }} /> : <Copy style={{ width: 13, height: 13 }} />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+            <button className="sp-btn sp-btn-ghost" style={{ minHeight: 34 }} onClick={() => setInviteLink(null)}>
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="sp-card overflow-hidden mt-4">
         {membersState.status === "loading" ? (

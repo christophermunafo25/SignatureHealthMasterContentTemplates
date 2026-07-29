@@ -1,6 +1,6 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import type { Role } from "../../types";
-import type { Member, PeopleStore } from "../interfaces";
+import type { InviteResult, Member, PeopleStore } from "../interfaces";
 import { supabase } from "./client";
 
 /** Every Edge Function here returns { error: string } on failure, but
@@ -52,14 +52,20 @@ export class SupabasePeopleStore implements PeopleStore {
     }));
   }
 
-  async invite(companyId: string, email: string, role: Role): Promise<void> {
+  async invite(
+    companyId: string,
+    email: string,
+    role: Role,
+    mode: "email" | "link" = "email",
+  ): Promise<InviteResult> {
     const { data, error } = await supabase().functions.invoke("invite-member", {
       // /admin, not the origin root — the root serves the public portal.
-      body: { companyId, email, role, redirectTo: `${window.location.origin}/admin` },
+      body: { companyId, email, role, mode, redirectTo: `${window.location.origin}/admin` },
     });
     if (error) throw new Error(`Invite failed: ${await functionErrorDetail(error)}`);
-    const body = data as { error?: string };
+    const body = data as { error?: string; existing?: boolean; actionLink?: string | null };
     if (body?.error) throw new Error(body.error);
+    return { existing: Boolean(body?.existing), actionLink: body?.actionLink ?? null };
   }
 
   async setRole(companyId: string, userId: string, role: Role): Promise<void> {

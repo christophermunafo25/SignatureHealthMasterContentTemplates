@@ -17,6 +17,7 @@ import { TemplateBuilder } from "./components/builder/TemplateBuilder";
 import { BrandStudio } from "./components/admin/BrandStudio";
 import { Dashboard } from "./components/admin/Dashboard";
 import { SettingsAdmin } from "./components/admin/SettingsAdmin";
+import { PublicApp } from "./components/public/PublicApp";
 
 function Screen() {
   const { loading, error, retry, company, role, user, backend } = useAuth();
@@ -82,21 +83,37 @@ function Screen() {
       {route.name === "dashboard" && adminOnly(<Dashboard />)}
       {route.name === "people" && adminOnly(<PeopleAdmin />)}
       {route.name === "settings" && adminOnly(<SettingsAdmin />)}
+      {/* Routes shipped in later phases of v2 — fall back to the portal
+       * until their screens land so a deep link never renders blank. */}
+      {(route.name === "submissions" || route.name === "submissionDetail" || route.name === "facilityLinks") &&
+        adminOnly(<Portal />)}
     </AppShell>
   );
 }
 
-export default function App() {
+/** Branches BEFORE the auth provider mounts: a public route must never
+ * trigger a session lookup (a failed one would render the sign-in page). */
+function RootSwitch() {
+  const { route } = useRouter();
+  if (route.name === "publicPortal" || route.name === "publicTemplate") {
+    return <PublicApp />;
+  }
   const AuthProvider = stores.backend === "supabase" ? SupabaseAuthProvider : DevAuthProvider;
   return (
+    <AuthProvider>
+      <BrandProvider>
+        <Screen />
+      </BrandProvider>
+    </AuthProvider>
+  );
+}
+
+export default function App() {
+  return (
     <ColorSchemeProvider>
-      <AuthProvider>
-        <BrandProvider>
-          <RouterProvider>
-            <Screen />
-          </RouterProvider>
-        </BrandProvider>
-      </AuthProvider>
+      <RouterProvider>
+        <RootSwitch />
+      </RouterProvider>
     </ColorSchemeProvider>
   );
 }

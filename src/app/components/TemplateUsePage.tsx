@@ -1,24 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Copy, Download, RefreshCw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Download, RefreshCw } from "lucide-react";
 import type { FieldValues } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
-import { mergeCaption } from "@/lib/caption";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { useRouter } from "../router";
-import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
 import { ErrorState } from "./ErrorState";
-import { SchemaRenderer, type SchemaRendererHandle } from "./SchemaRenderer";
-import { FieldInput } from "./FieldInput";
-
-const panel: React.CSSProperties = {
-  background: "var(--lift)",
-  border: "1px solid var(--hairline)",
-  borderRadius: 12,
-};
+import { type SchemaRendererHandle } from "./SchemaRenderer";
+import { TemplateFillLayout, missingRequiredFields } from "./TemplateFillLayout";
 
 /** Member self-service flow: fields on the left, live preview on the right,
- * suggested caption, PNG download. Members change field CONTENT only. */
+ * suggested caption, PNG download. Members change field CONTENT only.
+ * The body is TemplateFillLayout, shared with the public facility page and
+ * the review detail page — this file owns only the download action. */
 export function TemplateUsePage({ templateId }: { templateId: string }) {
   const { kit } = useBrand();
   const { navigate } = useRouter();
@@ -26,7 +20,6 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
   const template = templateState.status === "ready" ? templateState.data : null;
   const [values, setValues] = useState<FieldValues>({});
   const [caption, setCaption] = useState<string | null>(null); // null → follow suggestion
-  const [copied, setCopied] = useState(false);
   const [exporting, setExporting] = useState(false);
   /** Post-export feedback toast; auto-dismisses. */
   const [exportToast, setExportToast] = useState<"downloaded" | "shared" | "error" | null>(null);
@@ -41,15 +34,9 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
     toastTimer.current = window.setTimeout(() => setExportToast(null), kind === "error" ? 6000 : 4000);
   };
 
-  const suggestedCaption = template ? mergeCaption(template, values) : "";
-  const shownCaption = caption ?? suggestedCaption;
-
-  // Static elements are baked into the graphic — members never fill them in.
-  const formFields = useMemo(() => (template?.fields ?? []).filter((f) => !f.static), [template]);
-
   const missingRequired = useMemo(
-    () => formFields.filter((f) => f.required && !values[f.fieldKey]),
-    [formFields, values],
+    () => (template ? missingRequiredFields(template, values) : []),
+    [template, values],
   );
 
   if (templateState.status === "loading") {
@@ -81,12 +68,6 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
     } finally {
       setExporting(false);
     }
-  };
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(shownCaption);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
   };
 
   return (
@@ -126,88 +107,16 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
         Published Templates
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left — field form */}
-        <div className="lg:col-span-5 space-y-4">
-          <div>
-            <h1 className="sp-page-title">{template.name}</h1>
-            {template.description && (
-              <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>{template.description}</p>
-            )}
-          </div>
-
-          {formFields.map((field, i) => {
-            const maxLength = resolveFieldStyle(field, kit).maxLength;
-            const inputId = `field-${field.id}`;
-            return (
-            <div key={field.id} className="p-4 space-y-2.5" style={panel}>
-              <div>
-                <p className="sp-eyebrow">Step {String(i + 1).padStart(2, "0")}</p>
-                <label
-                  htmlFor={inputId}
-                  className="block"
-                  style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", marginTop: 2 }}
-                >
-                  {field.label}
-                  {field.required && (
-                    <>
-                      <span aria-hidden style={{ color: "var(--solar)" }}> *</span>
-                      <span className="sr-only"> (required)</span>
-                    </>
-                  )}
-                </label>
-                {maxLength && (
-                  <p
-                    role="status"
-                    aria-live="polite"
-                    aria-label={`${(values[field.fieldKey] ?? "").length} of ${maxLength} characters used`}
-                    style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--fg-3)", marginTop: 2 }}
-                  >
-                    {(values[field.fieldKey] ?? "").length}/{maxLength}
-                  </p>
-                )}
-              </div>
-              <FieldInput
-                field={{ ...field, maxLength }}
-                value={values[field.fieldKey] ?? ""}
-                onChange={(v) => setValues((prev) => ({ ...prev, [field.fieldKey]: v }))}
-                inputId={inputId}
-              />
-            </div>
-            );
-          })}
-
-          {/* Suggested caption */}
-          {template.captionTemplate && (
-            <div className="p-4 space-y-2.5" style={panel}>
-              <div className="flex items-center justify-between">
-                <h2 className="sp-panel-title">Suggested caption</h2>
-                {caption !== null && (
-                  <button
-                    onClick={() => setCaption(null)}
-                    style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--solar)" }}
-                  >
-                    Reset to suggestion
-                  </button>
-                )}
-              </div>
-              <textarea
-                value={shownCaption}
-                onChange={(e) => setCaption(e.target.value)}
-                rows={4}
-                aria-label="Suggested caption"
-                className="sp-input"
-                style={{ resize: "vertical" }}
-              />
-              <button onClick={handleCopy} className="sp-btn sp-btn-ghost w-full">
-                {copied ? <Check style={{ width: 14, height: 14 }} /> : <Copy style={{ width: 14, height: 14 }} />}
-                {copied ? "Copied" : "Copy caption"}
-              </button>
-            </div>
-          )}
-
-          {/* Download */}
-          <div className="p-4 space-y-2" style={panel}>
+      <TemplateFillLayout
+        template={template}
+        brandKit={kit}
+        values={values}
+        onChange={(fieldKey, v) => setValues((prev) => ({ ...prev, [fieldKey]: v }))}
+        caption={caption}
+        onCaptionEdit={setCaption}
+        rendererRef={rendererRef}
+        actions={
+          <>
             <button
               onClick={handleDownload}
               disabled={exporting || missingRequired.length > 0}
@@ -229,29 +138,9 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
                 Fill required: {missingRequired.map((f) => f.label).join(", ")}
               </p>
             )}
-          </div>
-        </div>
-
-        {/* Right — live preview */}
-        <div className="lg:col-span-7 lg:sticky lg:top-8">
-          <div className="p-5" style={{ ...panel, boxShadow: "var(--shadow-e2)" }}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="sp-panel-title">Preview</h3>
-              <span className="sp-eyebrow">
-                {template.canvasWidth}×{template.canvasHeight} · live
-              </span>
-            </div>
-            <div className="rounded-xl overflow-hidden" style={{ background: "var(--paper-warm)", border: "1px solid var(--hairline)" }}>
-              <SchemaRenderer
-                ref={rendererRef}
-                schema={template}
-                values={values}
-                brandKit={kit}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
     </div>
   );
 }

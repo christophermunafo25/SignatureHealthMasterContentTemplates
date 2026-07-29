@@ -4,22 +4,21 @@ import { buildExportFontEmbedCss, ensureSchemaFontsLoaded } from "./fonts";
 
 export type ExportOutcome = "downloaded" | "shared" | "canceled";
 
-/** Export a rendered schema node to PNG and hand it to the user.
+/** Render a mounted schema node to PNG bytes. No side effects.
  *
  * Ported from the reference Generator's handleDownload:
  *  - dimensions come from the SCHEMA, never a literal
  *  - toPng runs twice with a short pause (Safari image-decode warm-up)
- *  - mobile tries navigator.share with a File, falling back to a download
  * EVERY font the schema renders with (uploaded AND Google, type-style-bound
  * included) is embedded via fontEmbedCSS — the snapshot SVG rasterizes in an
  * isolated context on Safari/Firefox with no access to the document's font
  * cache, so anything not embedded exports as a system fallback.
  */
-export async function exportSchemaPng(
+export async function renderSchemaBlob(
   schema: TemplateSchema,
   node: HTMLElement,
   brandKit?: BrandKit | null,
-): Promise<ExportOutcome> {
+): Promise<Blob> {
   await ensureSchemaFontsLoaded(schema, brandKit);
   const fontEmbedCss = await buildExportFontEmbedCss(schema, brandKit);
   const options = {
@@ -38,9 +37,19 @@ export async function exportSchemaPng(
   await new Promise((resolve) => setTimeout(resolve, 150));
   const dataUrl = await toPng(node, options);
 
-  // One Blob serves both branches; browsers handle multi-megabyte base64
+  // One Blob serves every consumer; browsers handle multi-megabyte base64
   // hrefs inconsistently, so the data URL is dropped as early as possible.
-  const blob = await (await fetch(dataUrl)).blob();
+  return (await fetch(dataUrl)).blob();
+}
+
+/** Render, then hand the PNG to the user via share sheet or download —
+ * unchanged public behavior, now layered on renderSchemaBlob. */
+export async function exportSchemaPng(
+  schema: TemplateSchema,
+  node: HTMLElement,
+  brandKit?: BrandKit | null,
+): Promise<ExportOutcome> {
+  const blob = await renderSchemaBlob(schema, node, brandKit);
 
   const fileName = `${schema.name.replace(/[^a-zA-Z0-9_-]+/g, "_") || "graphic"}.png`;
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);

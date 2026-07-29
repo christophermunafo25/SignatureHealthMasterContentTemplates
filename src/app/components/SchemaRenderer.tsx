@@ -11,13 +11,16 @@ import { useDataUrl } from "@/lib/render/useDataUrl";
 import { fittedFontSize, fixedWidthFontSize } from "@/lib/render/autoFit";
 import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
 import { loadGoogleFonts, schemaFontFamilies } from "@/lib/render/fonts";
-import { exportSchemaPng, type ExportOutcome } from "@/lib/render/exportPng";
+import { exportSchemaPng, renderSchemaBlob, type ExportOutcome } from "@/lib/render/exportPng";
 import { stores } from "@/lib/stores";
 
 export interface SchemaRendererHandle {
   /** Renders the canvas to PNG and hands it to the user. Records a
    * `download` usage event on success (unless instrument={false}). */
   exportPng(): Promise<ExportOutcome>;
+  /** Renders the canvas to PNG bytes. No side effects, no usage event —
+   * callers (submission upload) instrument themselves. */
+  renderBlob(): Promise<Blob>;
 }
 
 interface SchemaRendererProps {
@@ -87,7 +90,12 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
       return outcome;
     }, [schema, instrument, brandKit]);
 
-    useImperativeHandle(ref, () => ({ exportPng }), [exportPng]);
+    const renderBlob = useCallback(async () => {
+      if (!canvasRef.current) throw new Error("Canvas not mounted");
+      return renderSchemaBlob(schema, canvasRef.current, brandKit);
+    }, [schema, brandKit]);
+
+    useImperativeHandle(ref, () => ({ exportPng, renderBlob }), [exportPng, renderBlob]);
 
     return (
       <div

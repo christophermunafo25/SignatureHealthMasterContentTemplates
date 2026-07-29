@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-/** Lightweight view-state routing, extending the original App.tsx pattern
- * (no URL router — matches the Figma Make export's structure). */
+/** Lightweight routing over the History API. The `Route` union and
+ * `navigate()` signature predate URL routing — call sites are unchanged;
+ * the provider now mirrors routes to `window.location` (Vercel rewrites
+ * every path to index.html, so deep links work with no infra changes). */
 export type Route =
   | { name: "onboarding" }
   | { name: "portal" }
@@ -11,7 +13,83 @@ export type Route =
   | { name: "brandStudio" }
   | { name: "dashboard" }
   | { name: "people" }
-  | { name: "settings" };
+  | { name: "settings" }
+  | { name: "submissions" }
+  | { name: "submissionDetail"; submissionId: string }
+  | { name: "facilityLinks" }
+  | { name: "publicPortal"; token: string }
+  | { name: "publicTemplate"; token: string; templateId: string };
+
+export function pathFor(route: Route): string {
+  switch (route.name) {
+    case "portal":
+      return "/";
+    case "onboarding":
+      return "/onboarding";
+    case "template":
+      return `/t/${encodeURIComponent(route.templateId)}`;
+    case "adminTemplates":
+      return "/templates";
+    case "builder":
+      return route.templateId ? `/builder/${encodeURIComponent(route.templateId)}` : "/builder";
+    case "brandStudio":
+      return "/brand";
+    case "dashboard":
+      return "/insights";
+    case "people":
+      return "/people";
+    case "settings":
+      return "/settings";
+    case "submissions":
+      return "/submissions";
+    case "submissionDetail":
+      return `/submissions/${encodeURIComponent(route.submissionId)}`;
+    case "facilityLinks":
+      return "/facility-links";
+    case "publicPortal":
+      return `/g/${encodeURIComponent(route.token)}`;
+    case "publicTemplate":
+      return `/g/${encodeURIComponent(route.token)}/${encodeURIComponent(route.templateId)}`;
+  }
+}
+
+/** Unknown paths resolve to the portal rather than a 404 screen — the app
+ * decides what the signed-in user may actually see from there. */
+export function routeFor(pathname: string): Route {
+  const parts = pathname.split("/").filter(Boolean).map(decodeURIComponent);
+  const [head, second, third] = parts;
+  switch (head) {
+    case undefined:
+      return { name: "portal" };
+    case "onboarding":
+      return { name: "onboarding" };
+    case "t":
+      return second ? { name: "template", templateId: second } : { name: "portal" };
+    case "templates":
+      return { name: "adminTemplates" };
+    case "builder":
+      return { name: "builder", templateId: second ?? null };
+    case "brand":
+      return { name: "brandStudio" };
+    case "insights":
+      return { name: "dashboard" };
+    case "people":
+      return { name: "people" };
+    case "settings":
+      return { name: "settings" };
+    case "submissions":
+      return second ? { name: "submissionDetail", submissionId: second } : { name: "submissions" };
+    case "facility-links":
+      return { name: "facilityLinks" };
+    case "g":
+      if (!second) return { name: "portal" };
+      return third
+        ? { name: "publicTemplate", token: second, templateId: third }
+        : { name: "publicPortal", token: second };
+    default:
+      return { name: "portal" };
+  }
+}
 
 interface RouterState {
   route: Route;
@@ -21,8 +99,27 @@ interface RouterState {
 const RouterContext = createContext<RouterState | null>(null);
 
 export function RouterProvider({ children }: { children: React.ReactNode }) {
-  const [route, navigate] = useState<Route>({ name: "portal" });
-  const value = useMemo<RouterState>(() => ({ route, navigate }), [route]);
+  const [route, setRoute] = useState<Route>(() => routeFor(window.location.pathname));
+
+  useEffect(() => {
+    const onPop = () => setRoute(routeFor(window.location.pathname));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const value = useMemo<RouterState>(
+    () => ({
+      route,
+      navigate(next: Route) {
+        const path = pathFor(next);
+        if (path !== window.location.pathname) {
+          window.history.pushState(null, "", path);
+        }
+        setRoute(next);
+      },
+    }),
+    [route],
+  );
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;
 }
 

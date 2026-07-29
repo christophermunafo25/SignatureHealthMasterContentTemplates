@@ -278,7 +278,7 @@ export interface Facility {
   createdAt: string;
 }
 
-export type SubmissionStatus = "submitted" | "approved" | "posted" | "archived";
+export type SubmissionStatus = "submitted" | "approved" | "posted" | "archived" | "declined";
 
 /** A facility submission: an editable document (field values + frozen
  * schema/brand snapshots). The PNG preview is a byproduct — the
@@ -304,8 +304,13 @@ export interface Submission {
   brandSnapshot: { brandKit: BrandKit | null; logoUrl?: string | null; brandAssets: BrandAsset[] };
   previewPath?: string;
   status: SubmissionStatus;
+  declineReason?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  /** First save where values or caption diverged from the originals. */
+  editedBy?: string;
+  editedAt?: string;
+  postedAt?: string;
   internalNote: string;
   createdAt: string;
   updatedAt: string;

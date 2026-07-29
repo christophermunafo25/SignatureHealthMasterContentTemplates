@@ -1,16 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Inbox, Search } from "lucide-react";
+import { Archive, Check, Inbox, Search, Send, X } from "lucide-react";
 import type { Submission, SubmissionStatus } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "../../router";
 import { ErrorState } from "../ErrorState";
+import { FacilityCombobox } from "../FacilityCombobox";
+import { DeclineDialog } from "./DeclineDialog";
+import { isSupabaseConfigured, supabase } from "@/lib/stores/supabase/client";
 
 const TABS: Array<{ key: SubmissionStatus; label: string }> = [
   { key: "submitted", label: "New" },
   { key: "approved", label: "Approved" },
   { key: "posted", label: "Posted" },
+  { key: "declined", label: "Declined" },
   { key: "archived", label: "Archived" },
 ];
 
@@ -23,6 +27,50 @@ export function relativeTime(iso: string): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+interface Filters {
+  status: SubmissionStatus;
+  facilityId: string;
+  templateId: string;
+  from: string;
+  to: string;
+  search: string;
+}
+
+const DEFAULT_FILTERS: Filters = {
+  status: "submitted",
+  facilityId: "",
+  templateId: "",
+  from: "",
+  to: "",
+  search: "",
+};
+
+/** Filters live in the URL so a reviewer can share a filtered view. */
+function readFilters(): Filters {
+  const p = new URLSearchParams(window.location.search);
+  const status = p.get("status") as SubmissionStatus | null;
+  return {
+    status: status && TABS.some((t) => t.key === status) ? status : "submitted",
+    facilityId: p.get("facility") ?? "",
+    templateId: p.get("template") ?? "",
+    from: p.get("from") ?? "",
+    to: p.get("to") ?? "",
+    search: p.get("q") ?? "",
+  };
+}
+
+function writeFilters(f: Filters): void {
+  const p = new URLSearchParams();
+  if (f.status !== "submitted") p.set("status", f.status);
+  if (f.facilityId) p.set("facility", f.facilityId);
+  if (f.templateId) p.set("template", f.templateId);
+  if (f.from) p.set("from", f.from);
+  if (f.to) p.set("to", f.to);
+  if (f.search) p.set("q", f.search);
+  const qs = p.toString();
+  window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
 }
 
 /** Signed (or dev data-URL) preview thumbnail for a submission card. */
@@ -47,42 +95,137 @@ function PreviewThumb({ submission }: { submission: Submission }) {
   );
 }
 
-/** The social team's review queue: everything facilities have submitted,
- * newest first, defaulting to the New tab. */
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="sp-card px-4 py-3 flex-1" style={{ minWidth: 140 }}>
+      <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, lineHeight: 1.1, color: "var(--ink)" }}>{value}</p>
+      <p style={{ fontSize: 11, color: "var(--fg-3)", marginTop: 2 }}>{label}</p>
+    </div>
+  );
+}
+
+/** The social team's working queue: stat strip, status tabs, query-side
+ * filters, bulk actions, and J/K/Enter/A/D keyboard flow. /insights stays
+ * the analytics product — this screen is for clearing work. */
 export function SubmissionQueue() {
   const { company } = useAuth();
   const { navigate } = useRouter();
   const companyId = company?.id ?? "";
-  const [tab, setTab] = useState<SubmissionStatus>("submitted");
-  const [facility, setFacility] = useState<string>("");
-  const [search, setSearch] = useState("");
+
+  const [filters, setFilters] = useState<Filters>(() => readFilters());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [focusIndex, setFocusIndex] = useState(0);
+  const [declineFor, setDeclineFor] = useState<Submission | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => writeFilters(filters), [filters]);
+
+  const statsState = useAsync(() => stores.submissions.stats(companyId), [companyId, tick]);
+  const facilitiesState = useAsync(() => stores.facilities.list(companyId), [companyId]);
+  const templatesState = useAsync(() => stores.templates.listAll(companyId), [companyId]);
 
   const listState = useAsync(
-    () => stores.submissions.list(companyId, { status: tab }),
-    [companyId, tab],
+    () =>
+      stores.submissions.list(companyId, {
+        status: filters.status,
+        facilityId: filters.facilityId || undefined,
+        templateId: filters.templateId || undefined,
+        from: filters.from ? new Date(filters.from).toISOString() : undefined,
+        to: filters.to ? new Date(`${filters.to}T23:59:59`).toISOString() : undefined,
+        search: filters.search || undefined,
+      }),
+    [companyId, filters.status, filters.facilityId, filters.templateId, filters.from, filters.to, filters.search, tick],
   );
   const rows = listState.status === "ready" ? listState.data : [];
 
-  const facilities = useMemo(
-    () => [...new Set(rows.map((s) => s.facilityName))].sort(),
-    [rows],
-  );
-
-  const shown = useMemo(() => {
-    let out = rows;
-    if (facility) out = out.filter((s) => s.facilityName === facility);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      out = out.filter(
-        (s) =>
-          s.facilityName.toLowerCase().includes(q) ||
-          s.submitterName.toLowerCase().includes(q) ||
-          s.caption.toLowerCase().includes(q) ||
-          s.templateName.toLowerCase().includes(q),
-      );
+  // The detail screen's J/K navigation follows this exact ordering.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("shc-queue-order", JSON.stringify(rows.map((r) => r.id)));
+    } catch {
+      // best-effort
     }
-    return out;
-  }, [rows, facility, search]);
+  }, [rows]);
+
+  const facilities = facilitiesState.status === "ready" ? facilitiesState.data : [];
+  const facilityOptions = useMemo(
+    () => facilities.map((f) => ({ id: f.id, name: f.name, shortName: f.shortName, state: f.state })),
+    [facilities],
+  );
+  const templates = templatesState.status === "ready" ? templatesState.data : [];
+
+  const refresh = () => {
+    setSelected(new Set());
+    setTick((t) => t + 1);
+  };
+
+  const setFilter = (patch: Partial<Filters>) => {
+    setSelected(new Set());
+    setFocusIndex(0);
+    setFilters((f) => ({ ...f, ...patch }));
+  };
+
+  const bulk = async (status: SubmissionStatus) => {
+    if (!selected.size) return;
+    setBulkBusy(true);
+    try {
+      await Promise.all([...selected].map((id) => stores.submissions.update(id, { status })));
+      refresh();
+    } catch (e) {
+      console.error("Bulk action failed", e);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleDecline = async (submission: Submission, reason: string, notify: boolean) => {
+    setDeclineFor(null);
+    try {
+      await stores.submissions.update(submission.id, { status: "declined", declineReason: reason });
+      if (notify && isSupabaseConfigured) {
+        try {
+          await supabase().functions.invoke("notify-submitter", {
+            body: { submissionId: submission.id, reason },
+          });
+        } catch (e) {
+          console.warn("Submitter notification failed", e);
+        }
+      }
+      refresh();
+    } catch (e) {
+      console.error("Decline failed", e);
+    }
+  };
+
+  // J/K move focus, Enter opens, A approves, D opens decline.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const focused = rows[focusIndex];
+      if (["j", "J", "k", "K", "a", "A", "d", "D", "Enter"].includes(e.key)) e.preventDefault();
+      if (e.key === "j" || e.key === "J") {
+        setFocusIndex((i) => Math.min(rows.length - 1, i + 1));
+      } else if (e.key === "k" || e.key === "K") {
+        setFocusIndex((i) => Math.max(0, i - 1));
+      } else if (e.key === "Enter" && focused) {
+        navigate({ name: "submissionDetail", submissionId: focused.id });
+      } else if ((e.key === "a" || e.key === "A") && focused) {
+        void stores.submissions.update(focused.id, { status: "approved" }).then(refresh);
+      } else if ((e.key === "d" || e.key === "D") && focused) {
+        setDeclineFor(focused);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, focusIndex, navigate]);
+
+  const stats = statsState.status === "ready" ? statsState.data : null;
+  const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
+  const filterFacility = facilityOptions.find((f) => f.id === filters.facilityId);
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 space-y-5">
@@ -90,26 +233,36 @@ export function SubmissionQueue() {
         <h1 className="sp-page-title">Submissions</h1>
         <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
           Content from your facilities. Review, fix, download, and mark it
-          posted.
+          posted. <span style={{ color: "var(--fg-4)" }}>J/K move · Enter opens · A approves · D declines.</span>
         </p>
       </div>
 
+      {/* Stat strip — compact, no charts; /insights is the analytics product */}
+      {stats && (
+        <div className="flex flex-wrap gap-2">
+          <Stat label="Awaiting review" value={stats.awaitingReview} />
+          <Stat label="Approved, not posted" value={stats.approvedUnposted} />
+          <Stat label="Posted · 30d" value={stats.posted30d} />
+          <Stat label="Declined · 30d" value={stats.declined30d} />
+        </div>
+      )}
+
       {/* Status tabs + filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1" role="tablist" aria-label="Submission status">
+        <div className="flex items-center gap-1 flex-wrap" role="tablist" aria-label="Submission status">
           {TABS.map(({ key, label }) => (
             <button
               key={key}
               role="tab"
-              aria-selected={tab === key}
-              onClick={() => setTab(key)}
+              aria-selected={filters.status === key}
+              onClick={() => setFilter({ status: key })}
               className="sp-btn"
               style={{
                 minHeight: 32,
                 padding: "4px 12px",
-                background: tab === key ? "var(--accent-wash)" : "transparent",
-                border: `1px solid ${tab === key ? "var(--accent-border)" : "var(--hairline-strong)"}`,
-                color: tab === key ? "var(--ink)" : "var(--fg-2)",
+                background: filters.status === key ? "var(--accent-wash)" : "transparent",
+                border: `1px solid ${filters.status === key ? "var(--accent-border)" : "var(--hairline-strong)"}`,
+                color: filters.status === key ? "var(--ink)" : "var(--fg-2)",
               }}
             >
               {label}
@@ -117,32 +270,96 @@ export function SubmissionQueue() {
           ))}
         </div>
         <div className="flex-1" />
-        {facilities.length > 1 && (
-          <select
-            className="sp-input"
-            style={{ width: "auto", fontSize: 12, padding: "6px 10px" }}
-            value={facility}
-            onChange={(e) => setFacility(e.target.value)}
-            aria-label="Filter by facility"
-          >
-            <option value="">All facilities</option>
-            {facilities.map((f) => (
-              <option key={f} value={f}>{f}</option>
-            ))}
-          </select>
-        )}
-        <div className="relative" style={{ width: 220 }}>
+        <div className="relative" style={{ width: 200 }}>
           <Search className="absolute" style={{ left: 10, top: "50%", transform: "translateY(-50%)", width: 13, height: 13, color: "var(--fg-3)", zIndex: 1 }} />
           <input
             className="sp-input"
             style={{ padding: "7px 10px 7px 30px", fontSize: 12 }}
             placeholder="Facility, submitter, caption…"
             aria-label="Search submissions"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={filters.search}
+            onChange={(e) => setFilter({ search: e.target.value })}
           />
         </div>
       </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Facility filter — the same combobox the facility gate uses */}
+        <FacilityFilter
+          value={filterFacility ?? null}
+          options={facilityOptions}
+          onChange={(id) => setFilter({ facilityId: id })}
+        />
+        <select
+          className="sp-input"
+          style={{ width: "auto", fontSize: 12, padding: "6px 10px" }}
+          value={filters.templateId}
+          onChange={(e) => setFilter({ templateId: e.target.value })}
+          aria-label="Filter by template"
+        >
+          <option value="">All templates</option>
+          {templates.map((t) => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
+        <input
+          type="date"
+          className="sp-input"
+          style={{ width: "auto", fontSize: 12, padding: "6px 10px" }}
+          value={filters.from}
+          onChange={(e) => setFilter({ from: e.target.value })}
+          aria-label="From date"
+        />
+        <span style={{ fontSize: 12, color: "var(--fg-4)" }}>to</span>
+        <input
+          type="date"
+          className="sp-input"
+          style={{ width: "auto", fontSize: 12, padding: "6px 10px" }}
+          value={filters.to}
+          onChange={(e) => setFilter({ to: e.target.value })}
+          aria-label="To date"
+        />
+        {(filters.facilityId || filters.templateId || filters.from || filters.to || filters.search) && (
+          <button
+            className="flex items-center gap-1"
+            style={{ fontSize: 12, color: "var(--fg-3)" }}
+            onClick={() => setFilter({ facilityId: "", templateId: "", from: "", to: "", search: "" })}
+          >
+            <X style={{ width: 12, height: 12 }} />
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      {/* Bulk bar — NO bulk decline: a blanket reason is not a real reason */}
+      {rows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2" style={{ fontSize: 12 }}>
+          <label className="flex items-center gap-2" style={{ color: "var(--fg-2)" }}>
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={(e) =>
+                setSelected(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())
+              }
+              aria-label="Select all in current filter"
+            />
+            {selected.size ? `${selected.size} selected` : "Select all"}
+          </label>
+          {selected.size > 0 && (
+            <>
+              <button className="sp-btn sp-btn-ghost" style={{ minHeight: 28, padding: "2px 10px" }} disabled={bulkBusy} onClick={() => void bulk("approved")}>
+                <Check style={{ width: 12, height: 12 }} /> Approve
+              </button>
+              <button className="sp-btn sp-btn-ghost" style={{ minHeight: 28, padding: "2px 10px" }} disabled={bulkBusy} onClick={() => void bulk("posted")}>
+                <Send style={{ width: 12, height: 12 }} /> Mark posted
+              </button>
+              <button className="sp-btn sp-btn-ghost" style={{ minHeight: 28, padding: "2px 10px" }} disabled={bulkBusy} onClick={() => void bulk("archived")}>
+                <Archive style={{ width: 12, height: 12 }} /> Archive
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Queue */}
       {listState.status === "loading" ? (
@@ -153,54 +370,136 @@ export function SubmissionQueue() {
           detail="Check your connection and try again."
           onRetry={listState.retry}
         />
-      ) : shown.length === 0 ? (
+      ) : rows.length === 0 ? (
         <div className="sp-card text-center py-16 px-6">
           <Inbox style={{ width: 28, height: 28, color: "var(--fg-4)", margin: "0 auto 10px" }} />
           <p style={{ fontSize: 14, fontWeight: 500, color: "var(--fg-1)" }}>
-            {tab === "submitted" ? "No new submissions" : `Nothing ${tab} yet`}
+            {filters.status === "submitted" ? "No new submissions" : `Nothing ${filters.status} yet`}
           </p>
           <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 6 }}>
-            {tab === "submitted"
-              ? "Facility submissions land here the moment they're sent."
-              : "Items you move to this status will show up here."}
+            {filters.facilityId || filters.search || filters.templateId || filters.from
+              ? "Nothing matches the current filters."
+              : filters.status === "submitted"
+                ? "Facility submissions land here the moment they're sent."
+                : "Items you move to this status will show up here."}
           </p>
         </div>
       ) : (
         <div className="space-y-2">
-          {shown.map((s) => (
-            <button
+          {rows.map((s, i) => (
+            <div
               key={s.id}
-              onClick={() => navigate({ name: "submissionDetail", submissionId: s.id })}
-              className="w-full text-left p-4 flex items-center gap-4 transition-all"
+              className="w-full p-4 flex items-center gap-4 transition-all"
               style={{
                 background: "var(--lift)",
-                border: "1px solid var(--hairline)",
+                border: `1px solid ${i === focusIndex ? "var(--accent-border)" : "var(--hairline)"}`,
                 borderRadius: 12,
                 boxShadow: "var(--shadow-e1)",
               }}
             >
-              <PreviewThumb submission={s} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate" style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>
-                  {s.templateName}
-                  {JSON.stringify(s.values) !== JSON.stringify(s.originalValues) && (
-                    <span style={{ fontSize: 11, color: "var(--fg-3)", fontWeight: 400 }}> · edited</span>
-                  )}
-                </p>
-                <p className="truncate" style={{ fontSize: 12, color: "var(--fg-2)", marginTop: 2 }}>
-                  {s.facilityName} · {s.submitterName}
-                </p>
-                {s.caption && (
-                  <p className="truncate" style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 2 }}>
-                    {s.caption}
+              <input
+                type="checkbox"
+                checked={selected.has(s.id)}
+                onChange={(e) => {
+                  const next = new Set(selected);
+                  if (e.target.checked) next.add(s.id);
+                  else next.delete(s.id);
+                  setSelected(next);
+                }}
+                aria-label={`Select ${s.templateName} from ${s.facilityName}`}
+              />
+              <button
+                className="flex items-center gap-4 flex-1 min-w-0 text-left"
+                onClick={() => navigate({ name: "submissionDetail", submissionId: s.id })}
+              >
+                <PreviewThumb submission={s} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate" style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>
+                    {s.templateName}
+                    {s.editedAt && (
+                      <span style={{ fontSize: 11, color: "var(--fg-3)", fontWeight: 400 }}> · edited</span>
+                    )}
                   </p>
-                )}
-              </div>
-              <span className="flex-shrink-0" style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-3)" }}>
-                {relativeTime(s.createdAt)}
-              </span>
-            </button>
+                  <p className="truncate" style={{ fontSize: 12, color: "var(--fg-2)", marginTop: 2 }}>
+                    {s.facilityName} · {s.submitterName}
+                  </p>
+                  {s.status === "declined" && s.declineReason ? (
+                    <p className="truncate" style={{ fontSize: 12, color: "var(--danger)", marginTop: 2 }}>
+                      Declined: {s.declineReason}
+                    </p>
+                  ) : (
+                    s.caption && (
+                      <p className="truncate" style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 2 }}>
+                        {s.caption}
+                      </p>
+                    )
+                  )}
+                </div>
+                <span className="flex-shrink-0" style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-3)" }}>
+                  {relativeTime(s.createdAt)}
+                </span>
+              </button>
+            </div>
           ))}
+        </div>
+      )}
+
+      {declineFor && (
+        <DeclineDialog
+          submitterEmail={declineFor.submitterEmail}
+          onDecline={(reason, notify) => void handleDecline(declineFor, reason, notify)}
+          onCancel={() => setDeclineFor(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Compact popover wrapper around FacilityCombobox for the filter row. */
+function FacilityFilter({
+  value,
+  options,
+  onChange,
+}: {
+  value: { id: string; shortName: string } | null;
+  options: Array<{ id: string; name: string; shortName: string; state?: string }>;
+  onChange(id: string): void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        className="sp-btn sp-btn-ghost"
+        style={{ minHeight: 32, padding: "4px 12px", fontSize: 12 }}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        {value ? `Facility: ${value.shortName}` : "All facilities"}
+        {value && (
+          <X
+            style={{ width: 12, height: 12 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+            }}
+          />
+        )}
+      </button>
+      {open && (
+        <div
+          className="absolute z-30 mt-1"
+          style={{ minWidth: 300, background: "var(--lift)", borderRadius: 12, boxShadow: "var(--shadow-e3)" }}
+        >
+          <FacilityCombobox
+            facilities={options}
+            autoFocus
+            placeholder="Filter by facility…"
+            onSelect={(f) => {
+              onChange(f.id);
+              setOpen(false);
+            }}
+          />
         </div>
       )}
     </div>

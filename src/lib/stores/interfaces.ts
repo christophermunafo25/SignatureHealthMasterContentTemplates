@@ -81,19 +81,33 @@ export interface PeopleStore {
  * read path back into the queue — anonymous inserts happen through the
  * submit-content Edge Function via service role. */
 export interface SubmissionStore {
+  /** Filtering happens IN THE QUERY — 69 facilities submitting weekly
+   * outgrow fetch-then-filter-in-JS within months. */
   list(
     companyId: string,
     filter?: {
-      status?: import("../types").SubmissionStatus;
+      status?: import("../types").SubmissionStatus | "all";
       facilityId?: string;
+      templateId?: string;
+      from?: string;
+      to?: string;
       search?: string;
     },
   ): Promise<import("../types").Submission[]>;
+  /** The dashboard stat strip. */
+  stats(companyId: string): Promise<{
+    awaitingReview: number;
+    approvedUnposted: number;
+    posted30d: number;
+    declined30d: number;
+  }>;
   get(id: string): Promise<import("../types").Submission | null>;
   /** Sets reviewed_by/reviewed_at on the first edit or status change. */
   update(
     id: string,
-    patch: Partial<Pick<import("../types").Submission, "values" | "caption" | "status" | "internalNote">>,
+    patch: Partial<
+      Pick<import("../types").Submission, "values" | "caption" | "status" | "internalNote" | "declineReason">
+    >,
   ): Promise<import("../types").Submission>;
   countNew(companyId: string): Promise<number>;
   remove(id: string): Promise<void>;

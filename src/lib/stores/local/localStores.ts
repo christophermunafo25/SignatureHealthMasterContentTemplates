@@ -295,11 +295,21 @@ export function randomToken(): string {
 export class LocalSubmissionStore implements SubmissionStore {
   async list(
     companyId: string,
-    filter?: { status?: SubmissionStatus; facilityId?: string; search?: string },
+    filter?: {
+      status?: SubmissionStatus | "all";
+      facilityId?: string;
+      templateId?: string;
+      from?: string;
+      to?: string;
+      search?: string;
+    },
   ): Promise<Submission[]> {
     let rows = (readDb().submissions as Submission[]).filter((s) => s.companyId === companyId);
-    if (filter?.status) rows = rows.filter((s) => s.status === filter.status);
+    if (filter?.status && filter.status !== "all") rows = rows.filter((s) => s.status === filter.status);
     if (filter?.facilityId) rows = rows.filter((s) => s.facilityId === filter.facilityId);
+    if (filter?.templateId) rows = rows.filter((s) => s.templateId === filter.templateId);
+    if (filter?.from) rows = rows.filter((s) => s.createdAt >= filter.from!);
+    if (filter?.to) rows = rows.filter((s) => s.createdAt <= filter.to!);
     if (filter?.search?.trim()) {
       const q = filter.search.trim().toLowerCase();
       rows = rows.filter(
@@ -319,24 +329,45 @@ export class LocalSubmissionStore implements SubmissionStore {
 
   async update(
     id: string,
-    patch: Partial<Pick<Submission, "values" | "caption" | "status" | "internalNote">>,
+    patch: Partial<Pick<Submission, "values" | "caption" | "status" | "internalNote" | "declineReason">>,
   ): Promise<Submission> {
     return mutate((db) => {
       const rows = db.submissions as Submission[];
       const i = rows.findIndex((s) => s.id === id);
       if (i < 0) throw new Error(`Submission ${id} not found`);
+      const cur = rows[i];
+      const now = new Date().toISOString();
       const isReview =
         patch.values !== undefined || patch.caption !== undefined || patch.status !== undefined;
+      const nextValues = patch.values ?? cur.values;
+      const nextCaption = patch.caption ?? cur.caption;
+      const diverged =
+        JSON.stringify(nextValues) !== JSON.stringify(cur.originalValues) ||
+        nextCaption !== cur.originalCaption;
       rows[i] = {
-        ...rows[i],
+        ...cur,
         ...patch,
-        ...(isReview && !rows[i].reviewedAt
-          ? { reviewedAt: new Date().toISOString(), reviewedBy: "dev-admin" }
+        ...(isReview && !cur.reviewedAt ? { reviewedAt: now, reviewedBy: "dev-admin" } : {}),
+        ...(isReview && !cur.editedAt && diverged ? { editedAt: now, editedBy: "dev-admin" } : {}),
+        ...(patch.status === "posted" ? { postedAt: now } : {}),
+        ...(patch.status === "submitted" && patch.declineReason === undefined
+          ? { declineReason: undefined }
           : {}),
-        updatedAt: new Date().toISOString(),
+        updatedAt: now,
       };
       return rows[i];
     });
+  }
+
+  async stats(companyId: string) {
+    const rows = (readDb().submissions as Submission[]).filter((s) => s.companyId === companyId);
+    const cutoff30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    return {
+      awaitingReview: rows.filter((s) => s.status === "submitted").length,
+      approvedUnposted: rows.filter((s) => s.status === "approved").length,
+      posted30d: rows.filter((s) => s.status === "posted" && s.updatedAt >= cutoff30).length,
+      declined30d: rows.filter((s) => s.status === "declined" && s.updatedAt >= cutoff30).length,
+    };
   }
 
   async countNew(companyId: string): Promise<number> {

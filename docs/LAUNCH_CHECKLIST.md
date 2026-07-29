@@ -6,14 +6,19 @@ record the result before the client-facing launch.
 ## Supabase dashboard (Authentication)
 | Setting | Required | Status |
 |---|---|---|
-| Allow new users to sign up | **Off** (invite-only; the UI signup is already removed) | ☐ |
-| Confirm email | **On** | ☐ |
-| Minimum password length | **12** | ☐ |
+| Allow new users to sign up | **Off** (invite-only; the UI signup is already removed) | ☑ 2026-07-29 (Management API) |
+| Confirm email | **On** | ☑ (autoconfirm off) |
+| Minimum password length | **12** | ☑ 2026-07-29 |
 | Leaked password protection | **On** | ☐ |
-| Site URL | Production domain | ☐ |
-| Additional redirect URLs | Production + `http://localhost:5199` | ☐ |
+| Site URL | Production domain | ☑ 2026-07-29 |
+| Additional redirect URLs | Production + `http://localhost:5199` | ☑ 2026-07-29 |
 | JWT expiry | Confirm and record | ☐ |
 | MFA | Decision required (open question) | ☐ |
+
+**First admin bootstrapped 2026-07-29**: company `signature-healthcare`
+created; christophermunafo25@gmail.com invited via the GoTrue admin API
+and attached as admin. Invite/recovery links now land on an in-app
+set-password gate. All further admins: People page → Invite.
 
 ## Edge Function secrets (`supabase secrets set`)
 | Secret | Purpose | Status |

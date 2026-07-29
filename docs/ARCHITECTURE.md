@@ -94,15 +94,44 @@ Dashboard checklist (Authentication → URL Configuration): set the Site URL to
 the production domain and add `http://localhost:5199` + the Vercel URL to
 additional redirect URLs so confirmation/invite/reset links land correctly.
 
+## Anonymous facility path (v2)
+
+Facility staff never sign in. A `facility_links` row is an unguessable
+token (192 bits, minted by a database default) mapping to one company and
+one facility name; `/g/:token` mounts a `PublicApp` tree BEFORE the auth
+provider, so no session lookup ever runs. Anonymous clients never talk to
+Postgres: three Edge Functions (`public-portal`, `public-upload`,
+`submit-content`, all `verify_jwt = false`) validate the token on every
+call and read/write with the service role, scoped to the link's company.
+Unknown, inactive, and expired tokens are indistinguishable (uniform 404).
+No RLS policy grants anything to `anon`; all three endpoints are
+rate-limited per token and per IP via the service-role-only `rate_limits`
+table.
+
+## Submission model (v2)
+
+A submission is an editable document, not an image: the facility's field
+values plus frozen `schema_snapshot` and `brand_snapshot` jsonb captured
+at submit time — a later template or brand edit can never change a queued
+item. `original_values`/`original_caption` keep an untouched audit copy;
+the review screen renders and re-exports from the snapshots through the
+same `SchemaRenderer` the facility used. The uploaded preview PNG (in the
+PRIVATE `submissions` bucket, admin signed-URL access only) exists for the
+notification email and the archive; the authoritative artifact is
+regenerated from values + snapshot at download time. Recipients live in
+`companies.notification_emails` (Settings), and email is best-effort: a
+failed send never fails a submission.
+
 ## App shell
 
 Navigation is a persistent left sidebar (`src/app/components/Sidebar.tsx`,
 layout from Figma `KFBFgZBs7Tl9LXovzNUaNP` node 13:28, surface treatment from
 the current design system — flat, no glass): a panel pinned to the left
 edge, rounded on its right corners, with logo + collapse toggle, six
-role-gated destinations (Published Templates · Template Builder · Insights &
-Analytics · Brand Studio · People · Settings & Admin — members see only the
-first), and a user block pinned to the bottom (theme toggle, sign out, and —
+role-gated destinations (Published Templates · Template Builder ·
+Submissions · Insights & Analytics · Brand Studio · Facility Links ·
+People · Settings & Admin — members see only the first; Submissions
+carries a new-count badge), and a user block pinned to the bottom (theme toggle, sign out, and —
 on the dev backend — the tenant/role switcher). Every sidebar color is a
 `--sb-*` token themed for light AND dark in `signature.css`; tenant brand
 kits never re-color the shell.

@@ -94,19 +94,27 @@ Dashboard checklist (Authentication → URL Configuration): set the Site URL to
 the production domain and add `http://localhost:5199` + the Vercel URL to
 additional redirect URLs so confirmation/invite/reset links land correctly.
 
-## Anonymous facility path (v2)
+## Anonymous facility path (v2.1: one shared link)
 
-Facility staff never sign in. A `facility_links` row is an unguessable
-token (192 bits, minted by a database default) mapping to one company and
-one facility name; `/g/:token` mounts a `PublicApp` tree BEFORE the auth
-provider, so no session lookup ever runs. Anonymous clients never talk to
-Postgres: three Edge Functions (`public-portal`, `public-upload`,
-`submit-content`, all `verify_jwt = false`) validate the token on every
-call and read/write with the service role, scoped to the link's company.
-Unknown, inactive, and expired tokens are indistinguishable (uniform 404).
-No RLS policy grants anything to `anon`; all three endpoints are
-rate-limited per token and per IP via the service-role-only `rate_limits`
-table.
+Facility staff never sign in. Each company holds ONE portal token
+(`companies.portal_token`, 192 bits, minted by the security-definer
+`rotate_portal_token` RPC) with a rotation grace window
+(`portal_token_previous` keeps working until its expiry; clients see a
+quiet "link is being replaced" banner via `tokenStale`) and a
+`portal_enabled` kill switch. `/g/:token` mounts a `PublicApp` tree
+BEFORE the auth provider, so no session lookup ever runs; the first
+screen is the facility gate — a cmdk combobox over the `facilities`
+roster (AND'ed any-token substring matching, state suffixes, no default
+selection), persisted per token in localStorage so rotation re-prompts.
+Anonymous clients never talk to Postgres: three Edge Functions
+(`public-portal`, `public-upload`, `submit-content`, all
+`verify_jwt = false`) validate the token on every call and read/write
+with the service role, scoped to the token's company; submissions
+require a validated `facilityId`. Only published templates with at least
+one non-static field are served. Unknown, disabled, and expired tokens
+are indistinguishable (uniform 404). No RLS policy grants anything to
+`anon`; all three endpoints are rate-limited per token and per IP via
+the service-role-only `rate_limits` table.
 
 ## Submission model (v2)
 
@@ -120,7 +128,10 @@ PRIVATE `submissions` bucket, admin signed-URL access only) exists for the
 notification email and the archive; the authoritative artifact is
 regenerated from values + snapshot at download time. Recipients live in
 `companies.notification_emails` (Settings), and email is best-effort: a
-failed send never fails a submission.
+failed send never fails a submission. Review adds a reversible
+`declined` status with a required reason; the admin-JWT-verified
+`notify-submitter` function emails the reason to the submitter, and
+`edited_by`/`edited_at`/`posted_at` stamp the audit trail.
 
 ## App shell
 

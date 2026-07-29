@@ -10,14 +10,19 @@ The core design principle is **subtraction**: the only thing an end user can cha
 
 **Members** open a published template, fill in the fields the admin exposed (with guardrails like character limits, required fields, and auto-fit text), preview the result live, and export a pixel-perfect PNG. A caption template merges their answers into ready-to-post copy.
 
-**Facilities** (v2) get per-facility links — an unguessable URL (and QR
-code) that opens a mobile-first template library with no account and no
-login. Staff fill in a template and **submit for review** instead of
-downloading; the submission lands in the admin **Submissions** queue, the
-social team gets an email with a preview and a review link, fixes typos
-against a frozen snapshot of the template and brand, downloads the
-corrected PNG, and marks it posted. Links are managed on the Facility
-Links screen (create, bulk create, deactivate immediately).
+**Facilities** (v2.1) reach the portal through ONE shared company link —
+an unguessable URL (and printable QR) with a searchable facility gate in
+front: staff pick their facility once, then browse a mobile-first library
+of published templates, fill in fields, edit the caption, and **submit
+for review** (no download, no caption copy on the facility side). The
+submission lands in the admin **Submissions** dashboard with a stat
+strip, status tabs, query-side filters, bulk actions, and J/K/Enter/A/D
+keyboard flow; the social team fixes typos against a frozen snapshot,
+downloads the corrected PNG, marks it posted — or declines with a
+required reason that can be emailed to the submitter, reversibly. The
+link, its 14-day rotation grace window, the kill switch, and the
+facility roster live on the Portal Access screen. Sign-in is
+invite-only, and the interface is a single clean-white theme.
 
 **Brand Studio** holds each company's kit: unlimited palette colors, heading and body fonts (Google Fonts or uploads), logos, and named type styles that act as a rules engine. A field bound to the "Heading" style inherits everything that style defines, and changing the style restyles every bound field across every template instantly.
 
@@ -62,7 +67,7 @@ Open the printed localhost URL and the first-run wizard walks you through creati
 
    ```bash
    supabase functions deploy figma-status figma-connect figma-import figma-layers figma-styles invite-member
-   supabase functions deploy public-portal public-upload submit-content
+   supabase functions deploy public-portal public-upload submit-content notify-submitter
    ```
 
    The three `public-*` functions are token-verified, not JWT-verified —

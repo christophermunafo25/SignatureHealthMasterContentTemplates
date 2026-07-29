@@ -114,7 +114,8 @@ export function AuthPage() {
   const forgot = () =>
     run(async () => {
       const { error: err } = await supabase().auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin,
+        // /admin, not the origin root — the root serves the public portal.
+        redirectTo: `${window.location.origin}/admin`,
       });
       if (err) throw err;
       setNotice("Password reset link sent — check your email.");

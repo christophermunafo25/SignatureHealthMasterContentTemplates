@@ -129,12 +129,15 @@ function NoMembership() {
  * trigger a session lookup (a failed one would render the sign-in page). */
 function RootSwitch() {
   const { route } = useRouter();
-  if (
+  // Invite/recovery email links redirect to the Site URL — the public
+  // root. They carry a session and need the set-password gate, so they
+  // always belong to the signed-in tree, never the anonymous one.
+  const isPublicRoute =
     route.name === "publicPortal" ||
     route.name === "publicTemplate" ||
     route.name === "publicHome" ||
-    route.name === "publicHomeTemplate"
-  ) {
+    route.name === "publicHomeTemplate";
+  if (isPublicRoute && !arrivedViaAuthLink) {
     return <PublicApp />;
   }
   // Mount-time guard (one of three): never run the no-auth dev backend in

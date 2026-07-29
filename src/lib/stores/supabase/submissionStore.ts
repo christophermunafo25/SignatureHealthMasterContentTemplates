@@ -1,4 +1,4 @@
-import type { Submission, SubmissionStatus } from "../../types";
+import type { FieldValues, Submission, SubmissionStatus, TemplateSchema } from "../../types";
 import type { SubmissionStore } from "../interfaces";
 import { supabase } from "./client";
 
@@ -180,6 +180,38 @@ export class SupabaseSubmissionStore implements SubmissionStore {
   async remove(id: string): Promise<void> {
     const { error } = await supabase().from("submissions").delete().eq("id", id);
     if (error) throw error;
+  }
+
+  async signedValues(schema: TemplateSchema, values: FieldValues): Promise<FieldValues> {
+    // Image field values are STORAGE PATHS (publicClient uploads the file and
+    // stores the path so the values jsonb never carries megabytes of base64).
+    // The submissions bucket is private, so a path renders as nothing and
+    // breaks the export's data-URL pre-conversion. Sign them for display —
+    // one round trip for the whole template, never written back to `values`.
+    const paths = schema.fields
+      .filter((f) => f.type === "image")
+      .map((f) => values[f.fieldKey])
+      .filter((v): v is string => Boolean(v) && !v.startsWith("data:") && !v.startsWith("http"));
+    if (paths.length === 0) return values;
+
+    const { data, error } = await supabase()
+      .storage.from("submissions")
+      .createSignedUrls(paths, 60 * 60);
+    if (error) {
+      console.warn("signing submission image values failed", error);
+      return values;
+    }
+    const byPath = new Map<string, string>();
+    for (const row of data ?? []) {
+      if (row.path && row.signedUrl) byPath.set(row.path, row.signedUrl);
+    }
+    const next: FieldValues = { ...values };
+    for (const f of schema.fields) {
+      if (f.type !== "image") continue;
+      const signed = byPath.get(next[f.fieldKey] ?? "");
+      if (signed) next[f.fieldKey] = signed;
+    }
+    return next;
   }
 
   async previewUrl(path: string): Promise<string | null> {

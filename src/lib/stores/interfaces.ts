@@ -131,6 +131,13 @@ export interface SubmissionStore {
   ): Promise<import("../types").Submission>;
   countNew(companyId: string): Promise<number>;
   remove(id: string): Promise<void>;
+  /** Sign every image-type field value for display and export. Storage paths
+   * stay in `values`; signed URLs are a render-time projection and must
+   * never be persisted — they expire. */
+  signedValues(
+    schema: import("../types").TemplateSchema,
+    values: import("../types").FieldValues,
+  ): Promise<import("../types").FieldValues>;
   /** Resolve a preview_path to a viewable URL (signed URL on Supabase; the
    * stored data URL on the dev backend). */
   previewUrl(path: string): Promise<string | null>;

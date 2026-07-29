@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { Archive, ArrowLeft, Check, Download, RefreshCw, RotateCcw, Send, ThumbsDown, Undo2 } from "lucide-react";
-import type { Submission, SubmissionStatus } from "@/lib/types";
+import type { FieldValues, Submission, SubmissionStatus } from "@/lib/types";
 import { mergeCaption } from "@/lib/caption";
 import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
@@ -52,6 +52,47 @@ function Loaded({ initial, onBack }: { initial: Submission; onBack(): void }) {
 
   const template = sub.schemaSnapshot;
   const brandKit = sub.brandSnapshot?.brandKit ?? null;
+
+  /** Render-time projection of `values`: image fields hold PRIVATE storage
+   * paths, which render as nothing and break the export's data-URL
+   * pre-conversion. This copy carries signed URLs instead. It is strictly
+   * derived — `values` stays the source of truth for save and revert, since
+   * a persisted signed URL would expire and blank the submission later. */
+  const [signedImages, setSignedImages] = useState<FieldValues>({});
+  /** Only the image values matter for signing — keying the effect on them
+   * keeps a text edit from firing a storage round trip per keystroke. */
+  const imageKey = useMemo(
+    () =>
+      template.fields
+        .filter((f) => f.type === "image")
+        .map((f) => `${f.fieldKey}=${values[f.fieldKey] ?? ""}`)
+        .join("|"),
+    [template, values],
+  );
+  const resign = React.useCallback(async () => {
+    try {
+      setSignedImages(await stores.submissions.signedValues(template, values));
+    } catch (e) {
+      console.warn("Signing image values failed; rendering raw", e);
+      setSignedImages(values);
+    }
+    // values is read through imageKey — see the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template, imageKey]);
+  React.useEffect(() => {
+    void resign();
+  }, [resign]);
+  /** Text edits apply live; image fields fall back to their raw value until
+   * the signed URL lands. */
+  const signed = useMemo<FieldValues>(() => {
+    const next = { ...values };
+    for (const f of template.fields) {
+      if (f.type !== "image") continue;
+      const s = signedImages[f.fieldKey];
+      if (s) next[f.fieldKey] = s;
+    }
+    return next;
+  }, [values, signedImages, template]);
 
   // J/K walk the queue in the order the list screen last showed it —
   // clearing forty birthday posts on a Monday without round-tripping to
@@ -129,8 +170,17 @@ function Loaded({ initial, onBack }: { initial: Submission; onBack(): void }) {
       // Renders the CURRENT edited state through the standard export path.
       await rendererRef.current.exportPng();
     } catch (e) {
-      console.error("Export failed", e);
-      setError("Couldn't export the graphic. Try again.");
+      // A long review session can outlive the one-hour signed URLs. Re-sign
+      // and retry once before calling it a failure.
+      console.warn("Export failed; re-signing image values and retrying", e);
+      try {
+        await resign();
+        await new Promise((r) => setTimeout(r, 150)); // let the <img> swap in
+        await rendererRef.current.exportPng();
+      } catch (retryError) {
+        console.error("Export failed after re-sign", retryError);
+        setError("Couldn't export the graphic. Try again.");
+      }
     } finally {
       setExporting(false);
     }
@@ -192,7 +242,8 @@ function Loaded({ initial, onBack }: { initial: Submission; onBack(): void }) {
       <TemplateFillLayout
         template={template}
         brandKit={brandKit}
-        values={values}
+        // Signed copy renders; edits still write through to `values`.
+        values={signed}
         onChange={(fieldKey, v) => setValues((prev) => ({ ...prev, [fieldKey]: v }))}
         caption={caption}
         onCaptionEdit={setCaption}

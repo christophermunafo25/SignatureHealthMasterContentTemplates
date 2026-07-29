@@ -5,6 +5,7 @@ import type {
   Company,
   DesignImportResult,
   Facility,
+  FieldValues,
   NewTemplateInput,
   Submission,
   SubmissionStatus,
@@ -397,6 +398,10 @@ export class LocalSubmissionStore implements SubmissionStore {
   async previewUrl(path: string): Promise<string | null> {
     // Dev backend stores data URLs directly in preview_path.
     return path || null;
+  }
+  async signedValues(_schema: TemplateSchema, values: FieldValues): Promise<FieldValues> {
+    // Dev backend keeps data URLs in values — nothing to sign.
+    return values;
   }
 }
 

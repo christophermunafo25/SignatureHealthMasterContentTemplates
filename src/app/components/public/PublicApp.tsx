@@ -126,14 +126,10 @@ export function AdminSignInLink() {
 
 export function PublicShell({
   data,
-  facility,
-  onClearFacility,
   adminLink,
   children,
 }: {
   data: PublicPortalData | null;
-  facility?: PublicFacility | null;
-  onClearFacility?: () => void;
   /** Root-URL mode: show the quiet admin entry in the footer. */
   adminLink?: boolean;
   children: React.ReactNode;
@@ -159,33 +155,6 @@ export function PublicShell({
             }}
           >
             {data?.company.name || "Signature HealthCare"}
-          </span>
-        )}
-        {facility && (
-          <span className="flex items-center gap-2 min-w-0">
-            <span
-              className="truncate"
-              style={{
-                fontSize: 12,
-                color: "var(--ink)",
-                background: "var(--paper)",
-                border: "1px solid var(--hairline)",
-                borderRadius: 999,
-                padding: "3px 10px",
-                maxWidth: "48vw",
-              }}
-              title={facility.name}
-            >
-              {facility.shortName}
-            </span>
-            {onClearFacility && (
-              <button
-                onClick={onClearFacility}
-                style={{ fontSize: 11, color: "var(--fg-3)", whiteSpace: "nowrap" }}
-              >
-                Not you?
-              </button>
-            )}
           </span>
         )}
       </header>

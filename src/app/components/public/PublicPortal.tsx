@@ -3,19 +3,15 @@ import { ArrowRight, Search } from "lucide-react";
 import { HOME_REF } from "@/lib/publicClient";
 import { useRouter } from "../../router";
 import { TemplateThumbnailBase } from "../TemplateThumbnail";
-import { FacilityGate } from "./FacilityGate";
-import { PublicError, PublicInactive, PublicLoading, PublicShell, templateRoute, usePublicPortal, useSelectedFacility } from "./PublicApp";
+import { PublicError, PublicInactive, PublicLoading, PublicShell, templateRoute, usePublicPortal } from "./PublicApp";
 
-/** Anonymous facility library: the published template grid behind a
- * facility link. Mobile-first — a director of nursing on a phone, not a
- * designer on a desktop. */
+/** Anonymous facility library: the published template grid, open directly —
+ * facility, name, and email are asked on the fill page at submission time,
+ * never as a gate in front of the library. Mobile-first — a director of
+ * nursing on a phone, not a designer on a desktop. */
 export function PublicPortal({ token }: { token: string }) {
   const { navigate } = useRouter();
   const state = usePublicPortal(token);
-  const { facility, select, clear } = useSelectedFacility(
-    token,
-    state.status === "ready" ? state.data.facilities : null,
-  );
   const [query, setQuery] = useState("");
 
   const templates = state.status === "ready" ? state.data.templates ?? [] : [];
@@ -37,21 +33,10 @@ export function PublicPortal({ token }: { token: string }) {
   if (state.status === "error") return <PublicError retry={state.retry} />;
 
   const { data } = state;
-  // The gate comes first: no facility, no library.
-  if (!facility) {
-    return (
-      <FacilityGate
-        companyName={data.company.name}
-        facilities={data.facilities}
-        onSelect={select}
-        adminLink={isHome}
-      />
-    );
-  }
   return (
-    <PublicShell data={data} facility={facility} onClearFacility={clear} adminLink={isHome}>
+    <PublicShell data={data} adminLink={isHome}>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-8 pb-2">
-        <p className="sp-eyebrow mb-2">{facility.name}</p>
+        <p className="sp-eyebrow mb-2">{data.company.name}</p>
         <h1
           style={{
             fontFamily: "var(--font-display)",

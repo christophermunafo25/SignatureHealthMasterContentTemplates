@@ -109,10 +109,14 @@ Facility staff never sign in. Each company holds ONE portal token
 (`portal_token_previous` keeps working until its expiry; clients see a
 quiet "link is being replaced" banner via `tokenStale`) and a
 `portal_enabled` kill switch. `/g/:token` mounts a `PublicApp` tree
-BEFORE the auth provider, so no session lookup ever runs; the first
-screen is the facility gate — a cmdk combobox over the `facilities`
-roster (AND'ed any-token substring matching, state suffixes, no default
-selection), persisted per token in localStorage so rotation re-prompts.
+BEFORE the auth provider, so no session lookup ever runs. The template
+library opens directly — there is NO gate in front of browsing. Instead,
+every template's submit panel carries three universal REQUIRED fields:
+facility (cmdk combobox over the `facilities` roster — AND'ed any-token
+substring matching, state suffixes, no default selection), submitter
+name, and submitter email (also enforced server-side in
+`submit-content`). The chosen facility is remembered per portal ref in
+localStorage as a prefill for the next submission, never as a gate.
 Anonymous clients never talk to Postgres: three Edge Functions
 (`public-portal`, `public-upload`, `submit-content`, all
 `verify_jwt = false`) validate the token on every call and read/write

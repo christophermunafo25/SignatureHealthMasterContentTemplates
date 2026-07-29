@@ -6,10 +6,62 @@ import { submitPublicContent } from "@/lib/publicClient";
 import { useRouter } from "../../router";
 import { type SchemaRendererHandle } from "../SchemaRenderer";
 import { TemplateFillLayout, missingRequiredFields } from "../TemplateFillLayout";
-import { FacilityGate } from "./FacilityGate";
-import { HOME_REF } from "@/lib/publicClient";
+import { HOME_REF, type PublicFacility } from "@/lib/publicClient";
+import { FacilityCombobox } from "../FacilityCombobox";
 import { PublicError, PublicInactive, PublicLoading, PublicShell, portalRoute, usePublicPortal, useSelectedFacility } from "./PublicApp";
 import { PublicSubmitted } from "./PublicSubmitted";
+
+const EMAIL_RE = /^\S+@\S+\.\S+$/;
+
+/** Required facility picker inside the submit panel: a compact selected row
+ * once chosen, the searchable roster otherwise. Selection is remembered for
+ * the next submission but NEVER gates browsing. */
+function FacilityField({
+  facilities,
+  facility,
+  onSelect,
+  onClear,
+}: {
+  facilities: PublicFacility[];
+  facility: PublicFacility | null;
+  onSelect(f: PublicFacility): void;
+  onClear(): void;
+}) {
+  if (facility) {
+    return (
+      <div
+        className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5"
+        style={{ border: "1px solid var(--hairline)", background: "var(--paper)" }}
+      >
+        <span className="min-w-0">
+          <span className="block truncate" style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+            {facility.shortName}
+            {facility.state && <span style={{ fontWeight: 400, fontSize: 11, color: "var(--fg-4)" }}> · {facility.state}</span>}
+          </span>
+          {facility.name !== facility.shortName && (
+            <span className="block truncate" style={{ fontSize: 11, color: "var(--fg-3)" }}>{facility.name}</span>
+          )}
+        </span>
+        <button onClick={onClear} style={{ fontSize: 11, color: "var(--fg-3)", whiteSpace: "nowrap" }}>
+          Change
+        </button>
+      </div>
+    );
+  }
+  return (
+    <FacilityCombobox
+      facilities={facilities}
+      onSelect={onSelect}
+      placeholder="Search your facility…"
+      emptyHint={
+        <span>
+          No facility matches that search. Don't see yours? Contact the
+          Signature marketing team and they'll add it.
+        </span>
+      }
+    />
+  );
+}
 
 /** Anonymous facility fill page: TemplateFillLayout with a submitter panel
  * and a Submit-for-review primary action instead of a download. The graphic
@@ -51,16 +103,6 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
   if (state.status === "loading") return <PublicLoading />;
   if (state.status === "inactive") return <PublicInactive adminLink={isHome} />;
   if (state.status === "error") return <PublicError retry={state.retry} />;
-  if (!facility) {
-    return (
-      <FacilityGate
-        companyName={state.data.company.name}
-        facilities={state.data.facilities}
-        onSelect={select}
-        adminLink={isHome}
-      />
-    );
-  }
   if (!template) {
     return (
       <PublicShell data={state.data}>
@@ -73,12 +115,12 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
 
   if (submitted) {
     return (
-      <PublicShell data={data} facility={facility}>
+      <PublicShell data={data}>
         <PublicSubmitted
           template={template}
           brandKit={data.brandKit}
           values={values}
-          facilityName={facility.name}
+          facilityName={facility?.name ?? "your facility"}
           submitterEmail={submitterEmail.trim() || undefined}
           onCreateAnother={() => navigate(portalRoute(token))}
         />
@@ -86,7 +128,15 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
     );
   }
 
-  const canSubmit = !submitting && missingRequired.length === 0 && submitterName.trim().length > 1;
+  // Everything a submission still needs — template fields plus the three
+  // universal requirements (facility, name, email).
+  const blockers = [
+    ...missingRequired.map((f) => f.label),
+    ...(facility ? [] : ["your facility"]),
+    ...(submitterName.trim().length > 1 ? [] : ["your name"]),
+    ...(EMAIL_RE.test(submitterEmail.trim()) ? [] : ["your email"]),
+  ];
+  const canSubmit = !submitting && blockers.length === 0;
 
   const handleSubmit = async () => {
     if (!canSubmit || !rendererRef.current) return;
@@ -105,7 +155,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
         facilityId: facility!.id,
         templateId: template.id,
         submitterName: submitterName.trim(),
-        submitterEmail: submitterEmail.trim() || undefined,
+        submitterEmail: submitterEmail.trim(),
         values,
         caption: caption ?? mergeCaption(template, values),
         previewBlob,
@@ -120,7 +170,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
   };
 
   return (
-    <PublicShell data={data} facility={facility} onClearFacility={clear}>
+    <PublicShell data={data} adminLink={isHome}>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-6">
         <button
           onClick={() => navigate(portalRoute(token))}
@@ -145,6 +195,15 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
           actions={
             <>
               <div>
+                <span className="sp-eyebrow block mb-1">Your facility</span>
+                <FacilityField
+                  facilities={data.facilities}
+                  facility={facility}
+                  onSelect={select}
+                  onClear={clear}
+                />
+              </div>
+              <div>
                 <label className="sp-eyebrow block mb-1" htmlFor="submitter-name">Your name</label>
                 <input
                   id="submitter-name"
@@ -156,12 +215,12 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
                 />
               </div>
               <div>
-                <label className="sp-eyebrow block mb-1" htmlFor="submitter-email">Email (optional)</label>
+                <label className="sp-eyebrow block mb-1" htmlFor="submitter-email">Email</label>
                 <input
                   id="submitter-email"
                   type="email"
                   className="sp-input"
-                  placeholder="For a confirmation copy"
+                  placeholder="you@facility.com"
                   value={submitterEmail}
                   onChange={(e) => setSubmitterEmail(e.target.value)}
                   autoComplete="email"
@@ -170,7 +229,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
               <button
                 onClick={handleSubmit}
                 disabled={!canSubmit}
-                aria-describedby={missingRequired.length > 0 ? "submit-blocked-reason" : undefined}
+                aria-describedby={blockers.length > 0 ? "submit-blocked-reason" : undefined}
                 className="sp-btn sp-btn-primary w-full"
                 style={{ padding: "11px 14px" }}
               >
@@ -180,7 +239,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
               <p className="text-center" style={{ fontSize: 11, color: "var(--fg-4)" }}>
                 The Signature social team reviews and posts submissions.
               </p>
-              {missingRequired.length > 0 && (
+              {blockers.length > 0 && (
                 <p
                   id="submit-blocked-reason"
                   role="status"
@@ -188,7 +247,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
                   className="text-center"
                   style={{ fontSize: 12, color: "var(--fg-3)" }}
                 >
-                  Fill required: {missingRequired.map((f) => f.label).join(", ")}
+                  Still needed: {blockers.join(", ")}
                 </p>
               )}
               {submitError && (

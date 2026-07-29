@@ -2,7 +2,7 @@
 // client's claims are re-validated server-side — the client validates for
 // UX, this function validates for truth.
 //
-// POST { token, facilityId, templateId, submitterName, submitterEmail?,
+// POST { token, facilityId, templateId, submitterName, submitterEmail,
 //        values, caption, previewPath? }
 // → { ok: true, submissionId }
 
@@ -80,10 +80,15 @@ Deno.serve(async (req) => {
   if (submitterName.length < 2 || submitterName.length > 120) {
     return json({ error: "Submitter name is required" }, 400);
   }
+  // Email is required on every submission — the social team needs a way to
+  // reach the submitter (and the decline flow emails them the reason).
   const submitterEmail =
-    typeof body.submitterEmail === "string" && body.submitterEmail.includes("@")
+    typeof body.submitterEmail === "string" && /^\S+@\S+\.\S+$/.test(body.submitterEmail.trim())
       ? body.submitterEmail.trim().slice(0, 200)
       : null;
+  if (!submitterEmail) {
+    return json({ error: "A valid email is required." }, 400);
+  }
   const caption = typeof body.caption === "string" ? body.caption.slice(0, 4000) : "";
   const previewPath = typeof body.previewPath === "string" ? body.previewPath : null;
   if (previewPath && (!previewPath.startsWith(`${portal.companyId}/`) || previewPath.includes(".."))) {

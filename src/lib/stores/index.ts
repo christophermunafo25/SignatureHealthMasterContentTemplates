@@ -26,6 +26,15 @@ import {
 } from "./local/localStores";
 
 function createStores(): Stores {
+  // A production bundle must NEVER fall back to the localStorage dev
+  // backend: it would render an unauthenticated admin console on the
+  // client's URL. (Guarded again at build time in vite.config.ts and at
+  // mount time in App.tsx.)
+  if (import.meta.env.PROD && !isSupabaseConfigured) {
+    throw new Error(
+      "Production build without VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY — refusing to start the dev backend.",
+    );
+  }
   if (isSupabaseConfigured) {
     return {
       companies: new SupabaseCompanyStore(),

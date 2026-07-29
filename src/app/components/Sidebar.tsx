@@ -122,7 +122,8 @@ function AccountBlock({ onNavigate }: { onNavigate(route: Route): void }) {
           {companies.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
-          <option value="__new__">+ Create company…</option>
+          {/* Company creation is operator-provisioned under real auth. */}
+          {isDevAuth && <option value="__new__">+ Create company…</option>}
         </select>
       )}
       {isDevAuth && (

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/stores/supabase/client";
 
-type View = "signin" | "signup" | "forgot" | "checkEmail" | "setPassword";
+type View = "signin" | "forgot" | "setPassword";
 
-/** Sign in / sign up / password reset. Rendered whenever the Supabase
- * backend is active and there is no session. Also handles the recovery
- * redirect (Supabase fires PASSWORD_RECOVERY after the email link). */
+/** Sign in / password reset. INVITE-ONLY: there is no signup view —
+ * accounts are created through People-page invites, and the dashboard's
+ * public-signup switch must be off. Also handles the recovery redirect
+ * (Supabase fires PASSWORD_RECOVERY after the email link). */
 export function AuthPage() {
   const [view, setView] = useState<View>("signin");
   const [email, setEmail] = useState("");
@@ -39,13 +40,6 @@ export function AuthPage() {
       const { error: err } = await supabase().auth.signInWithPassword({ email, password });
       if (err) throw err;
       // Session change re-renders the app; nothing else to do.
-    });
-
-  const signUp = () =>
-    run(async () => {
-      const { data, error: err } = await supabase().auth.signUp({ email, password });
-      if (err) throw err;
-      if (!data.session) setView("checkEmail"); // email confirmation required
     });
 
   const forgot = () =>
@@ -82,7 +76,6 @@ export function AuthPage() {
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             if (view === "signin") void signIn();
-            else if (view === "signup") void signUp();
             else if (view === "forgot") void forgot();
             else if (view === "setPassword") void setNewPassword();
           }
@@ -103,64 +96,20 @@ export function AuthPage() {
             Signature HealthCare
           </p>
           <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase", fontSize: 20, letterSpacing: "0.1em", color: "#ffffff" }}>
-            {view === "signup" ? "Create your account" : view === "forgot" ? "Reset password" : view === "setPassword" ? "Choose a new password" : "Sign in"}
+            {view === "forgot" ? "Reset password" : view === "setPassword" ? "Choose a new password" : "Sign in"}
           </h1>
         </div>
 
         <div className="px-7 py-6 space-y-4">
-          {(view === "signin" || view === "signup") && (
-            <div
-              className="grid grid-cols-2 rounded-lg overflow-hidden"
-              style={{ border: "1px solid var(--hairline-strong)" }}
-              role="tablist"
-              aria-label="Sign in or create account"
-            >
-              {([
-                ["signin", "Sign in"],
-                ["signup", "Create account"],
-              ] as const).map(([v, label]) => (
-                <button
-                  key={v}
-                  role="tab"
-                  aria-selected={view === v}
-                  onClick={() => {
-                    setView(v);
-                    setError(null);
-                    setNotice(null);
-                  }}
-                  className="py-2 transition-colors"
-                  style={{
-                    fontSize: 13,
-                    fontFamily: "var(--font-ui)",
-                    ...(view === v
-                      ? { background: "var(--ink)", color: "var(--fg-on-dark-1)" }
-                      : { background: "var(--lift)", color: "var(--fg-2)" }),
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-          {view === "checkEmail" ? (
-            <p style={{ fontSize: 13, color: "var(--fg-2)", lineHeight: 1.6 }}>
-              Almost there — we sent a confirmation link to <b style={{ color: "var(--ink)" }}>{email}</b>.
-              Open it, then come back and sign in.
-            </p>
-          ) : (
-            <>
-              {view !== "setPassword" && field("Email", "email", email, setEmail, "email")}
-              {view !== "forgot" && (
-                field(
-                  view === "setPassword" ? "New password" : "Password",
-                  "password",
-                  password,
-                  setPassword,
-                  view === "signin" ? "current-password" : "new-password",
-                )
-              )}
-            </>
-          )}
+          {view !== "setPassword" && field("Email", "email", email, setEmail, "email")}
+          {view !== "forgot" &&
+            field(
+              view === "setPassword" ? "New password" : "Password",
+              "password",
+              password,
+              setPassword,
+              view === "signin" ? "current-password" : "new-password",
+            )}
 
           {error && (
             <p className="rounded-lg px-3 py-2" style={{ fontSize: 12, background: "var(--fill-danger-bg)", color: "var(--danger)" }}>
@@ -183,14 +132,6 @@ export function AuthPage() {
               </button>
             </>
           )}
-          {view === "signup" && (
-            <>
-              <button className="sp-btn sp-btn-primary w-full" disabled={busy || !email || password.length < 8} onClick={() => void signUp()}>
-                {busy ? "Creating…" : "Create account"}
-              </button>
-              <p style={{ fontSize: 11, color: "var(--fg-3)" }}>Password must be at least 8 characters.</p>
-            </>
-          )}
           {view === "forgot" && (
             <>
               <button className="sp-btn sp-btn-primary w-full" disabled={busy || !email} onClick={() => void forgot()}>
@@ -204,11 +145,6 @@ export function AuthPage() {
           {view === "setPassword" && (
             <button className="sp-btn sp-btn-primary w-full" disabled={busy || password.length < 8} onClick={() => void setNewPassword()}>
               {busy ? "Saving…" : "Save password"}
-            </button>
-          )}
-          {view === "checkEmail" && (
-            <button className="sp-btn sp-btn-ghost w-full" onClick={() => setView("signin")}>
-              Back to sign in
             </button>
           )}
         </div>

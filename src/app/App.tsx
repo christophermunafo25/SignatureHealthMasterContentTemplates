@@ -67,9 +67,14 @@ function Screen() {
     );
   }
 
-  // No company for this identity (or "Create company") → onboarding.
-  if (!company || route.name === "onboarding") {
-    return <OnboardingWizard firstRun={!company} />;
+  // No company for this identity. Under real auth this is invite-only —
+  // there is no self-service company creation (see migration 0018); the
+  // dev backend keeps the onboarding wizard for local work.
+  if (!company) {
+    return backend === "supabase" ? <NoMembership /> : <OnboardingWizard firstRun />;
+  }
+  if (route.name === "onboarding") {
+    return backend === "supabase" ? <Portal /> : <OnboardingWizard firstRun={false} />;
   }
 
   const adminOnly = (node: React.ReactNode) =>
@@ -92,12 +97,45 @@ function Screen() {
   );
 }
 
+/** Signed in, but no company membership. Invite-only: the account was
+ * created by an invite that hasn't landed, or someone signed in with the
+ * wrong address. */
+function NoMembership() {
+  const { user, signOut } = useAuth();
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "var(--linen)" }}>
+      <div className="text-center space-y-3" style={{ maxWidth: 380 }}>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>No workspace access yet</p>
+        <p style={{ fontSize: 13, color: "var(--fg-3)", lineHeight: 1.6 }}>
+          {user?.email ? <b style={{ color: "var(--fg-2)" }}>{user.email}</b> : "This account"} isn't a
+          member of a company on this portal. Ask an admin to send you an
+          invite from the People page, then sign in again.
+        </p>
+        {signOut && (
+          <button className="sp-btn sp-btn-ghost" onClick={() => void signOut()}>Sign out</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Branches BEFORE the auth provider mounts: a public route must never
  * trigger a session lookup (a failed one would render the sign-in page). */
 function RootSwitch() {
   const { route } = useRouter();
   if (route.name === "publicPortal" || route.name === "publicTemplate") {
     return <PublicApp />;
+  }
+  // Mount-time guard (one of three): never run the no-auth dev backend in
+  // a production bundle.
+  if (import.meta.env.PROD && stores.backend !== "supabase") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "var(--linen)" }}>
+        <p style={{ fontSize: 14, color: "var(--danger)" }}>
+          This deployment is missing its backend configuration. Contact the administrator.
+        </p>
+      </div>
+    );
   }
   const AuthProvider = stores.backend === "supabase" ? SupabaseAuthProvider : DevAuthProvider;
   return (

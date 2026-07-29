@@ -6,3 +6,6 @@ dist/
 .claude/
 *.local
 .vercel
+
+# Supabase CLI link state — machine-local, never committed
+supabase/.temp/

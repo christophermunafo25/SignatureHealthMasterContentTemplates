@@ -40,6 +40,7 @@ export class SupabaseTemplateStore implements TemplateStore {
         status: input.status,
         canvas_width: input.canvasWidth,
         canvas_height: input.canvasHeight,
+        canvas_preset_id: input.canvasPresetId ?? null,
         background_storage_path: input.backgroundUrl || null,
         background_color: input.backgroundColor ?? null,
         background_gradient: input.backgroundGradient ?? null,
@@ -62,6 +63,7 @@ export class SupabaseTemplateStore implements TemplateStore {
     if (patch.status !== undefined) row.status = patch.status;
     if (patch.canvasWidth !== undefined) row.canvas_width = patch.canvasWidth;
     if (patch.canvasHeight !== undefined) row.canvas_height = patch.canvasHeight;
+    if ("canvasPresetId" in patch) row.canvas_preset_id = patch.canvasPresetId ?? null;
     if (patch.backgroundUrl !== undefined) row.background_storage_path = patch.backgroundUrl || null;
     if ("backgroundColor" in patch) row.background_color = patch.backgroundColor ?? null;
     if ("backgroundGradient" in patch) row.background_gradient = patch.backgroundGradient ?? null;

@@ -44,9 +44,23 @@ export interface CanvasPresetRow {
   width: number;
   height: number;
   enabled: boolean;
+  platform: string;
+  format: string;
+  sort_order: number;
+  recommended: boolean;
 }
 
-export const toCanvasPreset = (r: CanvasPresetRow): CanvasPreset => ({ ...r });
+export const toCanvasPreset = (r: CanvasPresetRow): CanvasPreset => ({
+  id: r.id,
+  label: r.label,
+  width: r.width,
+  height: r.height,
+  enabled: r.enabled,
+  platform: r.platform ?? "General",
+  format: r.format ?? "",
+  sortOrder: r.sort_order ?? 100,
+  recommended: r.recommended ?? false,
+});
 
 export interface BrandKitRow {
   id: string;
@@ -234,6 +248,7 @@ export interface TemplateRow {
   status: TemplateStatus;
   canvas_width: number;
   canvas_height: number;
+  canvas_preset_id: string | null;
   background_storage_path: string | null;
   background_color: string | null;
   background_gradient: import("../../types").TextGradient | null;
@@ -253,6 +268,7 @@ export const toTemplate = (r: TemplateRow): TemplateSchema => ({
   status: r.status,
   canvasWidth: r.canvas_width,
   canvasHeight: r.canvas_height,
+  canvasPresetId: r.canvas_preset_id ?? undefined,
   backgroundColor: r.background_color ?? undefined,
   backgroundGradient: r.background_gradient ?? undefined,
   backgroundUrl: r.background_storage_path

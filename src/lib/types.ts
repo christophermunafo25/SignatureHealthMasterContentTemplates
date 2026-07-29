@@ -85,6 +85,12 @@ export interface CanvasPreset {
   width: number;
   height: number;
   enabled: boolean;
+  /** Grouping for the size picker (Instagram, Facebook, …). */
+  platform: string;
+  /** Human format inside the platform group ("Story / Reel"). */
+  format: string;
+  sortOrder: number;
+  recommended: boolean;
 }
 
 export interface TextGradient {
@@ -187,10 +193,12 @@ export interface TemplateSchema {
   category: string;
   tags: string[];
   status: TemplateStatus;
-  // v1 is always 1440×1440 (square-1440 preset) but ALWAYS read from here —
-  // the renderer, builder, and export never hardcode a dimension.
+  // The renderer, builder, and export ALWAYS read dimensions from here —
+  // never from a preset row. canvasPresetId records which catalog size the
+  // template was built against (informational only).
   canvasWidth: number;
   canvasHeight: number;
+  canvasPresetId?: string;
   backgroundUrl: string;
   /** Canvas base fill for blank-built templates. Precedence when rendering:
    * background image (backgroundUrl) → gradient → color → white. */

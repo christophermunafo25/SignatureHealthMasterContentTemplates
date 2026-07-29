@@ -27,9 +27,15 @@ import type {
 import { bucketDailyActivity } from "../dailyActivity";
 import { fileToDataUrl, mutate, newId, readDb } from "./db";
 
-// Mirrors supabase/seed.sql — v1 enables only the square preset.
+// Mirrors migration 0022's enabled catalog rows.
 const PRESETS: CanvasPreset[] = [
-  { id: "square-1440", label: "Square (1440×1440)", width: 1440, height: 1440, enabled: true },
+  { id: "square-1440", label: "Square (1440×1440)", width: 1440, height: 1440, enabled: true, platform: "General", format: "Square post", sortOrder: 10, recommended: true },
+  { id: "ig-post-1080", label: "Instagram Post (1080×1080)", width: 1080, height: 1080, enabled: true, platform: "Instagram", format: "Square post", sortOrder: 20, recommended: true },
+  { id: "ig-portrait-1080", label: "Instagram Portrait (1080×1350)", width: 1080, height: 1350, enabled: true, platform: "Instagram", format: "Portrait post", sortOrder: 30, recommended: false },
+  { id: "ig-story-1080", label: "Instagram Story (1080×1920)", width: 1080, height: 1920, enabled: true, platform: "Instagram", format: "Story / Reel", sortOrder: 40, recommended: false },
+  { id: "fb-post-1200", label: "Facebook Post (1200×630)", width: 1200, height: 630, enabled: true, platform: "Facebook", format: "Feed post", sortOrder: 50, recommended: false },
+  { id: "fb-story-1080", label: "Facebook Story (1080×1920)", width: 1080, height: 1920, enabled: true, platform: "Facebook", format: "Story", sortOrder: 60, recommended: false },
+  { id: "li-post-1200", label: "LinkedIn Post (1200×627)", width: 1200, height: 627, enabled: true, platform: "LinkedIn", format: "Feed post", sortOrder: 80, recommended: false },
 ];
 
 interface UsageEventRec {

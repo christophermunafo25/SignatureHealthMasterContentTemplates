@@ -43,6 +43,7 @@ import { ElementPalette } from "./ElementPalette";
 import { FieldListPanel } from "./FieldListPanel";
 import { FieldContextMenu, type MenuAction } from "./FieldContextMenu";
 import { WIZARD_STEPS, WizardStepper, type WizardStep } from "./WizardStepper";
+import { CanvasSizePicker } from "./CanvasSizePicker";
 import {
   PALETTE_ITEMS,
   clipboardHasFields,
@@ -133,6 +134,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   /** True once a creation path was chosen — "Start blank" needs no
    * background, so backgroundUrl alone can't gate the wizard anymore. */
   const [started, setStarted] = useState<boolean>(Boolean(templateId));
+  const [pickingSize, setPickingSize] = useState(false);
   const [step, setStep] = useState<WizardStep>("name");
   const [visited, setVisited] = useState<Set<WizardStep>>(() => new Set(["name"]));
   const [mode, setMode] = useState<"edit" | "preview">("edit");
@@ -785,6 +787,23 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
             }
           }}
         />
+      ) : pickingSize && !sourceChosen ? (
+        <CanvasSizePicker
+          presets={presets}
+          onBack={() => setPickingSize(false)}
+          onPick={(preset) => {
+            // Baseline, not an edit — undo must never reshape the canvas.
+            resetHistory((d) => ({
+              ...d,
+              canvasWidth: preset.width,
+              canvasHeight: preset.height,
+              canvasPresetId: preset.id,
+            }));
+            setPickingSize(false);
+            setStarted(true);
+            goTo("fields");
+          }}
+        />
       ) : !sourceChosen ? (
         /* Source pick: two co-equal creation paths */
         <div className="max-w-3xl mx-auto py-10 space-y-5">
@@ -795,13 +814,16 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
             <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
               Build from scratch, or import a designed frame — both end at the
               same place: locked design, editable fields.
-              {presets[0] && ` Canvas: ${presets[0].label}.`}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
             {/* Path A — blank canvas */}
             <button
               onClick={() => {
+                if (presets.length > 1) {
+                  setPickingSize(true);
+                  return;
+                }
                 setStarted(true);
                 // Straight to the canvas — the default name unblocks the
                 // wizard, and publish asks for a real one.

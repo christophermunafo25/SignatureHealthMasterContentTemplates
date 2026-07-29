@@ -65,7 +65,7 @@ export class SupabaseCompanyStore implements CompanyStore {
       .from("canvas_presets")
       .select("*")
       .eq("enabled", true)
-      .order("id");
+      .order("sort_order");
     if (error) throw error;
     return (data as CanvasPresetRow[]).map(toCanvasPreset);
   }

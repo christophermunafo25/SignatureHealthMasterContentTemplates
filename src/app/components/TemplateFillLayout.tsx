@@ -181,7 +181,19 @@ export function TemplateFillLayout({
               {previewHint ?? `${template.canvasWidth}×${template.canvasHeight} · live`}
             </span>
           </div>
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--surface-sunken)", border: "1px solid var(--hairline)" }}>
+          <div
+            className="rounded-xl overflow-hidden mx-auto w-full"
+            style={{
+              background: "var(--surface-sunken)",
+              border: "1px solid var(--hairline)",
+              // A 1080×1920 Story must not run past a laptop viewport: cap
+              // portrait previews by width so height lands near 70vh and the
+              // renderer scales down.
+              ...(template.canvasHeight > template.canvasWidth
+                ? { maxWidth: `calc(70vh * ${(template.canvasWidth / template.canvasHeight).toFixed(4)})` }
+                : {}),
+            }}
+          >
             <SchemaRenderer
               ref={rendererRef}
               schema={template}

@@ -67,6 +67,10 @@ export interface Member {
   userId: string;
   email: string;
   name?: string;
+  firstName?: string;
+  lastName?: string;
+  title?: string;
+  avatarUrl?: string;
   role: import("../types").Role;
 }
 

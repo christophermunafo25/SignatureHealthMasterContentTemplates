@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { Company, Role } from "../types";
+import { loadOwnProfile, type UserProfile } from "../profile";
 import { stores } from "../stores";
 import { supabase } from "../stores/supabase/client";
 import { AuthContext, LS_COMPANY, type AuthState } from "./AuthContext";
@@ -28,6 +29,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const retry = useCallback(() => setTick((t) => t + 1), []);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [roleByCompany, setRoleByCompany] = useState<Record<string, Role>>({});
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(
     () => localStorage.getItem(LS_COMPANY),
   );
@@ -93,6 +95,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     if (!userId) {
       setCompanies([]);
       setRoleByCompany({});
+      setProfile(null);
       setMembershipsReady(false);
       return;
     }
@@ -100,6 +103,12 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     if (prevUserId !== userId) setMembershipsReady(false);
     let cancelled = false;
     setError(null);
+    // Profile is presentation data — a failed load never gates the app.
+    void loadOwnProfile(userId)
+      .then((p) => {
+        if (!cancelled) setProfile(p);
+      })
+      .catch((e) => console.warn("Profile load failed", e));
     loadMemberships()
       .catch((e) => {
         console.error("Membership load failed", e);
@@ -118,6 +127,11 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     localStorage.setItem(LS_COMPANY, companyId);
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    const uid = prevUserIdRef.current;
+    if (uid) setProfile(await loadOwnProfile(uid));
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase().auth.signOut();
     localStorage.removeItem(LS_COMPANY);
@@ -133,6 +147,8 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       company,
       role: (company && roleByCompany[company.id]) ?? "member",
       user: session?.user ? { id: session.user.id, email: session.user.email ?? "" } : null,
+      profile,
+      refreshProfile,
       companies,
       isDevAuth: false,
       backend: stores.backend,
@@ -141,7 +157,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       refresh: loadMemberships,
       signOut,
     }),
-    [loading, error, retry, company, roleByCompany, session, companies, setCompany, loadMemberships, signOut],
+    [loading, error, retry, company, roleByCompany, session, profile, refreshProfile, companies, setCompany, loadMemberships, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

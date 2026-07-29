@@ -82,6 +82,13 @@ pass-through policies and activated production RLS:
 - **Invites**: the `invite-member` Edge Function (admin-verified from the
   caller's JWT) sends Supabase's invite email and creates the membership.
   People page: invite, change role, remove.
+- **Account setup**: invite links land on `AccountSetupGate` (first/last
+  name, title, optional photo, password); recovery links land on the
+  password-only `SetPasswordGate`. Both live INSIDE the signed-in tree —
+  email links sign the user in on arrival. Profiles live on
+  `public.users` (migration 0024) with avatars in the public `avatars`
+  bucket (`{user_id}/` self-scoped writes); the sidebar user block shows
+  the profile and opens an edit dialog.
 - **RLS**: members read their companies' brand data + published templates;
   admins write; usage events are insert-only for members, readable by admins;
   Storage writes are tenant-scoped by the `{company_id}/` path prefix;

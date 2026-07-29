@@ -10,7 +10,7 @@ type View = "signin" | "forgot" | "setPassword";
 const linkParams = new URLSearchParams(
   window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.search,
 );
-const AUTH_LINK_TYPE = linkParams.get("type");
+export const AUTH_LINK_TYPE = linkParams.get("type");
 export const arrivedViaAuthLink = AUTH_LINK_TYPE === "invite" || AUTH_LINK_TYPE === "recovery";
 
 /** Shown once for a signed-in user who arrived through an invite or

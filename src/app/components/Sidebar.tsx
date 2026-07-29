@@ -14,8 +14,10 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { profileDisplayName, profileInitials } from "@/lib/profile";
 import { stores } from "@/lib/stores";
 import { useRouter, type Route } from "../router";
+import { ProfileDialog } from "./ProfileDialog";
 const LS_COLLAPSED = "shc-graphics-sidebar-collapsed";
 
 /** Signature HealthCare mark — "SH" monogram placeholder rendered in the
@@ -95,16 +97,18 @@ const NAV: NavItem[] = [
 /** Workspace switcher + dev role toggle + user row — shared between the
  * desktop sidebar's bottom block and the mobile dropdown. */
 function AccountBlock({ onNavigate }: { onNavigate(route: Route): void }) {
-  const { company, companies, role, user, isDevAuth, setCompany, setRole, signOut, backend } = useAuth();
-  const initials = (user?.email ?? company?.name ?? "?")
-    .split(/[@\s._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((s) => s[0]!.toUpperCase())
-    .join("");
-  const displayName = user
-    ? user.email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-    : company?.name ?? "Workspace";
+  const { company, companies, role, user, profile, isDevAuth, setCompany, setRole, signOut, backend } = useAuth();
+  const [editingProfile, setEditingProfile] = useState(false);
+  const initials = user
+    ? profileInitials(profile, user.email)
+    : (company?.name ?? "?")
+        .split(/[\s._-]+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((s) => s[0]!.toUpperCase())
+        .join("");
+  const displayName = user ? profileDisplayName(profile, user.email) : company?.name ?? "Workspace";
+  const subline = user ? [profile?.title, user.email].filter(Boolean).join(" · ") : `${company?.name ?? "Workspace"} · ${role}`;
 
   return (
     <>
@@ -146,9 +150,16 @@ function AccountBlock({ onNavigate }: { onNavigate(route: Route): void }) {
         </div>
       )}
       <div className="flex items-center gap-3">
-        <span
-          className="flex items-center justify-center flex-shrink-0"
-          title={`${displayName}${company ? ` · ${company.name}` : ""} · ${role}${backend === "local" ? " · dev backend" : ""}`}
+        <button
+          className="flex items-center justify-center flex-shrink-0 overflow-hidden"
+          disabled={!user}
+          onClick={() => user && setEditingProfile(true)}
+          title={
+            user
+              ? "Edit profile"
+              : `${displayName}${company ? ` · ${company.name}` : ""} · ${role}${backend === "local" ? " · dev backend" : ""}`
+          }
+          aria-label={user ? "Edit profile" : undefined}
           style={{
             width: 38,
             height: 38,
@@ -157,16 +168,21 @@ function AccountBlock({ onNavigate }: { onNavigate(route: Route): void }) {
             color: "#003b71",
             fontSize: 12,
             fontWeight: 600,
+            cursor: user ? "pointer" : "default",
           }}
         >
-          {initials}
-        </span>
+          {profile?.avatarUrl ? (
+            <img src={profile.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            initials
+          )}
+        </button>
         <span className="min-w-0 flex-1 text-left">
           <span className="block truncate" style={{ fontSize: 13, fontWeight: 500, color: "var(--sb-fg-active)" }}>
             {displayName}
           </span>
-          <span className="block truncate" style={{ fontSize: 11, color: "var(--sb-fg)" }}>
-            {user?.email ?? `${company?.name ?? "Workspace"} · ${role}`}
+          <span className="block truncate" style={{ fontSize: 11, color: "var(--sb-fg)" }} title={subline}>
+            {subline}
           </span>
         </span>
         {signOut && (
@@ -181,6 +197,7 @@ function AccountBlock({ onNavigate }: { onNavigate(route: Route): void }) {
           </button>
         )}
       </div>
+      {editingProfile && <ProfileDialog onClose={() => setEditingProfile(false)} />}
     </>
   );
 }

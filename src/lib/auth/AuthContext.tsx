@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Company, Role } from "../types";
+import type { UserProfile } from "../profile";
 import { stores } from "../stores";
 
 /**
@@ -22,6 +23,10 @@ export interface AuthState {
   company: Company | null;
   role: Role;
   user: { id: string; email: string } | null; // null in dev mode / signed out
+  /** Own users-row profile (real auth only; null in dev / before load). */
+  profile: UserProfile | null;
+  /** Re-reads the profile row (after account setup / profile edits). */
+  refreshProfile?(): Promise<void>;
   companies: Company[]; // dev: all companies; real: the user's companies
   isDevAuth: boolean;
   backend: "supabase" | "local";
@@ -96,6 +101,7 @@ export function DevAuthProvider({ children }: { children: React.ReactNode }) {
       company,
       role,
       user: null,
+      profile: null,
       companies,
       isDevAuth: true,
       backend: stores.backend,

@@ -120,16 +120,23 @@ export function PeopleAdmin() {
             >
               <span
                 className="sp-mesh flex-shrink-0"
-                style={{ width: 26, height: 26, borderRadius: 999, display: "grid", placeItems: "center", overflow: "hidden" }}
+                style={{ width: 32, height: 32, borderRadius: 999, display: "grid", placeItems: "center", overflow: "hidden" }}
               >
-                <span style={{ color: "#fff", fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 11 }}>
-                  {(m.name ?? m.email).slice(0, 1).toUpperCase()}
-                </span>
+                {m.avatarUrl ? (
+                  <img src={m.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span style={{ color: "#fff", fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 11 }}>
+                    {(m.firstName ?? m.name ?? m.email).slice(0, 1).toUpperCase()}
+                  </span>
+                )}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="truncate" style={{ fontSize: 13, color: "var(--ink)" }}>
-                  {m.email}
-                  {m.userId === user?.id && <span style={{ color: "var(--fg-3)" }}> (you)</span>}
+                <p className="truncate" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
+                  {[m.firstName, m.lastName].filter(Boolean).join(" ") || m.name || m.email}
+                  {m.userId === user?.id && <span style={{ color: "var(--fg-3)", fontWeight: 400 }}> (you)</span>}
+                </p>
+                <p className="truncate" style={{ fontSize: 11, color: "var(--fg-3)" }}>
+                  {[m.title, m.email].filter(Boolean).join(" · ")}
                 </p>
               </div>
               <select

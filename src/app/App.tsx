@@ -2,7 +2,8 @@ import React from "react";
 import { DevAuthProvider, useAuth } from "@/lib/auth/AuthContext";
 import { SupabaseAuthProvider } from "@/lib/auth/SupabaseAuthProvider";
 import { stores } from "@/lib/stores";
-import { arrivedViaAuthLink, AuthPage, SetPasswordGate } from "./components/auth/AuthPage";
+import { arrivedViaAuthLink, AUTH_LINK_TYPE, AuthPage, SetPasswordGate } from "./components/auth/AuthPage";
+import { AccountSetupGate } from "./components/auth/AccountSetup";
 import { PeopleAdmin } from "./components/admin/PeopleAdmin";
 import { BrandProvider, useBrand } from "@/lib/brand/BrandContext";
 import { RouterProvider, useRouter } from "./router";
@@ -22,7 +23,7 @@ import { SubmissionQueue } from "./components/admin/SubmissionQueue";
 import { SubmissionDetail } from "./components/admin/SubmissionDetail";
 
 function Screen() {
-  const { loading, error, retry, company, role, user, backend } = useAuth();
+  const { loading, error, retry, company, role, user, backend, refreshProfile } = useAuth();
   const brand = useBrand();
   const { route } = useRouter();
   // Invite/recovery links sign the user in on arrival; the password gets
@@ -56,7 +57,17 @@ function Screen() {
     return <AuthPage />;
   }
   if (backend === "supabase" && user && passwordPending) {
-    return <SetPasswordGate email={user.email} onDone={() => setPasswordPending(false)} />;
+    const done = () => {
+      void refreshProfile?.();
+      setPasswordPending(false);
+    };
+    // Invites are new accounts: full setup (who you are + password).
+    // Recovery is an existing account: just the password.
+    return AUTH_LINK_TYPE === "invite" ? (
+      <AccountSetupGate userId={user.id} email={user.email} onDone={done} />
+    ) : (
+      <SetPasswordGate email={user.email} onDone={done} />
+    );
   }
 
   // Same rule for the brand kit: don't render brand-aware screens against a

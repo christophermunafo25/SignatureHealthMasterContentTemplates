@@ -1,6 +1,6 @@
-# SocialPaint
+# Signature HealthCare Graphics
 
-A multi-tenant, self-service brand template portal. Marketing admins design locked templates once; everyone else fills in a few fields and downloads a perfectly on-brand graphic.
+Signature HealthCare's self-service brand template portal. Marketing admins design locked templates once; everyone else fills in a few fields and downloads a perfectly on-brand graphic.
 
 The core design principle is **subtraction**: the only thing an end user can change is the content of the fields the admin defined. Layout, typography, colors, and logos stay exactly where the brand team put them.
 

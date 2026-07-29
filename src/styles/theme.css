@@ -41,10 +41,10 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-/* Dark mode: the :root mappings above reference SocialPaint tokens, which
-   flip inside socialpaint.css's own `.dark` block — so surfaces, text, and
+/* Dark mode: the :root mappings above reference the platform design tokens, which
+   flip inside signature.css's own `.dark` block — so surfaces, text, and
    borders re-theme automatically. Only literals that don't route through a
-   SocialPaint token need explicit dark values here. */
+   platform token need explicit dark values here. */
 .dark {
   --input-background: var(--lift);
   --switch-background: #4a464b;

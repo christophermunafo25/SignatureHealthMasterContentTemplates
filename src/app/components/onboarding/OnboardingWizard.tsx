@@ -109,7 +109,7 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
           <p className="sp-eyebrow mb-1" style={{ color: "rgba(255,255,255,0.85)" }}>
             {firstRun ? "Welcome" : "New company"}
           </p>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase", fontSize: 20, letterSpacing: "-0.03em", lineHeight: 1.05, color: "#f2f3ef" }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase", fontSize: 20, letterSpacing: "0.1em", lineHeight: 1.05, color: "#f2f3ef" }}>
             {firstRun ? "Set up your brand portal" : "Create a company"}
           </h1>
           <div className="flex gap-1.5 mt-5">
@@ -185,7 +185,7 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
               className="sp-btn sp-btn-primary" style={{ padding: "10px 20px" }}
             >
               <Check className="w-4 h-4" />
-              {saving ? "Creating…" : "Create workspace"}
+              {saving ? "Creating…" : "Create company"}
             </button>
           )}
         </div>
@@ -199,19 +199,19 @@ function StepCompany({ name, slug, onChange }: { name: string; slug: string; onC
     <div className="space-y-3">
       <h2 className="sp-panel-title" style={{ fontSize: 16 }}>Company name</h2>
       <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-        The tenant everything belongs to — templates, brand kit, and usage stay private to it.
+        Your company — its templates, brand kit, and usage stay private to it.
       </p>
       <input
         autoFocus
         type="text"
         value={name}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="e.g. Acme Senior Living"
+        placeholder="e.g. Signature HealthCare"
         className="sp-input"
       />
       {slug && (
         <p className="text-[11px]" style={{ color: "var(--muted-foreground)" }}>
-          Workspace id: <span className="font-mono">{slug}</span>
+          Company id: <span className="font-mono">{slug}</span>
         </p>
       )}
     </div>

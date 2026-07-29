@@ -76,7 +76,7 @@ const controlStyle: React.CSSProperties = {};
 // selections and sessions, so the inspector stays the way the admin left it.
 // ---------------------------------------------------------------------------
 
-const SECTIONS_KEY = "sp-inspector-open";
+const SECTIONS_KEY = "shc-graphics-inspector-open";
 
 const readOpen = (id: string, fallback: boolean): boolean => {
   try {
@@ -452,7 +452,7 @@ export function FieldInspector({
       {/* Position — canvas alignment, coordinates, rotation */}
       <Section id="position" title="Position">
         <div>
-          <label className={labelClass} style={labelStyle}>Alignment</label>
+          <label className={labelClass} style={labelStyle}>Align to canvas</label>
           <div className="flex items-center justify-between gap-2">
             <IconRow
               ariaLabel="Align horizontally on the canvas"

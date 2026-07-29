@@ -575,7 +575,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           templates right here on this device.
         </p>
         <button className="sp-btn sp-btn-primary" onClick={() => navigate({ name: "adminTemplates" })}>
-          Back to Templates
+          Back to Template Builder
         </button>
       </div>
     );
@@ -643,7 +643,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                 </p>
                 <p style={{ fontSize: 12, color: "var(--fg-3)" }}>
                   "{draft.name.trim() || "Untitled template"}" is live. Taking you back to
-                  Templates…
+                  Template Builder…
                 </p>
               </>
             )}
@@ -683,7 +683,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         <span
           className="sp-eyebrow px-2 py-1 rounded-md" style={{ background: "rgba(35,31,35,0.04)" }}
         >
-          {draft.canvasWidth}×{draft.canvasHeight} · {draft.status}
+          {draft.canvasWidth}×{draft.canvasHeight} · <span className="capitalize">{draft.status}</span>
           {recomposing ? " · lifting elements off background…" : ""}
         </span>
         {sourceChosen && (
@@ -842,7 +842,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
               <p style={{ fontSize: 12, color: "var(--fg-2)", maxWidth: 240 }}>
                 {stores.designImport.isConfigured()
                   ? "Paste a frame link — pick which elements become editable fields; the rest is baked into the locked design."
-                  : "Requires the Supabase backend with the Figma connection configured (see docs/ARCHITECTURE.md)."}
+                  : "Requires the Figma connection to be configured for your company."}
               </p>
             </button>
           </div>
@@ -859,7 +859,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                     What should this template be called?
                   </h2>
                   <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
-                    Members see this name in their template gallery. You'll name
+                    Members see this name in Published Templates. You'll name
                     each editable field next — field names become the caption's
                     merge tags.
                   </p>
@@ -883,7 +883,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                 {nameNeeded && (
                   <p role="alert" style={{ fontSize: 12, color: "var(--solar)" }}>
                     Name the template before publishing — members find it by
-                    this name in their gallery.
+                    this name in Published Templates.
                   </p>
                 )}
               </div>
@@ -1130,7 +1130,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                     <span style={{ fontSize: 12, color: "var(--fg-4)", fontWeight: 400 }}> · optional</span>
                   </h2>
                   <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
-                    Shown on the template's card in the members' gallery.
+                    Shown on the template's card in Published Templates.
                   </p>
                 </div>
                 <input

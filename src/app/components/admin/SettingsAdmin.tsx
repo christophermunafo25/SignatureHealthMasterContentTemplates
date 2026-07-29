@@ -20,13 +20,13 @@ export function SettingsAdmin() {
       <div>
         <h1 className="sp-page-title">Settings & Admin</h1>
         <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
-          Workspace, appearance, and account. Members and roles are managed on
+          Company, appearance, and account. Admins and members are managed on
           the People page.
         </p>
       </div>
 
       <div className="sp-card p-5 space-y-3">
-        <h2 className="sp-panel-title">Workspace</h2>
+        <h2 className="sp-panel-title">Company</h2>
         <div className="grid grid-cols-2 gap-x-6 gap-y-2" style={{ fontSize: 13 }}>
           <span style={{ color: "var(--fg-3)" }}>Name</span>
           <span style={{ color: "var(--ink)" }}>{company?.name ?? "—"}</span>

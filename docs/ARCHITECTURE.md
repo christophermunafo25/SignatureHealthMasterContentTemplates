@@ -100,17 +100,17 @@ Navigation is a persistent left sidebar (`src/app/components/Sidebar.tsx`,
 layout from Figma `KFBFgZBs7Tl9LXovzNUaNP` node 13:28, surface treatment from
 the current design system — flat, no glass): a panel pinned to the left
 edge, rounded on its right corners, with logo + collapse toggle, six
-role-gated destinations (Brand Templates · Template Builder · Insights &
+role-gated destinations (Published Templates · Template Builder · Insights &
 Analytics · Brand Studio · People · Settings & Admin — members see only the
 first), and a user block pinned to the bottom (theme toggle, sign out, and —
 on the dev backend — the tenant/role switcher). Every sidebar color is a
-`--sb-*` token themed for light AND dark in `socialpaint.css`; tenant brand
+`--sb-*` token themed for light AND dark in `signature.css`; tenant brand
 kits never re-color the shell.
 
 ## Theming
 
-The platform chrome is styled by the SocialPaint design system
-(`src/styles/socialpaint.css`) and is never re-themed per tenant.
+The platform chrome is styled by the Signature HealthCare design system
+(`src/styles/signature.css`) and is never re-themed per tenant.
 `applyBrandTheme` (src/lib/theme.ts) exposes the active kit's palette as
 `--brand-*` CSS variables for template-adjacent surfaces only; tenant brand
 expression lives in the template graphics. Fonts load via the Google Fonts css2 API or

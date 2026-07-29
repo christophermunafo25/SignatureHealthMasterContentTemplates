@@ -1,7 +1,7 @@
 import React from "react";
 import { Sidebar } from "./Sidebar";
 
-/** Platform chrome — SocialPaint design system. A persistent left sidebar
+/** Platform chrome — Signature HealthCare design system. A persistent left sidebar
  * (Figma node 13:28) replaces the old topbar; content fills the rest. Tenant
  * brand kits style the graphics, never this shell. */
 export function AppShell({ children }: { children: React.ReactNode }) {

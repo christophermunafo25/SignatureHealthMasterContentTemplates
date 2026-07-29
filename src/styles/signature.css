@@ -1,15 +1,14 @@
 /* ==========================================================================
    Signature HealthCare Design System — platform UI tokens.
-   Custom build of the SocialPaint platform re-skinned for Signature
-   HealthCare. Navy (Pantone 541 C) + cream (7499 C) lead; teal (7475 C),
+   Navy (Pantone 541 C) + cream (7499 C) lead; teal (7475 C),
    plum (5185 C), orange (1375 C) and warm red support; every neutral
    carries a warm cream cast. Soft containers (20px) against crisp controls
    (5px). Flat color only: no gradients as surface treatment, no glass, no
    texture. PLATFORM UI ONLY: tenant brand kits style the template
    graphics, never this chrome.
 
-   The custom-property NAMES are kept from the SocialPaint system so
-   components need no changes — only the VALUES changed.
+   The custom-property NAMES are kept from the upstream platform system
+   so components need no changes — only the VALUES changed.
 
    Brand palette:
      Navy   #003B71 (541 C)      · 50% #7F9DB8

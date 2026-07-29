@@ -136,9 +136,9 @@ export function AdminTemplates() {
       />
       <div className="flex items-end justify-between mb-6">
         <div>
-          <h1 className="sp-page-title">Templates</h1>
+          <h1 className="sp-page-title">Template Builder</h1>
           <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
-            Create, edit, and publish — published templates appear in your team's Brand templates.
+            Create, edit, and publish — anything you publish appears in the team's Published Templates gallery.
           </p>
         </div>
         <button className="sp-btn sp-btn-primary" onClick={() => navigate({ name: "builder", templateId: null })}>
@@ -253,7 +253,7 @@ export function AdminTemplates() {
                     className="sp-eyebrow inline-block mt-0.5"
                     style={t.status === "published" ? { color: "var(--success)" } : undefined}
                   >
-                    {t.status}
+                    <span className="capitalize">{t.status}</span>
                   </span>
                   {usageState.status === "ready" && (
                     <p style={{ fontSize: 11, color: "var(--fg-3)", marginTop: 2 }}>

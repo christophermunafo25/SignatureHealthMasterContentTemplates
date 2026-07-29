@@ -2,8 +2,8 @@ import type { BrandKit } from "./types";
 
 /** Expose the active tenant's brand kit as --brand-* CSS variables.
  *
- * The platform chrome is styled by the SocialPaint design system
- * (src/styles/socialpaint.css) and is NOT re-themed per tenant — tenant
+ * The platform chrome is styled by the Signature HealthCare design system
+ * (src/styles/signature.css) and is NOT re-themed per tenant — tenant
  * brand expression lives in the template graphics, the brand-kit pickers,
  * and --brand-* accents on template-adjacent surfaces. */
 const touched = new Set<string>();

@@ -123,7 +123,7 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
         style={{ fontSize: 13, color: "var(--fg-2)" }}
       >
         <ArrowLeft style={{ width: 14, height: 14 }} />
-        Brand templates
+        Published Templates
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

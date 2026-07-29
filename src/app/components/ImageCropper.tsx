@@ -169,7 +169,7 @@ export function ImageCropper({ imageSrc, onCancel, onCropComplete, aspect = 1 }:
             onClick={showCroppedImage}
             className="sp-btn sp-btn-primary px-6"
           >
-            Apply Crop
+            Apply crop
           </button>
         </div>
       </div>

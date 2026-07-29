@@ -107,7 +107,7 @@ export function Dashboard() {
   return (
     <div className="max-w-6xl mx-auto px-8 sm:px-12 py-10">
       <div className="mb-8">
-        <h1 className="sp-page-title">Insights</h1>
+        <h1 className="sp-page-title">Insights & Analytics</h1>
         <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
           Which templates your team actually uses.
         </p>
@@ -132,9 +132,9 @@ export function Dashboard() {
         <div className="space-y-5">
           {/* KPI row */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Kpi label="Total exports" value={String(summary.totalDownloads)} Icon={Download} chip="var(--mint)" />
+            <Kpi label="Total downloads" value={String(summary.totalDownloads)} Icon={Download} chip="var(--mint)" />
             <Kpi label="Total opens" value={String(totalOpens)} Icon={Eye} chip="var(--sky)" />
-            <Kpi label="Export rate" value={exportRate(summary.totalDownloads, totalOpens)} Icon={Percent} chip="var(--paper-warm)" />
+            <Kpi label="Download rate" value={exportRate(summary.totalDownloads, totalOpens)} Icon={Percent} chip="var(--paper-warm)" />
             <Kpi label="Templates in use" value={String(activeTemplates)} Icon={Layers} chip="var(--paper-warm)" />
           </div>
 
@@ -261,7 +261,7 @@ export function Dashboard() {
               <table className="w-full" style={{ fontSize: 13, minWidth: 520 }}>
                 <thead>
                   <tr className="text-left" style={{ borderBottom: "1px solid var(--hairline)" }}>
-                    {["Template", "Opens", "Downloads", "Export rate", "Last used"].map((h) => (
+                    {["Template", "Opens", "Downloads", "Download rate", "Last used"].map((h) => (
                       <th key={h} className="sp-eyebrow px-4 py-3" style={{ fontWeight: 400 }}>
                         {h}
                       </th>

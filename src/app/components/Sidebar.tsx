@@ -17,7 +17,7 @@ import {
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useColorScheme, type ColorScheme } from "@/lib/colorScheme";
 import { useRouter, type Route } from "../router";
-const LS_COLLAPSED = "sp-sidebar-collapsed";
+const LS_COLLAPSED = "shc-graphics-sidebar-collapsed";
 
 /** Signature HealthCare mark — "SH" monogram placeholder rendered in the
  * display face, one-color via currentColor. Swap for the official logo
@@ -80,11 +80,11 @@ interface NavItem {
   matches: string[];
 }
 
-/** Figma order: Brand templates · Templates · Insights & Analytics ·
+/** Nav order: Published Templates · Template Builder · Insights & Analytics ·
  * Brand Studio · People · Settings & Admin. Members see only the first. */
 const NAV: NavItem[] = [
-  { label: "Brand templates", route: { name: "portal" }, Icon: Paintbrush, adminOnly: false, matches: ["portal", "template"] },
-  { label: "Templates", route: { name: "adminTemplates" }, Icon: Frame, adminOnly: true, matches: ["adminTemplates", "builder"] },
+  { label: "Published Templates", route: { name: "portal" }, Icon: Paintbrush, adminOnly: false, matches: ["portal", "template"] },
+  { label: "Template Builder", route: { name: "adminTemplates" }, Icon: Frame, adminOnly: true, matches: ["adminTemplates", "builder"] },
   { label: "Insights & Analytics", route: { name: "dashboard" }, Icon: BarChart3, adminOnly: true, matches: ["dashboard"] },
   { label: "Brand Studio", route: { name: "brandStudio" }, Icon: PencilRuler, adminOnly: true, matches: ["brandStudio"] },
   { label: "People", route: { name: "people" }, Icon: Users, adminOnly: true, matches: ["people"] },
@@ -140,7 +140,7 @@ function AccountBlock({ onNavigate }: { onNavigate(route: Route): void }) {
           }}
           className="sp-input mb-2"
           style={{ fontSize: 12, padding: "6px 10px" }}
-          aria-label="Workspace"
+          aria-label="Company"
         >
           {companies.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
@@ -211,7 +211,7 @@ function AccountBlock({ onNavigate }: { onNavigate(route: Route): void }) {
 /** App-shell navigation. Desktop (≥1024px): the persistent left sidebar
  * (Figma node 13:28) with a collapsible icon rail. Mobile: no rail at all —
  * a slim top bar with the brand and a menu button; the nav drops down
- * vertically from the top as a panel over a scrim. SocialPaint product UI —
+ * vertically from the top as a panel over a scrim. Platform product UI —
  * tenant brand kits never re-color it. */
 export function Sidebar() {
   const { role } = useAuth();

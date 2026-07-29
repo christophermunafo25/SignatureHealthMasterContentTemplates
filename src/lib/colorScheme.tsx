@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
  * Template graphics are unaffected — the render canvas is a fixed surface. */
 export type ColorScheme = "light" | "dark" | "system";
 
-const STORAGE_KEY = "sp-color-scheme";
+const STORAGE_KEY = "shc-graphics-color-scheme";
 
 const readStored = (): ColorScheme => {
   try {

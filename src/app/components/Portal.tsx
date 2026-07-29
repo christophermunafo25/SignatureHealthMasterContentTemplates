@@ -7,7 +7,7 @@ import { useRouter } from "../router";
 import { ErrorState } from "./ErrorState";
 import { TemplateThumbnail } from "./TemplateThumbnail";
 
-/** Member-facing, company-scoped searchable template grid. SocialPaint
+/** Member-facing, company-scoped searchable template grid. Signature
  * platform chrome: signature warm mesh hero, lift cards on hairlines,
  * sentence case, mono metadata. Tenant brand lives in the thumbnails. */
 export function Portal() {
@@ -49,7 +49,7 @@ export function Portal() {
             marginBottom: 10,
           }}
         >
-          Brand templates
+          Published Templates
         </h1>
         <p style={{ fontFamily: "var(--font-body)", color: "var(--fg-2)", fontSize: 15, maxWidth: 420, marginBottom: 24 }}>
           Pick a template, fill in the details, and download a ready-to-post on-brand graphic.

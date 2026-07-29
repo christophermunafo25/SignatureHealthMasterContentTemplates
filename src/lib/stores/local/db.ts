@@ -8,6 +8,7 @@ interface Db {
   brandAssets: unknown[];
   templates: unknown[];
   usageEvents: unknown[];
+  facilityLinks: unknown[];
 }
 
 const KEY = "shc-graphics-dev-db";
@@ -18,6 +19,7 @@ const empty = (): Db => ({
   brandAssets: [],
   templates: [],
   usageEvents: [],
+  facilityLinks: [],
 });
 
 export function readDb(): Db {

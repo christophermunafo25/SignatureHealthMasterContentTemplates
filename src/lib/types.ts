@@ -251,3 +251,19 @@ export interface LayerRenderResult {
   units: FigmaLayerUnit[];
   warnings: string[];
 }
+
+/** Anonymous facility access: one unguessable link per facility. The token
+ * IS the credential — facility identity comes from the link, so a submitter
+ * types their name and nothing else. */
+export interface FacilityLink {
+  id: string;
+  companyId: string;
+  token: string;
+  facilityName: string;
+  /** Restrict which templates this facility sees. Empty = all published. */
+  templateTags: string[];
+  active: boolean;
+  expiresAt?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+}

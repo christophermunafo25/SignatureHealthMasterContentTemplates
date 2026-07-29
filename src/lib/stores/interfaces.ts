@@ -8,6 +8,7 @@ import type {
   Company,
   DailyActivityPoint,
   DesignImportResult,
+  FacilityLink,
   NewTemplateInput,
   TemplateSchema,
   TemplateStatus,
@@ -70,6 +71,19 @@ export interface PeopleStore {
   remove(companyId: string, userId: string): Promise<void>;
 }
 
+/** Admin management of anonymous facility links. Tokens are generated
+ * server-side (database default) — the client never invents one. */
+export interface FacilityLinkStore {
+  list(companyId: string): Promise<FacilityLink[]>;
+  create(
+    companyId: string,
+    input: { facilityName: string; templateTags?: string[]; expiresAt?: string | null },
+  ): Promise<FacilityLink>;
+  /** Onboarding dozens of facilities at once from a pasted list. */
+  bulkCreate(companyId: string, facilityNames: string[]): Promise<FacilityLink[]>;
+  setActive(id: string, active: boolean): Promise<void>;
+}
+
 export interface UsageStore {
   /** Fire-and-forget from SchemaRenderer; failures must never break the UI. */
   record(companyId: string, templateId: string, action: UsageAction, userId?: string): Promise<void>;
@@ -112,6 +126,7 @@ export interface Stores {
   brandAssets: BrandAssetStore;
   usage: UsageStore;
   people: PeopleStore;
+  facilityLinks: FacilityLinkStore;
   designImport: DesignImportProvider;
   /** "supabase" or "local" — surfaced in the dev switcher so it's obvious
    * which backend is active. */

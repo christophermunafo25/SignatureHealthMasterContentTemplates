@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   BarChart3,
   Frame,
+  Link2,
   LogOut,
   Menu,
   Monitor,
@@ -87,6 +88,7 @@ const NAV: NavItem[] = [
   { label: "Template Builder", route: { name: "adminTemplates" }, Icon: Frame, adminOnly: true, matches: ["adminTemplates", "builder"] },
   { label: "Insights & Analytics", route: { name: "dashboard" }, Icon: BarChart3, adminOnly: true, matches: ["dashboard"] },
   { label: "Brand Studio", route: { name: "brandStudio" }, Icon: PencilRuler, adminOnly: true, matches: ["brandStudio"] },
+  { label: "Facility Links", route: { name: "facilityLinks" }, Icon: Link2, adminOnly: true, matches: ["facilityLinks"] },
   { label: "People", route: { name: "people" }, Icon: Users, adminOnly: true, matches: ["people"] },
   { label: "Settings & Admin", route: { name: "settings" }, Icon: Settings, adminOnly: true, matches: ["settings"] },
 ];

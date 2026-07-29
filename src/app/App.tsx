@@ -18,6 +18,7 @@ import { BrandStudio } from "./components/admin/BrandStudio";
 import { Dashboard } from "./components/admin/Dashboard";
 import { SettingsAdmin } from "./components/admin/SettingsAdmin";
 import { PublicApp } from "./components/public/PublicApp";
+import { FacilityLinks } from "./components/admin/FacilityLinks";
 
 function Screen() {
   const { loading, error, retry, company, role, user, backend } = useAuth();
@@ -83,10 +84,10 @@ function Screen() {
       {route.name === "dashboard" && adminOnly(<Dashboard />)}
       {route.name === "people" && adminOnly(<PeopleAdmin />)}
       {route.name === "settings" && adminOnly(<SettingsAdmin />)}
+      {route.name === "facilityLinks" && adminOnly(<FacilityLinks />)}
       {/* Routes shipped in later phases of v2 — fall back to the portal
        * until their screens land so a deep link never renders blank. */}
-      {(route.name === "submissions" || route.name === "submissionDetail" || route.name === "facilityLinks") &&
-        adminOnly(<Portal />)}
+      {(route.name === "submissions" || route.name === "submissionDetail") && adminOnly(<Portal />)}
     </AppShell>
   );
 }

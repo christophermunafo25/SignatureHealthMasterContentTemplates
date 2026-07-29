@@ -1,0 +1,10 @@
+# Function config. The three public facility endpoints are token-verified
+# (facility_links) instead of JWT-verified — see _shared/publicAuth.ts.
+[functions.public-portal]
+verify_jwt = false
+
+[functions.public-upload]
+verify_jwt = false
+
+[functions.submit-content]
+verify_jwt = false

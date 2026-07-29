@@ -4,6 +4,7 @@ import type {
   CanvasPreset,
   Company,
   DesignImportResult,
+  FacilityLink,
   NewTemplateInput,
   TemplateSchema,
   TemplateStatus,
@@ -16,6 +17,7 @@ import type {
   BrandKitStore,
   CompanyStore,
   DesignImportProvider,
+  FacilityLinkStore,
   TemplateStore,
   UsageStore,
 } from "../interfaces";
@@ -202,6 +204,57 @@ export class LocalUsageStore implements UsageStore {
       days,
     );
   }
+}
+
+/** Dev-mode facility links: same interface, browser-generated tokens (the
+ * production token comes from a database default — see migration 0016). */
+export class LocalFacilityLinkStore implements FacilityLinkStore {
+  async list(companyId: string): Promise<FacilityLink[]> {
+    const db = readDb();
+    return (db.facilityLinks as FacilityLink[])
+      .filter((l) => l.companyId === companyId)
+      .slice()
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async create(
+    companyId: string,
+    input: { facilityName: string; templateTags?: string[]; expiresAt?: string | null },
+  ): Promise<FacilityLink> {
+    const link: FacilityLink = {
+      id: newId(),
+      companyId,
+      token: randomToken(),
+      facilityName: input.facilityName,
+      templateTags: input.templateTags ?? [],
+      active: true,
+      expiresAt: input.expiresAt ?? undefined,
+      createdAt: new Date().toISOString(),
+    };
+    mutate((db) => db.facilityLinks.push(link));
+    return link;
+  }
+
+  async bulkCreate(companyId: string, facilityNames: string[]): Promise<FacilityLink[]> {
+    const links: FacilityLink[] = [];
+    for (const name of facilityNames) links.push(await this.create(companyId, { facilityName: name }));
+    return links;
+  }
+
+  async setActive(id: string, active: boolean): Promise<void> {
+    mutate((db) => {
+      const link = (db.facilityLinks as FacilityLink[]).find((l) => l.id === id);
+      if (link) link.active = active;
+    });
+  }
+}
+
+/** 24 random bytes as URL-safe base64 — the same shape the database default
+ * mints in production (192 bits of entropy). */
+function randomToken(): string {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_");
 }
 
 /** Dev mode has no real users — People management needs the Supabase backend. */

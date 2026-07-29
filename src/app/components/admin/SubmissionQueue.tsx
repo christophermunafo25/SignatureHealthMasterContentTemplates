@@ -40,7 +40,7 @@ function PreviewThumb({ submission }: { submission: Submission }) {
   return (
     <div
       className="flex-shrink-0 overflow-hidden rounded-lg"
-      style={{ width: 72, height: 72, background: "var(--paper-warm)", border: "1px solid var(--hairline)" }}
+      style={{ width: 72, height: 72, background: "var(--surface-sunken)", border: "1px solid var(--hairline)" }}
     >
       {url && <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
     </div>

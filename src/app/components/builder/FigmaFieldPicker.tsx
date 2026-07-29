@@ -113,7 +113,7 @@ export function FigmaFieldPicker({ result, kit, onConfirm, onBack }: FigmaFieldP
           </div>
         </div>
         {result.warnings.map((w) => (
-          <p key={w} className="mt-2 rounded-lg px-3 py-2" style={{ fontSize: 12, background: "var(--paper-warm)", color: "var(--fg-2)" }}>
+          <p key={w} className="mt-2 rounded-lg px-3 py-2" style={{ fontSize: 12, background: "var(--surface-sunken)", color: "var(--fg-2)" }}>
             {w}
           </p>
         ))}

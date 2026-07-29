@@ -1048,7 +1048,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                       label="Gradient background"
                       gradient={draft.backgroundGradient}
                       defaultStops={[
-                        { position: 0, color: kit?.colors[0]?.hex ?? "#F1E4B2" },
+                        { position: 0, color: kit?.colors[0]?.hex ?? "#003B71" },
                         { position: 1, color: kit?.colors[1]?.hex ?? "#003B71" },
                       ]}
                       onChange={(backgroundGradient) => setDraft((d) => ({ ...d, backgroundGradient }), "bg:gradient")}

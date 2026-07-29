@@ -102,7 +102,7 @@ export function AuthPage() {
           <p className="sp-eyebrow mb-1" style={{ color: "rgba(255,255,255,0.85)" }}>
             Signature HealthCare
           </p>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase", fontSize: 20, letterSpacing: "0.1em", color: "#f8f1d8" }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase", fontSize: 20, letterSpacing: "0.1em", color: "#ffffff" }}>
             {view === "signup" ? "Create your account" : view === "forgot" ? "Reset password" : view === "setPassword" ? "Choose a new password" : "Sign in"}
           </h1>
         </div>

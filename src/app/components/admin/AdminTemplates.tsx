@@ -242,7 +242,7 @@ export function AdminTemplates() {
               <button
                 onClick={() => navigate({ name: "builder", templateId: t.id })}
                 className="w-full overflow-hidden"
-                style={{ aspectRatio: `${t.canvasWidth} / ${t.canvasHeight}`, background: "var(--paper-warm)" }}
+                style={{ aspectRatio: `${t.canvasWidth} / ${t.canvasHeight}`, background: "var(--surface-sunken)" }}
               >
                 <TemplateThumbnail template={t} />
               </button>

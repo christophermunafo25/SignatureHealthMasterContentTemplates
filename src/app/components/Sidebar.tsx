@@ -6,19 +6,15 @@ import {
   Link2,
   LogOut,
   Menu,
-  Monitor,
-  Moon,
   Paintbrush,
   PanelLeft,
   PencilRuler,
   Settings,
-  Sun,
   Users,
   X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { stores } from "@/lib/stores";
-import { useColorScheme, type ColorScheme } from "@/lib/colorScheme";
 import { useRouter, type Route } from "../router";
 const LS_COLLAPSED = "shc-graphics-sidebar-collapsed";
 
@@ -96,30 +92,6 @@ const NAV: NavItem[] = [
   { label: "Settings & Admin", route: { name: "settings" }, Icon: Settings, adminOnly: true, matches: ["settings"] },
 ];
 
-const SCHEME_CYCLE: Array<{ key: ColorScheme; label: string; Icon: typeof Sun }> = [
-  { key: "system", label: "System theme", Icon: Monitor },
-  { key: "light", label: "Light theme", Icon: Sun },
-  { key: "dark", label: "Dark theme", Icon: Moon },
-];
-
-function ThemeToggle() {
-  const { scheme, setScheme } = useColorScheme();
-  const idx = SCHEME_CYCLE.findIndex((s) => s.key === scheme);
-  const current = SCHEME_CYCLE[idx === -1 ? 0 : idx];
-  const next = SCHEME_CYCLE[(idx + 1) % SCHEME_CYCLE.length];
-  return (
-    <button
-      onClick={() => setScheme(next.key)}
-      title={`${current.label} — click for ${next.label.toLowerCase()}`}
-      aria-label={`Color theme: ${current.label}. Switch to ${next.label}`}
-      className="flex items-center justify-center rounded-lg flex-shrink-0"
-      style={{ width: 28, height: 28, color: "var(--sb-fg)" }}
-    >
-      <current.Icon style={{ width: 14, height: 14 }} />
-    </button>
-  );
-}
-
 /** Workspace switcher + dev role toggle + user row — shared between the
  * desktop sidebar's bottom block and the mobile dropdown. */
 function AccountBlock({ onNavigate }: { onNavigate(route: Route): void }) {
@@ -196,7 +168,6 @@ function AccountBlock({ onNavigate }: { onNavigate(route: Route): void }) {
             {user?.email ?? `${company?.name ?? "Workspace"} · ${role}`}
           </span>
         </span>
-        <ThemeToggle />
         {signOut && (
           <button
             onClick={() => void signOut()}

@@ -48,7 +48,7 @@ export function PublicSubmitted({
         style={{
           maxWidth: 280,
           border: "1px solid var(--hairline)",
-          background: "var(--paper-warm)",
+          background: "var(--surface-sunken)",
           aspectRatio: `${template.canvasWidth} / ${template.canvasHeight}`,
         }}
       >

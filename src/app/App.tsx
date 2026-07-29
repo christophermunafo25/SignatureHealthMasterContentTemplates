@@ -5,7 +5,6 @@ import { stores } from "@/lib/stores";
 import { AuthPage } from "./components/auth/AuthPage";
 import { PeopleAdmin } from "./components/admin/PeopleAdmin";
 import { BrandProvider, useBrand } from "@/lib/brand/BrandContext";
-import { ColorSchemeProvider } from "@/lib/colorScheme";
 import { RouterProvider, useRouter } from "./router";
 import { AppShell } from "./components/AppShell";
 import { ErrorState } from "./components/ErrorState";
@@ -112,10 +111,8 @@ function RootSwitch() {
 
 export default function App() {
   return (
-    <ColorSchemeProvider>
-      <RouterProvider>
-        <RootSwitch />
-      </RouterProvider>
-    </ColorSchemeProvider>
+    <RouterProvider>
+      <RootSwitch />
+    </RouterProvider>
   );
 }

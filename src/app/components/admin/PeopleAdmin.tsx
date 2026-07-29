@@ -71,7 +71,7 @@ export function PeopleAdmin() {
       </p>
 
       {isDevAuth && (
-        <p className="rounded-lg px-4 py-3 mb-5" style={{ fontSize: 12, background: "var(--paper-warm)", color: "var(--fg-2)" }}>
+        <p className="rounded-lg px-4 py-3 mb-5" style={{ fontSize: 12, background: "var(--surface-sunken)", color: "var(--fg-2)" }}>
           People management needs the Supabase backend with auth enabled — this dev backend has no
           real accounts.
         </p>

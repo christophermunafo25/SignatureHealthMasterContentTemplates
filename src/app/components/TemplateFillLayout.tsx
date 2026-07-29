@@ -171,7 +171,7 @@ export function TemplateFillLayout({
               {template.canvasWidth}×{template.canvasHeight} · live
             </span>
           </div>
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--paper-warm)", border: "1px solid var(--hairline)" }}>
+          <div className="rounded-xl overflow-hidden" style={{ background: "var(--surface-sunken)", border: "1px solid var(--hairline)" }}>
             <SchemaRenderer
               ref={rendererRef}
               schema={template}

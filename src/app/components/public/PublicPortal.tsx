@@ -94,7 +94,7 @@ export function PublicPortal({ token }: { token: string }) {
               >
                 <div
                   className="w-full overflow-hidden"
-                  style={{ aspectRatio: `${t.canvasWidth} / ${t.canvasHeight}`, background: "var(--paper-warm)" }}
+                  style={{ aspectRatio: `${t.canvasWidth} / ${t.canvasHeight}`, background: "var(--surface-sunken)" }}
                 >
                   <TemplateThumbnailBase template={t} brandKit={data.brandKit} />
                 </div>

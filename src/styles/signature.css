@@ -1,20 +1,21 @@
 /* ==========================================================================
    Signature HealthCare Design System — platform UI tokens.
-   Navy (Pantone 541 C) + cream (7499 C) lead; teal (7475 C),
-   plum (5185 C), orange (1375 C) and warm red support; every neutral
-   carries a warm cream cast. Soft containers (20px) against crisp controls
-   (5px). Flat color only: no gradients as surface treatment, no glass, no
-   texture. PLATFORM UI ONLY: tenant brand kits style the template
-   graphics, never this chrome.
+   Navy (Pantone 541 C) leads on clean white; every neutral is actually
+   neutral (cool grey ladder). Teal (7475 C), plum (5185 C), orange
+   (1375 C) and warm red support. Single light theme — there is no dark
+   mode. Soft containers (20px) against crisp controls (5px). Flat color
+   only: no gradients as surface treatment, no glass, no texture.
+   PLATFORM UI ONLY: tenant brand kits style the template graphics, never
+   this chrome. Cream (Pantone 7499 C) is a TENANT BRAND color for
+   template graphics only — it must never appear in this file.
 
    The custom-property NAMES are kept from the upstream platform system
    so components need no changes — only the VALUES changed.
 
-   Brand palette:
+   Brand palette (chrome):
      Navy   #003B71 (541 C)      · 50% #7F9DB8
      Plum   #4C3041 (5185 C)     · 50% #A597A0
      Teal   #44797B (7475 C)     · 50% #A1BCBD
-     Cream  #F1E4B2 (7499 C)     · 50% #F8F1D8
      Orange #FF9E18 (1375 C)     · 50% #FFCE8B
      Red    #FF4438 (Warm Red C) · 50% #FFA19B
    Type: Montserrat headlines (+100 kerning), Lora body.
@@ -23,10 +24,14 @@
 @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,700;1,400;1,700&family=IBM+Plex+Mono:wght@400;500&display=swap");
 
 :root {
-  /* Surfaces (light: canvas / raised / hover / surface, all cream-cast) */
-  --linen: #fbf9f2;
-  --paper: #f6f1e1;
-  --paper-warm: #f1e4b2;
+  color-scheme: light; /* form controls + scrollbars stay light regardless of OS */
+
+  /* Surfaces: white canvas and cards; separation comes from --hairline
+     borders and --shadow-e1, with --paper/--surface-sunken as the only
+     recessed greys. */
+  --linen: #ffffff;
+  --paper: #f7f8fa;
+  --surface-sunken: #eef0f3;
   --lift: #ffffff;
   --ink: #003b71;
   --obsidian: #000000;
@@ -48,18 +53,17 @@
   --success: #44797b;
   --danger: #c62f24;
 
-  /* Foregrounds on light (navy-cast ladder) */
+  /* Foregrounds (navy-cast ladder — navy text on white IS the brand) */
   --fg-1: #003b71;
   --fg-2: #3a6285;
   --fg-3: #5e7f9e;
   --fg-4: #93a9be;
-  --fg-5: rgba(0, 59, 113, 0.08);
-  --hairline: #e4deca;
-  --hairline-strong: #c6bfa3;
+  --fg-5: rgba(0, 59, 113, 0.06);
+  --hairline: #e6e8ec;
+  --hairline-strong: #cdd2d9;
 
-  /* Text on ink-colored surfaces. Light mode's primary construction is
-     navy fill + CREAM text. */
-  --fg-on-dark-1: #f1e4b2;
+  /* Text on ink-colored surfaces: navy fill + white text. */
+  --fg-on-dark-1: #ffffff;
   --fg-on-dark-2: rgba(255, 255, 255, 0.78);
   --fg-on-dark-3: rgba(255, 255, 255, 0.55);
 
@@ -89,7 +93,7 @@
   --shadow-e3: 0 8px 24px rgba(0, 59, 113, 0.11);
   --shadow-e4: 0 8px 24px rgba(0, 59, 113, 0.11);
 
-  /* Focus — 2px ring; navy on light (orange would vanish on cream) */
+  /* Focus — 2px ring; navy (orange would vanish on white) */
   --ring-color: #003b71;
   --focus-ring: 0 0 0 2px var(--ring-color);
   --focus-ring-tight: 0 0 0 2px var(--ring-color);
@@ -104,22 +108,22 @@
   --mesh-warm: #003b71;
   --mesh-soft: #003b71;
 
-  /* Primary action: light = navy fill + cream text */
+  /* Primary action: navy fill + white text */
   --btn-primary-bg: #003b71;
-  --btn-primary-fg: #f1e4b2;
+  --btn-primary-fg: #ffffff;
   --btn-primary-bg-hover: color-mix(in srgb, #003b71 86%, #fff);
 
   /* Data-viz series (validated against the light surface — navy + readable
      teal; brights are fills-not-marks on light) */
   --viz-downloads: #003b71;
   --viz-opens: #44797b;
-  --viz-grid: #e4deca;
+  --viz-grid: #e6e8ec;
 
   /* Sidebar — flat surface (no glass in this system) */
   --sb-width: 264px;
   --sb-width-collapsed: 76px;
   --sb-bg: #ffffff;
-  --sb-border: #e4deca;
+  --sb-border: #e6e8ec;
   --sb-shadow: 0 2px 8px rgba(0, 59, 113, 0.07);
   --sb-fg: #3a6285;
   --sb-fg-active: #003b71;
@@ -134,70 +138,6 @@
   }
 }
 
-/* ── Dark mode ──────────────────────────────────────────────────────────────
-   The dark ladder is unchanged: #1A1A1A canvas rising through
-   surface/raised/hover. Dark elevates with surface color — NO shadows.
-   Template graphics are untouched: the render canvas is a fixed #fff
-   surface and field colors come from tenant brand kits. */
-.dark {
-  --linen: #1a1a1a;
-  --paper: #2e2e2e;
-  --paper-warm: #383838;
-  --lift: #242424;
-  --ink: #f4f1e9;
-  --obsidian: #ffffff;
-
-  --solar: #ff9e18; /* brights carry text on dark */
-  --amber: #ffce8b;
-  --blush: #ffa19b;
-  --success: #8fbeba;
-  --danger: #ff7a6e;
-
-  --fg-1: #f4f1e9;
-  --fg-2: #c9c4b4;
-  --fg-3: #9b978a;
-  --fg-4: #5f5d55;
-  --fg-5: rgba(244, 241, 233, 0.08);
-  --hairline: #333333;
-  --hairline-strong: #454545;
-
-  /* Ink pills are light in dark mode — text on them goes navy */
-  --fg-on-dark-1: #003b71;
-  --fg-on-dark-2: rgba(0, 59, 113, 0.72);
-  --fg-on-dark-3: rgba(0, 59, 113, 0.5);
-
-  --accent-wash: color-mix(in srgb, #ff9e18 15%, transparent);
-  --accent-wash-strong: color-mix(in srgb, #ff9e18 28%, transparent);
-  --accent-border: color-mix(in srgb, #ff9e18 40%, transparent);
-  --fill-danger-bg: rgba(255, 122, 110, 0.16);
-
-  /* Dark mode raises with surface color, never shadow */
-  --shadow-e1: none;
-  --shadow-e2: none;
-  --shadow-e3: none;
-  --shadow-e4: none;
-
-  --ring-color: #ff9e18;
-
-  /* Primary action: dark = orange fill + navy text */
-  --btn-primary-bg: #ff9e18;
-  --btn-primary-fg: #003b71;
-  --btn-primary-bg-hover: color-mix(in srgb, #ff9e18 86%, #fff);
-
-  /* Data-viz series on the dark surface — the brights carry data on dark */
-  --viz-downloads: #ff9e18;
-  --viz-opens: #8fbeba;
-  --viz-grid: #333333;
-
-  --sb-bg: #242424;
-  --sb-border: #333333;
-  --sb-shadow: none;
-  --sb-fg: #c9c4b4;
-  --sb-fg-active: #f4f1e9;
-  --sb-active-bg: color-mix(in srgb, #ff9e18 15%, transparent);
-  --sb-active-border: transparent;
-}
-.dark ::selection { background: var(--mint); color: #003b71; }
 ::selection { background: var(--mint); color: #003b71; }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
@@ -277,7 +217,7 @@ button, input, select, textarea, optgroup {
 .sp-btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
 .sp-btn-primary:hover:not(:disabled) { background: var(--btn-primary-bg-hover); }
 .sp-btn-ghost { background: transparent; color: var(--fg-2); border-color: var(--hairline-strong); }
-.sp-btn-ghost:hover:not(:disabled) { background: var(--paper-warm); color: var(--fg-1); }
+.sp-btn-ghost:hover:not(:disabled) { background: var(--surface-sunken); color: var(--fg-1); }
 /* Orange CTA — same fill both modes; navy carries the text */
 .sp-btn-solar { background: #ff9e18; color: #003b71; }
 .sp-btn-solar:hover:not(:disabled) { background: color-mix(in srgb, #ff9e18 86%, #fff); }
@@ -306,10 +246,10 @@ button, input, select, textarea, optgroup {
 }
 
 /* Brand-moment surface (hero headers, identity chips). Flat navy with
-   cream + orange as the voice. */
+   white + orange as the voice. */
 .sp-mesh {
   background: #003b71;
-  color: #f8f1d8;
+  color: #ffffff;
 }
 .sp-mesh .sp-eyebrow { color: #ff9e18; }
 
@@ -364,7 +304,7 @@ button, input, select, textarea, optgroup {
   white-space: nowrap;
   overflow: hidden;
 }
-.sp-sidebar-item:hover { background: var(--paper-warm); color: var(--sb-fg-active); }
+.sp-sidebar-item:hover { background: var(--surface-sunken); color: var(--sb-fg-active); }
 .sp-sidebar-item[data-active="true"] {
   background: var(--sb-active-bg);
   border-color: var(--sb-active-border);
@@ -381,9 +321,6 @@ button, input, select, textarea, optgroup {
   --editor-accent: #0d99ff;
   --editor-line: 1px;
   --editor-handle: 7px;
-}
-.dark {
-  --editor-accent: #0d99ff;
 }
 
 /* Scoped to the builder canvas so a future Moveable elsewhere keeps its own

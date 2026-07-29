@@ -134,8 +134,8 @@ export function Dashboard() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Kpi label="Total downloads" value={String(summary.totalDownloads)} Icon={Download} chip="var(--mint)" />
             <Kpi label="Total opens" value={String(totalOpens)} Icon={Eye} chip="var(--sky)" />
-            <Kpi label="Download rate" value={exportRate(summary.totalDownloads, totalOpens)} Icon={Percent} chip="var(--paper-warm)" />
-            <Kpi label="Templates in use" value={String(activeTemplates)} Icon={Layers} chip="var(--paper-warm)" />
+            <Kpi label="Download rate" value={exportRate(summary.totalDownloads, totalOpens)} Icon={Percent} chip="var(--surface-sunken)" />
+            <Kpi label="Templates in use" value={String(activeTemplates)} Icon={Layers} chip="var(--surface-sunken)" />
           </div>
 
           {/* 30-day trend */}

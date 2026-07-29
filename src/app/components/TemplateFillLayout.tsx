@@ -36,6 +36,12 @@ export interface TemplateFillLayoutProps {
   fieldAccessory?: (field: TemplateField) => React.ReactNode;
   /** Header block above the fields; defaults to template name + description. */
   header?: React.ReactNode;
+  /** Show the copy-to-clipboard control on the caption panel.
+   *  Facility users submit rather than post, so they never need it. */
+  allowCaptionCopy?: boolean;
+  /** Preview panel eyebrow; defaults to the canvas dimensions. The public
+   * screen replaces builder language with what the panel actually is. */
+  previewHint?: string;
 }
 
 /** The shared body of every template-fill surface: field form + caption on
@@ -55,6 +61,8 @@ export function TemplateFillLayout({
   instrument = true,
   fieldAccessory,
   header,
+  allowCaptionCopy = true,
+  previewHint,
 }: TemplateFillLayoutProps) {
   const [copied, setCopied] = useState(false);
 
@@ -149,10 +157,12 @@ export function TemplateFillLayout({
               className="sp-input"
               style={{ resize: "vertical" }}
             />
-            <button onClick={handleCopy} className="sp-btn sp-btn-ghost w-full">
-              {copied ? <Check style={{ width: 14, height: 14 }} /> : <Copy style={{ width: 14, height: 14 }} />}
-              {copied ? "Copied" : "Copy caption"}
-            </button>
+            {allowCaptionCopy && (
+              <button onClick={handleCopy} className="sp-btn sp-btn-ghost w-full">
+                {copied ? <Check style={{ width: 14, height: 14 }} /> : <Copy style={{ width: 14, height: 14 }} />}
+                {copied ? "Copied" : "Copy caption"}
+              </button>
+            )}
           </div>
         )}
 
@@ -168,7 +178,7 @@ export function TemplateFillLayout({
           <div className="flex items-center justify-between mb-3">
             <h3 className="sp-panel-title">Preview</h3>
             <span className="sp-eyebrow">
-              {template.canvasWidth}×{template.canvasHeight} · live
+              {previewHint ?? `${template.canvasWidth}×${template.canvasHeight} · live`}
             </span>
           </div>
           <div className="rounded-xl overflow-hidden" style={{ background: "var(--surface-sunken)", border: "1px solid var(--hairline)" }}>

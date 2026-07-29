@@ -115,6 +115,8 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
           onCaptionEdit={setCaption}
           rendererRef={rendererRef}
           instrument={false}
+          allowCaptionCopy={false}
+          previewHint="What the social team receives"
           actions={
             <>
               <div>

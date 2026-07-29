@@ -104,19 +104,17 @@ export function toBrandKit(r: Row): Row {
   };
 }
 
-/** Published templates for a link, honoring its template_tags filter. */
+/** Published templates for the shared portal. */
 export async function loadPublishedTemplates(
   db: SupabaseClient,
   companyId: string,
-  templateTags: string[],
 ): Promise<Row[]> {
-  let q = db
+  const { data, error } = await db
     .from("templates")
     .select("*, template_fields(*)")
     .eq("company_id", companyId)
-    .eq("status", "published");
-  if (templateTags.length) q = q.overlaps("tags", templateTags);
-  const { data, error } = await q.order("updated_at", { ascending: false });
+    .eq("status", "published")
+    .order("updated_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(toTemplate);
 }

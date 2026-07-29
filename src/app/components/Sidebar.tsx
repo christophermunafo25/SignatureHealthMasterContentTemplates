@@ -87,7 +87,7 @@ const NAV: NavItem[] = [
   { label: "Submissions", route: { name: "submissions" }, Icon: Inbox, adminOnly: true, matches: ["submissions", "submissionDetail"] },
   { label: "Insights & Analytics", route: { name: "dashboard" }, Icon: BarChart3, adminOnly: true, matches: ["dashboard"] },
   { label: "Brand Studio", route: { name: "brandStudio" }, Icon: PencilRuler, adminOnly: true, matches: ["brandStudio"] },
-  { label: "Facility Links", route: { name: "facilityLinks" }, Icon: Link2, adminOnly: true, matches: ["facilityLinks"] },
+  { label: "Portal Access", route: { name: "portalAccess" }, Icon: Link2, adminOnly: true, matches: ["portalAccess"] },
   { label: "People", route: { name: "people" }, Icon: Users, adminOnly: true, matches: ["people"] },
   { label: "Settings & Admin", route: { name: "settings" }, Icon: Settings, adminOnly: true, matches: ["settings"] },
 ];

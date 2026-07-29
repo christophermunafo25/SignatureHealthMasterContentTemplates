@@ -1,44 +1,89 @@
 // Token validation and rate limiting for the anonymous facility endpoints
-// (public-portal, public-upload, submit-content). Mirrors requireRole's
-// role in the authenticated functions: every public function calls
-// requireFacilityLink() before doing anything else.
+// (public-portal, public-upload, submit-content). One SHARED portal token
+// per company (companies.portal_token), with a rotation grace period: the
+// previous token keeps working until portal_token_previous_expires so 69
+// facilities aren't cut off the moment an admin rotates. portal_enabled is
+// the separate kill switch.
 
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { json } from "./figma.ts";
 
-export interface FacilityLinkRow {
-  id: string;
-  company_id: string;
-  token: string;
-  facility_name: string;
-  template_tags: string[];
-  active: boolean;
-  expires_at: string | null;
+export interface PortalCompany {
+  companyId: string;
+  companyName: string;
+  /** Matched on the PREVIOUS token — client shows a quiet replace banner. */
+  tokenStale: boolean;
 }
 
 /** The uniform public-facing failure: a 404 that does not reveal whether the
- * token ever existed, is inactive, or expired. */
+ * token ever existed, is disabled, or expired. */
 export function linkNotFound(): Response {
   return json({ error: "This link isn't active." }, 404);
 }
 
-/** Validate a facility link token. Returns the row only when the link is
- * known, active, and unexpired — every other case is null (callers respond
- * with linkNotFound()). */
-export async function requireFacilityLink(
+/** Resolve a portal token to its company. Current token first, then the
+ * previous token while inside the rotation grace window. Every other case
+ * is null (callers respond with linkNotFound()). */
+export async function requirePortalCompany(
   db: SupabaseClient,
   token: unknown,
-): Promise<FacilityLinkRow | null> {
+): Promise<PortalCompany | null> {
   if (typeof token !== "string" || token.length < 16 || token.length > 128) return null;
-  const { data } = await db
-    .from("facility_links")
-    .select("id, company_id, token, facility_name, template_tags, active, expires_at")
-    .eq("token", token)
+
+  const { data: current } = await db
+    .from("companies")
+    .select("id, name, portal_enabled")
+    .eq("portal_token", token)
     .maybeSingle();
-  const link = data as FacilityLinkRow | null;
-  if (!link || !link.active) return null;
-  if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) return null;
-  return link;
+  if (current) {
+    if (!(current as { portal_enabled: boolean }).portal_enabled) return null;
+    const c = current as { id: string; name: string };
+    return { companyId: c.id, companyName: c.name, tokenStale: false };
+  }
+
+  const { data: prev } = await db
+    .from("companies")
+    .select("id, name, portal_enabled, portal_token_previous_expires")
+    .eq("portal_token_previous", token)
+    .maybeSingle();
+  if (!prev) return null;
+  const p = prev as {
+    id: string;
+    name: string;
+    portal_enabled: boolean;
+    portal_token_previous_expires: string | null;
+  };
+  if (!p.portal_enabled) return null;
+  if (!p.portal_token_previous_expires || new Date(p.portal_token_previous_expires).getTime() < Date.now()) {
+    return null;
+  }
+  return { companyId: p.id, companyName: p.name, tokenStale: true };
+}
+
+export interface FacilityRow {
+  id: string;
+  company_id: string;
+  name: string;
+  short_name: string;
+  state: string | null;
+  active: boolean;
+}
+
+/** Verify a facilityId belongs to the portal's company and is active. */
+export async function requireFacility(
+  db: SupabaseClient,
+  companyId: string,
+  facilityId: unknown,
+): Promise<FacilityRow | null> {
+  if (typeof facilityId !== "string" || !facilityId) return null;
+  const { data } = await db
+    .from("facilities")
+    .select("id, company_id, name, short_name, state, active")
+    .eq("id", facilityId)
+    .eq("company_id", companyId)
+    .maybeSingle();
+  const f = data as FacilityRow | null;
+  return f && f.active ? f : null;
 }
 
 /** Fixed-window rate limiter backed by the rate_limits table. Returns true
@@ -85,7 +130,7 @@ export async function rateLimitPublic(
   fn: string,
   req: Request,
   token: string,
-  perToken = 240,
+  perToken = 600,
   perIp = 120,
 ): Promise<boolean> {
   const [tokenOk, ipOk] = await Promise.all([

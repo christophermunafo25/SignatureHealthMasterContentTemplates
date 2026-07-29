@@ -6,7 +6,8 @@ import { submitPublicContent } from "@/lib/publicClient";
 import { useRouter } from "../../router";
 import { type SchemaRendererHandle } from "../SchemaRenderer";
 import { TemplateFillLayout, missingRequiredFields } from "../TemplateFillLayout";
-import { PublicError, PublicInactive, PublicLoading, PublicShell, usePublicPortal } from "./PublicApp";
+import { FacilityGate } from "./FacilityGate";
+import { PublicError, PublicInactive, PublicLoading, PublicShell, usePublicPortal, useSelectedFacility } from "./PublicApp";
 import { PublicSubmitted } from "./PublicSubmitted";
 
 /** Anonymous facility fill page: TemplateFillLayout with a submitter panel
@@ -15,9 +16,16 @@ import { PublicSubmitted } from "./PublicSubmitted";
  * downloads folder. */
 export function PublicTemplateUse({ token, templateId }: { token: string; templateId: string }) {
   const { navigate } = useRouter();
-  // The single-template fetch also records the anonymous `open` usage event
-  // server-side — so the renderer below must NOT instrument.
-  const state = usePublicPortal(token, templateId);
+  // The stored facility id rides the fetch so the server-side open event is
+  // attributed; the renderer below must NOT instrument.
+  const [storedFacilityId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(`shc-portal-facility:${token}`);
+    } catch {
+      return null;
+    }
+  });
+  const state = usePublicPortal(token, { templateId, facilityId: storedFacilityId ?? undefined });
 
   const [values, setValues] = useState<FieldValues>({});
   const [caption, setCaption] = useState<string | null>(null);
@@ -29,6 +37,10 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
   const rendererRef = useRef<SchemaRendererHandle>(null);
 
   const template = state.status === "ready" ? state.data.template ?? null : null;
+  const { facility, select, clear } = useSelectedFacility(
+    token,
+    state.status === "ready" ? state.data.facilities : null,
+  );
   const missingRequired = useMemo(
     () => (template ? missingRequiredFields(template, values) : []),
     [template, values],
@@ -37,6 +49,15 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
   if (state.status === "loading") return <PublicLoading />;
   if (state.status === "inactive") return <PublicInactive />;
   if (state.status === "error") return <PublicError retry={state.retry} />;
+  if (!facility) {
+    return (
+      <FacilityGate
+        companyName={state.data.company.name}
+        facilities={state.data.facilities}
+        onSelect={select}
+      />
+    );
+  }
   if (!template) {
     return (
       <PublicShell data={state.data}>
@@ -49,12 +70,12 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
 
   if (submitted) {
     return (
-      <PublicShell data={data}>
+      <PublicShell data={data} facility={facility}>
         <PublicSubmitted
           template={template}
           brandKit={data.brandKit}
           values={values}
-          facilityName={data.facility.name}
+          facilityName={facility.name}
           submitterEmail={submitterEmail.trim() || undefined}
           onCreateAnother={() => navigate({ name: "publicPortal", token })}
         />
@@ -78,6 +99,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
         console.warn("Preview render failed; submitting without one", e);
       }
       await submitPublicContent(token, {
+        facilityId: facility!.id,
         templateId: template.id,
         submitterName: submitterName.trim(),
         submitterEmail: submitterEmail.trim() || undefined,
@@ -95,7 +117,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
   };
 
   return (
-    <PublicShell data={data}>
+    <PublicShell data={data} facility={facility} onClearFacility={clear}>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-6">
         <button
           onClick={() => navigate({ name: "publicPortal", token })}

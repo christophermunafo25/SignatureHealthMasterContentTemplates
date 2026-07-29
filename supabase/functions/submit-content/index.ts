@@ -2,12 +2,12 @@
 // client's claims are re-validated server-side — the client validates for
 // UX, this function validates for truth.
 //
-// POST { token, templateId, submitterName, submitterEmail?, values,
-//        caption, previewPath? }
+// POST { token, facilityId, templateId, submitterName, submitterEmail?,
+//        values, caption, previewPath? }
 // → { ok: true, submissionId }
 
 import { handleOptions, json, serviceClient } from "../_shared/figma.ts";
-import { linkNotFound, rateLimitPublic, requireFacilityLink } from "../_shared/publicAuth.ts";
+import { linkNotFound, rateLimitPublic, requireFacility, requirePortalCompany } from "../_shared/publicAuth.ts";
 import { loadBrandKit, toTemplate } from "../_shared/portalData.ts";
 import { sendSubmissionNotification } from "../_shared/email.ts";
 
@@ -64,13 +64,17 @@ Deno.serve(async (req) => {
 
   const db = serviceClient();
   const token = typeof body.token === "string" ? body.token : "";
-  if (!(await rateLimitPublic(db, "submit", req, token, 30, 20))) {
+  if (!(await rateLimitPublic(db, "submit", req, token, 120, 20))) {
     return json({ error: "Too many requests" }, 429);
   }
 
-  // 1. Validate the token.
-  const link = await requireFacilityLink(db, token);
-  if (!link) return linkNotFound();
+  // 1. Validate the shared portal token, then the facility. A submission
+  //    with no valid facility is close to useless to the social team —
+  //    reject rather than accept unattributed content.
+  const portal = await requirePortalCompany(db, token);
+  if (!portal) return linkNotFound();
+  const facility = await requireFacility(db, portal.companyId, body.facilityId);
+  if (!facility) return json({ error: "Pick your facility before submitting." }, 400);
 
   const submitterName = typeof body.submitterName === "string" ? body.submitterName.trim() : "";
   if (submitterName.length < 2 || submitterName.length > 120) {
@@ -82,7 +86,7 @@ Deno.serve(async (req) => {
       : null;
   const caption = typeof body.caption === "string" ? body.caption.slice(0, 4000) : "";
   const previewPath = typeof body.previewPath === "string" ? body.previewPath : null;
-  if (previewPath && (!previewPath.startsWith(`${link.company_id}/`) || previewPath.includes(".."))) {
+  if (previewPath && (!previewPath.startsWith(`${portal.companyId}/`) || previewPath.includes(".."))) {
     return json({ error: "Invalid preview path" }, 400);
   }
 
@@ -92,31 +96,30 @@ Deno.serve(async (req) => {
     .from("templates")
     .select("*, template_fields(*)")
     .eq("id", typeof body.templateId === "string" ? body.templateId : "")
-    .eq("company_id", link.company_id)
+    .eq("company_id", portal.companyId)
     .eq("status", "published")
     .maybeSingle();
   if (!tplRow) return json({ error: "Template not found" }, 404);
   const template = toTemplate(tplRow);
-  if (link.template_tags.length && !template.tags.some((t: string) => link.template_tags.includes(t))) {
-    return json({ error: "Template not found" }, 404);
-  }
 
   // 3. Re-validate every field value against the template's own guardrails.
   const values = (body.values && typeof body.values === "object" ? body.values : {}) as Record<string, unknown>;
-  const invalid = validateValues(template, values, link.company_id);
+  const invalid = validateValues(template, values, portal.companyId);
   if (invalid) return json({ error: invalid }, 400);
 
   // 4. Freeze schema and brand at submit time (see D3).
-  const { brandKit, logoUrl, brandAssets } = await loadBrandKit(db, link.company_id);
+  const { brandKit, logoUrl, brandAssets } = await loadBrandKit(db, portal.companyId);
 
   // 5. Insert with original_* equal to the submitted values.
   const { data: inserted, error: insErr } = await db
     .from("submissions")
     .insert({
-      company_id: link.company_id,
+      company_id: portal.companyId,
       template_id: template.id,
-      facility_link_id: link.id,
-      facility_name: link.facility_name,
+      facility_id: facility.id,
+      // Denormalized: the current legal name, stable even if the roster
+      // row is later renamed or deactivated.
+      facility_name: facility.name,
       template_name: template.name,
       submitter_name: submitterName,
       submitter_email: submitterEmail,
@@ -140,11 +143,11 @@ Deno.serve(async (req) => {
   void db
     .from("usage_events")
     .insert({
-      company_id: link.company_id,
+      company_id: portal.companyId,
       template_id: template.id,
       action: "download",
       user_id: null,
-      facility_link_id: link.id,
+      facility_id: facility.id,
     })
     .then(() => {});
 
@@ -153,9 +156,9 @@ Deno.serve(async (req) => {
   //      from the queue, a lost submission is not.
   try {
     await sendSubmissionNotification(db, {
-      companyId: link.company_id,
+      companyId: portal.companyId,
       submissionId,
-      facilityName: link.facility_name,
+      facilityName: facility.name,
       templateName: template.name,
       submitterName,
       submitterEmail,

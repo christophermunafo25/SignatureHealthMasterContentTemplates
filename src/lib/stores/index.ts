@@ -10,7 +10,7 @@ import { SupabaseTemplateStore } from "./supabase/templateStore";
 import { SupabaseBrandAssetStore, SupabaseBrandKitStore } from "./supabase/brandStore";
 import { SupabaseUsageStore } from "./supabase/usageStore";
 import { SupabasePeopleStore } from "./supabase/peopleStore";
-import { SupabaseFacilityLinkStore } from "./supabase/facilityLinkStore";
+import { SupabaseFacilityStore } from "./supabase/facilityStore";
 import { SupabaseSubmissionStore } from "./supabase/submissionStore";
 import { FigmaImporter } from "./supabase/figmaImporter";
 import {
@@ -18,7 +18,7 @@ import {
   LocalBrandKitStore,
   LocalCompanyStore,
   LocalDesignImportProvider,
-  LocalFacilityLinkStore,
+  LocalFacilityStore,
   LocalPeopleStore,
   LocalSubmissionStore,
   LocalTemplateStore,
@@ -43,7 +43,7 @@ function createStores(): Stores {
       brandAssets: new SupabaseBrandAssetStore(),
       usage: new SupabaseUsageStore(),
       people: new SupabasePeopleStore(),
-      facilityLinks: new SupabaseFacilityLinkStore(),
+      facilities: new SupabaseFacilityStore(),
       submissions: new SupabaseSubmissionStore(),
       designImport: new FigmaImporter(),
       backend: "supabase",
@@ -56,7 +56,7 @@ function createStores(): Stores {
     brandAssets: new LocalBrandAssetStore(),
     usage: new LocalUsageStore(),
     people: new LocalPeopleStore(),
-    facilityLinks: new LocalFacilityLinkStore(),
+    facilities: new LocalFacilityStore(),
     submissions: new LocalSubmissionStore(),
     designImport: new LocalDesignImportProvider(),
     backend: "local",

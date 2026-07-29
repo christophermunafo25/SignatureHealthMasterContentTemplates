@@ -6,7 +6,7 @@
 // POST { token, contentType } → { path, signedUrl, uploadToken }
 
 import { handleOptions, json, serviceClient } from "../_shared/figma.ts";
-import { linkNotFound, rateLimitPublic, requireFacilityLink } from "../_shared/publicAuth.ts";
+import { linkNotFound, rateLimitPublic, requirePortalCompany } from "../_shared/publicAuth.ts";
 
 // Mirror of the image types the field input accepts, plus the rendered
 // preview PNG.
@@ -31,18 +31,18 @@ Deno.serve(async (req) => {
   const db = serviceClient();
   const token = typeof body.token === "string" ? body.token : "";
   // Tighter than the read endpoint: uploads are the expensive path.
-  if (!(await rateLimitPublic(db, "upload", req, token, 60, 40))) {
+  if (!(await rateLimitPublic(db, "upload", req, token, 240, 40))) {
     return json({ error: "Too many requests" }, 429);
   }
 
-  const link = await requireFacilityLink(db, token);
-  if (!link) return linkNotFound();
+  const portal = await requirePortalCompany(db, token);
+  if (!portal) return linkNotFound();
 
   const contentType = typeof body.contentType === "string" ? body.contentType : "";
   const ext = ALLOWED_TYPES[contentType];
   if (!ext) return json({ error: "Unsupported file type" }, 400);
 
-  const path = `${link.company_id}/${crypto.randomUUID()}.${ext}`;
+  const path = `${portal.companyId}/${crypto.randomUUID()}.${ext}`;
   const { data, error } = await db.storage.from("submissions").createSignedUploadUrl(path);
   if (error || !data) {
     console.error("createSignedUploadUrl failed", error);

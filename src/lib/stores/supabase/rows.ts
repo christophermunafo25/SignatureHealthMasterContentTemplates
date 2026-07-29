@@ -20,6 +20,10 @@ export interface CompanyRow {
   slug: string;
   created_at: string;
   notification_emails?: string[] | null;
+  portal_token?: string | null;
+  portal_token_previous?: string | null;
+  portal_token_previous_expires?: string | null;
+  portal_enabled?: boolean | null;
 }
 
 export const toCompany = (r: CompanyRow): Company => ({
@@ -28,6 +32,10 @@ export const toCompany = (r: CompanyRow): Company => ({
   slug: r.slug,
   createdAt: r.created_at,
   notificationEmails: r.notification_emails ?? [],
+  portalToken: r.portal_token ?? undefined,
+  portalTokenPrevious: r.portal_token_previous ?? undefined,
+  portalTokenPreviousExpires: r.portal_token_previous_expires ?? undefined,
+  portalEnabled: r.portal_enabled ?? false,
 });
 
 export interface CanvasPresetRow {

@@ -7,7 +7,7 @@ interface SubmissionRow {
   id: string;
   company_id: string;
   template_id: string | null;
-  facility_link_id: string | null;
+  facility_id: string | null;
   facility_name: string;
   template_name: string;
   submitter_name: string;
@@ -31,7 +31,7 @@ const toSubmission = (r: SubmissionRow): Submission => ({
   id: r.id,
   companyId: r.company_id,
   templateId: r.template_id ?? undefined,
-  facilityLinkId: r.facility_link_id ?? undefined,
+  facilityId: r.facility_id ?? undefined,
   facilityName: r.facility_name,
   templateName: r.template_name,
   submitterName: r.submitter_name,
@@ -54,7 +54,7 @@ const toSubmission = (r: SubmissionRow): Submission => ({
 export class SupabaseSubmissionStore implements SubmissionStore {
   async list(
     companyId: string,
-    filter?: { status?: SubmissionStatus; facilityLinkId?: string; search?: string },
+    filter?: { status?: SubmissionStatus; facilityId?: string; search?: string },
   ): Promise<Submission[]> {
     let q = supabase()
       .from("submissions")
@@ -62,7 +62,7 @@ export class SupabaseSubmissionStore implements SubmissionStore {
       .eq("company_id", companyId)
       .order("created_at", { ascending: false });
     if (filter?.status) q = q.eq("status", filter.status);
-    if (filter?.facilityLinkId) q = q.eq("facility_link_id", filter.facilityLinkId);
+    if (filter?.facilityId) q = q.eq("facility_id", filter.facilityId);
     if (filter?.search?.trim()) {
       const s = filter.search.trim().replace(/[%_]/g, "");
       q = q.or(`facility_name.ilike.%${s}%,submitter_name.ilike.%${s}%,caption.ilike.%${s}%,template_name.ilike.%${s}%`);

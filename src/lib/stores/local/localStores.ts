@@ -4,7 +4,7 @@ import type {
   CanvasPreset,
   Company,
   DesignImportResult,
-  FacilityLink,
+  Facility,
   NewTemplateInput,
   Submission,
   SubmissionStatus,
@@ -19,7 +19,7 @@ import type {
   BrandKitStore,
   CompanyStore,
   DesignImportProvider,
-  FacilityLinkStore,
+  FacilityStore,
   SubmissionStore,
   TemplateStore,
   UsageStore,
@@ -60,6 +60,26 @@ export class LocalCompanyStore implements CompanyStore {
     mutate((db) => {
       const c = (db.companies as Company[]).find((x) => x.id === companyId);
       if (c) c.notificationEmails = emails;
+    });
+  }
+  async rotatePortalToken(companyId: string, graceDays = 14): Promise<string> {
+    const fresh = randomToken();
+    mutate((db) => {
+      const c = (db.companies as Company[]).find((x) => x.id === companyId);
+      if (c) {
+        c.portalTokenPrevious = c.portalToken;
+        c.portalTokenPreviousExpires = c.portalToken
+          ? new Date(Date.now() + graceDays * 86_400_000).toISOString()
+          : undefined;
+        c.portalToken = fresh;
+      }
+    });
+    return fresh;
+  }
+  async setPortalEnabled(companyId: string, enabled: boolean): Promise<void> {
+    mutate((db) => {
+      const c = (db.companies as Company[]).find((x) => x.id === companyId);
+      if (c) c.portalEnabled = enabled;
     });
   }
   async listCanvasPresets(): Promise<CanvasPreset[]> {
@@ -215,55 +235,59 @@ export class LocalUsageStore implements UsageStore {
   }
 }
 
-/** Dev-mode facility links: same interface, browser-generated tokens (the
- * production token comes from a database default — see migration 0016). */
-export class LocalFacilityLinkStore implements FacilityLinkStore {
-  async list(companyId: string): Promise<FacilityLink[]> {
-    const db = readDb();
-    return (db.facilityLinks as FacilityLink[])
-      .filter((l) => l.companyId === companyId)
+/** Dev-mode facility roster behind the shared portal link. */
+export class LocalFacilityStore implements FacilityStore {
+  async list(companyId: string): Promise<Facility[]> {
+    return (readDb().facilities as Facility[])
+      .filter((f) => f.companyId === companyId)
       .slice()
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.shortName.localeCompare(b.shortName));
   }
 
-  async create(
-    companyId: string,
-    input: { facilityName: string; templateTags?: string[]; expiresAt?: string | null },
-  ): Promise<FacilityLink> {
-    const link: FacilityLink = {
+  async create(companyId: string, input: { name: string; shortName: string }): Promise<Facility> {
+    const facility: Facility = {
       id: newId(),
       companyId,
-      token: randomToken(),
-      facilityName: input.facilityName,
-      templateTags: input.templateTags ?? [],
+      name: input.name,
+      shortName: input.shortName,
+      sortOrder: 100,
       active: true,
-      expiresAt: input.expiresAt ?? undefined,
       createdAt: new Date().toISOString(),
     };
-    mutate((db) => db.facilityLinks.push(link));
-    return link;
+    mutate((db) => db.facilities.push(facility));
+    return facility;
   }
 
-  async bulkCreate(companyId: string, facilityNames: string[]): Promise<FacilityLink[]> {
-    const links: FacilityLink[] = [];
-    for (const name of facilityNames) links.push(await this.create(companyId, { facilityName: name }));
-    return links;
+  async bulkCreate(companyId: string, rows: Array<{ name: string; shortName: string }>): Promise<Facility[]> {
+    const out: Facility[] = [];
+    for (const r of rows) out.push(await this.create(companyId, r));
+    return out;
+  }
+
+  async rename(id: string, patch: { name?: string; shortName?: string }): Promise<void> {
+    mutate((db) => {
+      const f = (db.facilities as Facility[]).find((x) => x.id === id);
+      if (f) {
+        if (patch.name !== undefined) f.name = patch.name;
+        if (patch.shortName !== undefined) f.shortName = patch.shortName;
+      }
+    });
   }
 
   async setActive(id: string, active: boolean): Promise<void> {
     mutate((db) => {
-      const link = (db.facilityLinks as FacilityLink[]).find((l) => l.id === id);
-      if (link) link.active = active;
+      const f = (db.facilities as Facility[]).find((x) => x.id === id);
+      if (f) f.active = active;
     });
   }
 }
 
-/** 24 random bytes as URL-safe base64 — the same shape the database default
- * mints in production (192 bits of entropy). */
-function randomToken(): string {
+/** 24 random bytes as URL-safe base64 — the same shape the production RPC
+ * mints (192 bits of entropy). Dev backend only. */
+export function randomToken(): string {
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
-  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_");
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 /** Dev-mode review queue: full implementation so the whole facility →
@@ -271,11 +295,11 @@ function randomToken(): string {
 export class LocalSubmissionStore implements SubmissionStore {
   async list(
     companyId: string,
-    filter?: { status?: SubmissionStatus; facilityLinkId?: string; search?: string },
+    filter?: { status?: SubmissionStatus; facilityId?: string; search?: string },
   ): Promise<Submission[]> {
     let rows = (readDb().submissions as Submission[]).filter((s) => s.companyId === companyId);
     if (filter?.status) rows = rows.filter((s) => s.status === filter.status);
-    if (filter?.facilityLinkId) rows = rows.filter((s) => s.facilityLinkId === filter.facilityLinkId);
+    if (filter?.facilityId) rows = rows.filter((s) => s.facilityId === filter.facilityId);
     if (filter?.search?.trim()) {
       const q = filter.search.trim().toLowerCase();
       rows = rows.filter(

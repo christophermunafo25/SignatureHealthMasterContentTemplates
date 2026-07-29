@@ -10,6 +10,12 @@ export interface Company {
   /** Recipients for submission notifications — configuration, not a
    * constant (see the v2 brief, D6). */
   notificationEmails?: string[];
+  /** Shared facility-portal access (v2.1): one token per company, with a
+   * rotation grace window and a kill switch. */
+  portalToken?: string;
+  portalTokenPrevious?: string;
+  portalTokenPreviousExpires?: string;
+  portalEnabled?: boolean;
 }
 
 export interface BrandColor {
@@ -255,20 +261,21 @@ export interface LayerRenderResult {
   warnings: string[];
 }
 
-/** Anonymous facility access: one unguessable link per facility. The token
- * IS the credential — facility identity comes from the link, so a submitter
- * types their name and nothing else. */
-export interface FacilityLink {
+/** The facility roster. Access runs through ONE shared company portal
+ * token (companies.portalToken); a facility row is identity + labeling,
+ * chosen by staff in the facility gate. */
+export interface Facility {
   id: string;
   companyId: string;
-  token: string;
-  facilityName: string;
-  /** Restrict which templates this facility sees. Empty = all published. */
-  templateTags: string[];
+  /** Legal name — stored on submissions, emailed, shown in the dashboard. */
+  name: string;
+  /** Display name for the picker (e.g. "Memphis"). */
+  shortName: string;
+  state?: string;
+  region?: string;
+  sortOrder: number;
   active: boolean;
-  expiresAt?: string;
   createdAt: string;
-  lastUsedAt?: string;
 }
 
 export type SubmissionStatus = "submitted" | "approved" | "posted" | "archived";
@@ -280,7 +287,7 @@ export interface Submission {
   id: string;
   companyId: string;
   templateId?: string;
-  facilityLinkId?: string;
+  facilityId?: string;
   /** Denormalized so the queue reads correctly after link/template deletion. */
   facilityName: string;
   templateName: string;

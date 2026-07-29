@@ -17,7 +17,7 @@ import { BrandStudio } from "./components/admin/BrandStudio";
 import { Dashboard } from "./components/admin/Dashboard";
 import { SettingsAdmin } from "./components/admin/SettingsAdmin";
 import { PublicApp } from "./components/public/PublicApp";
-import { FacilityLinks } from "./components/admin/FacilityLinks";
+import { PortalAccess } from "./components/admin/PortalAccess";
 import { SubmissionQueue } from "./components/admin/SubmissionQueue";
 import { SubmissionDetail } from "./components/admin/SubmissionDetail";
 
@@ -90,7 +90,7 @@ function Screen() {
       {route.name === "dashboard" && adminOnly(<Dashboard />)}
       {route.name === "people" && adminOnly(<PeopleAdmin />)}
       {route.name === "settings" && adminOnly(<SettingsAdmin />)}
-      {route.name === "facilityLinks" && adminOnly(<FacilityLinks />)}
+      {route.name === "portalAccess" && adminOnly(<PortalAccess />)}
       {route.name === "submissions" && adminOnly(<SubmissionQueue />)}
       {route.name === "submissionDetail" && adminOnly(<SubmissionDetail submissionId={route.submissionId} />)}
     </AppShell>

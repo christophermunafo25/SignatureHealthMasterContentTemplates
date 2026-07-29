@@ -2,7 +2,8 @@ import React, { useMemo, useState } from "react";
 import { ArrowRight, Search } from "lucide-react";
 import { useRouter } from "../../router";
 import { TemplateThumbnailBase } from "../TemplateThumbnail";
-import { PublicError, PublicInactive, PublicLoading, PublicShell, usePublicPortal } from "./PublicApp";
+import { FacilityGate } from "./FacilityGate";
+import { PublicError, PublicInactive, PublicLoading, PublicShell, usePublicPortal, useSelectedFacility } from "./PublicApp";
 
 /** Anonymous facility library: the published template grid behind a
  * facility link. Mobile-first — a director of nursing on a phone, not a
@@ -10,6 +11,10 @@ import { PublicError, PublicInactive, PublicLoading, PublicShell, usePublicPorta
 export function PublicPortal({ token }: { token: string }) {
   const { navigate } = useRouter();
   const state = usePublicPortal(token);
+  const { facility, select, clear } = useSelectedFacility(
+    token,
+    state.status === "ready" ? state.data.facilities : null,
+  );
   const [query, setQuery] = useState("");
 
   const templates = state.status === "ready" ? state.data.templates ?? [] : [];
@@ -30,10 +35,14 @@ export function PublicPortal({ token }: { token: string }) {
   if (state.status === "error") return <PublicError retry={state.retry} />;
 
   const { data } = state;
+  // The gate comes first: no facility, no library.
+  if (!facility) {
+    return <FacilityGate companyName={data.company.name} facilities={data.facilities} onSelect={select} />;
+  }
   return (
-    <PublicShell data={data}>
+    <PublicShell data={data} facility={facility} onClearFacility={clear}>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-8 pb-2">
-        <p className="sp-eyebrow mb-2">{data.facility.name}</p>
+        <p className="sp-eyebrow mb-2">{facility.name}</p>
         <h1
           style={{
             fontFamily: "var(--font-display)",

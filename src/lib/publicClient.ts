@@ -1,24 +1,33 @@
 // Data access for the anonymous facility portal. NEVER touches Postgres or
-// the Supabase client session: production traffic goes through the
-// public-portal Edge Function (token-verified, service role server-side);
+// the Supabase client session: production traffic goes through the three
+// public Edge Functions (shared portal token, service role server-side);
 // the dev backend resolves the same shapes from localStorage so the whole
 // facility flow is demoable without standing up Supabase.
 
-import type { BrandAsset, BrandKit, FacilityLink, TemplateSchema } from "./types";
+import type { BrandAsset, BrandKit, Company, Facility, TemplateSchema } from "./types";
 import { isSupabaseConfigured } from "./stores/supabase/client";
-import { readDb } from "./stores/local/db";
+import { mutate, newId, readDb } from "./stores/local/db";
+
+export interface PublicFacility {
+  id: string;
+  name: string;
+  shortName: string;
+  state?: string;
+}
 
 export interface PublicPortalData {
-  facility: { name: string };
   company: { name: string };
+  facilities: PublicFacility[];
   brandKit: BrandKit | null;
   logoUrl: string | null;
   brandAssets: BrandAsset[];
   templates?: TemplateSchema[];
   template?: TemplateSchema;
+  /** Matched on the previous token — show the quiet replace banner. */
+  tokenStale: boolean;
 }
 
-/** The uniform "no such link" outcome — unknown, inactive, and expired
+/** The uniform "no such link" outcome — unknown, disabled, and expired
  * tokens are indistinguishable on purpose. */
 export class LinkInactiveError extends Error {
   constructor() {
@@ -27,54 +36,82 @@ export class LinkInactiveError extends Error {
   }
 }
 
-export async function fetchPublicPortal(token: string, templateId?: string): Promise<PublicPortalData> {
-  return isSupabaseConfigured ? fetchRemote(token, templateId) : fetchLocal(token, templateId);
+export async function fetchPublicPortal(
+  token: string,
+  opts?: { templateId?: string; facilityId?: string },
+): Promise<PublicPortalData> {
+  return isSupabaseConfigured ? fetchRemote(token, opts) : fetchLocal(token, opts);
 }
 
-async function fetchRemote(token: string, templateId?: string): Promise<PublicPortalData> {
+async function fetchRemote(
+  token: string,
+  opts?: { templateId?: string; facilityId?: string },
+): Promise<PublicPortalData> {
   const base = import.meta.env.VITE_SUPABASE_URL as string;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
   const res = await fetch(`${base}/functions/v1/public-portal`, {
     method: "POST",
     headers: { "Content-Type": "application/json", apikey: anonKey },
-    body: JSON.stringify({ token, templateId }),
+    body: JSON.stringify({ token, templateId: opts?.templateId, facilityId: opts?.facilityId }),
   });
   if (res.status === 404) throw new LinkInactiveError();
   if (!res.ok) throw new Error(`Portal request failed (${res.status})`);
   return (await res.json()) as PublicPortalData;
 }
 
-/** Dev backend: same validation rules as the Edge Function, against the
+/** Dev backend: same resolution rules as the Edge Functions, against the
  * localStorage document store. */
-async function fetchLocal(token: string, templateId?: string): Promise<PublicPortalData> {
+function resolveLocalCompany(token: string): (Company & { id: string }) | null {
   const db = readDb();
-  const link = (db.facilityLinks as FacilityLink[]).find((l) => l.token === token);
-  if (!link || !link.active) throw new LinkInactiveError();
-  if (link.expiresAt && new Date(link.expiresAt).getTime() < Date.now()) throw new LinkInactiveError();
+  const companies = db.companies as Company[];
+  const byCurrent = companies.find((c) => c.portalToken === token);
+  if (byCurrent) return byCurrent.portalEnabled ? byCurrent : null;
+  const byPrev = companies.find((c) => c.portalTokenPrevious === token);
+  if (!byPrev || !byPrev.portalEnabled) return null;
+  if (
+    !byPrev.portalTokenPreviousExpires ||
+    new Date(byPrev.portalTokenPreviousExpires).getTime() < Date.now()
+  ) {
+    return null;
+  }
+  return byPrev;
+}
 
-  const company = (db.companies as Array<{ id: string; name: string }>).find((c) => c.id === link.companyId);
-  const kit =
-    (db.brandKits as BrandKit[]).find((k) => k.companyId === link.companyId) ?? null;
-  const assets = (db.brandAssets as BrandAsset[]).filter((a) => a.companyId === link.companyId);
+const isFillable = (t: TemplateSchema) => t.fields.some((f) => !f.static);
+
+async function fetchLocal(
+  token: string,
+  opts?: { templateId?: string; facilityId?: string },
+): Promise<PublicPortalData> {
+  const company = resolveLocalCompany(token);
+  if (!company) throw new LinkInactiveError();
+  const stale = company.portalToken !== token;
+
+  const db = readDb();
+  const facilities = (db.facilities as Facility[])
+    .filter((f) => f.companyId === company.id && f.active)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.shortName.localeCompare(b.shortName))
+    .map((f) => ({ id: f.id, name: f.name, shortName: f.shortName || f.name, state: f.state }));
+
+  const kit = (db.brandKits as BrandKit[]).find((k) => k.companyId === company.id) ?? null;
+  const assets = (db.brandAssets as BrandAsset[]).filter((a) => a.companyId === company.id);
   const logo = kit?.primaryLogoAssetId ? assets.find((a) => a.id === kit.primaryLogoAssetId) : null;
 
-  let templates = (db.templates as TemplateSchema[]).filter(
-    (t) => t.companyId === link.companyId && t.status === "published",
+  const templates = (db.templates as TemplateSchema[]).filter(
+    (t) => t.companyId === company.id && t.status === "published" && isFillable(t),
   );
-  if (link.templateTags.length) {
-    templates = templates.filter((t) => t.tags.some((tag) => link.templateTags.includes(tag)));
-  }
 
-  const base = {
-    facility: { name: link.facilityName },
-    company: { name: company?.name ?? "" },
+  const base: PublicPortalData = {
+    company: { name: company.name },
+    facilities,
     brandKit: kit ? { ...kit, typeStyles: kit.typeStyles ?? [], guidelines: [] } : null,
     logoUrl: logo?.url ?? null,
     brandAssets: assets,
+    tokenStale: stale,
   };
 
-  if (templateId) {
-    const template = templates.find((t) => t.id === templateId);
+  if (opts?.templateId) {
+    const template = templates.find((t) => t.id === opts.templateId);
     if (!template) throw new Error("Template not found");
     return { ...base, template };
   }
@@ -84,6 +121,7 @@ async function fetchLocal(token: string, templateId?: string): Promise<PublicPor
 // ── Submission (anonymous writes go through Edge Functions only) ──────────
 
 export interface PublicSubmissionPayload {
+  facilityId: string;
   templateId: string;
   submitterName: string;
   submitterEmail?: string;
@@ -143,6 +181,7 @@ export async function submitPublicContent(
     headers: { "Content-Type": "application/json", apikey: anonKey },
     body: JSON.stringify({
       token,
+      facilityId: payload.facilityId,
       templateId: payload.templateId,
       submitterName: payload.submitterName,
       submitterEmail: payload.submitterEmail,
@@ -164,17 +203,19 @@ async function submitLocal(
   token: string,
   payload: PublicSubmissionPayload,
 ): Promise<{ submissionId: string }> {
-  const { readDb: read } = await import("./stores/local/db");
-  const { mutate, newId } = await import("./stores/local/db");
-  const db = read();
-  const link = (db.facilityLinks as FacilityLink[]).find((l) => l.token === token);
-  if (!link || !link.active) throw new LinkInactiveError();
+  const company = resolveLocalCompany(token);
+  if (!company) throw new LinkInactiveError();
+  const db = readDb();
+  const facility = (db.facilities as Facility[]).find(
+    (f) => f.id === payload.facilityId && f.companyId === company.id && f.active,
+  );
+  if (!facility) throw new Error("Pick your facility before submitting.");
   const template = (db.templates as TemplateSchema[]).find(
-    (t) => t.id === payload.templateId && t.companyId === link.companyId && t.status === "published",
+    (t) => t.id === payload.templateId && t.companyId === company.id && t.status === "published",
   );
   if (!template) throw new Error("Template not found");
-  const kit = (db.brandKits as BrandKit[]).find((k) => k.companyId === link.companyId) ?? null;
-  const assets = (db.brandAssets as BrandAsset[]).filter((a) => a.companyId === link.companyId);
+  const kit = (db.brandKits as BrandKit[]).find((k) => k.companyId === company.id) ?? null;
+  const assets = (db.brandAssets as BrandAsset[]).filter((a) => a.companyId === company.id);
   const previewDataUrl = payload.previewBlob
     ? await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -188,10 +229,10 @@ async function submitLocal(
   mutate((d) => {
     d.submissions.push({
       id,
-      companyId: link.companyId,
+      companyId: company.id,
       templateId: template.id,
-      facilityLinkId: link.id,
-      facilityName: link.facilityName,
+      facilityId: facility.id,
+      facilityName: facility.name,
       templateName: template.name,
       submitterName: payload.submitterName,
       submitterEmail: payload.submitterEmail,

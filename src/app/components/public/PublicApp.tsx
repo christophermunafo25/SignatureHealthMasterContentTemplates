@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { fetchPublicPortal, LinkInactiveError, type PublicPortalData } from "@/lib/publicClient";
+import React, { useCallback, useEffect, useState } from "react";
+import { fetchPublicPortal, LinkInactiveError, type PublicFacility, type PublicPortalData } from "@/lib/publicClient";
 import { applyBrandTheme } from "@/lib/theme";
 import { loadBrandFonts } from "@/lib/render/fonts";
 import { useRouter } from "../../router";
@@ -12,17 +12,23 @@ export type PublicDataState =
   | { status: "error"; retry(): void }
   | { status: "ready"; data: PublicPortalData };
 
-/** Fetch the portal payload for a token (and optionally one template — that
- * variant also records the anonymous `open` event server-side). Applies the
- * tenant brand theme and loads brand fonts once data lands. */
-export function usePublicPortal(token: string, templateId?: string): PublicDataState {
+/** Fetch the portal payload for the shared token (and optionally one
+ * template — that variant also records the anonymous `open` event
+ * server-side, attributed via facilityId). Applies the tenant brand theme
+ * and loads brand fonts once data lands. */
+export function usePublicPortal(
+  token: string,
+  opts?: { templateId?: string; facilityId?: string },
+): PublicDataState {
   const [state, setState] = useState<PublicDataState>({ status: "loading" });
   const [tick, setTick] = useState(0);
+  const templateId = opts?.templateId;
+  const facilityId = opts?.facilityId;
 
   useEffect(() => {
     let alive = true;
     setState({ status: "loading" });
-    fetchPublicPortal(token, templateId)
+    fetchPublicPortal(token, { templateId, facilityId })
       .then(async (data) => {
         if (!alive) return;
         applyBrandTheme(data.brandKit);
@@ -45,18 +51,65 @@ export function usePublicPortal(token: string, templateId?: string): PublicDataS
     return () => {
       alive = false;
     };
-  }, [token, templateId, tick]);
+  }, [token, templateId, facilityId, tick]);
 
   return state;
 }
 
-/** Slim anonymous header: brand mark + facility name. No sidebar, no theme
- * toggle, no account UI. */
+/** Scoped to the token, so a rotation re-prompts naturally. */
+const facilityKey = (token: string) => `shc-portal-facility:${token}`;
+
+/** The visitor's chosen facility for this token — persisted locally,
+ * validated against the live roster (a renamed/deactivated facility
+ * re-prompts). NO default selection. */
+export function useSelectedFacility(token: string, facilities: PublicFacility[] | null) {
+  const [facilityId, setFacilityId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(facilityKey(token));
+    } catch {
+      return null;
+    }
+  });
+
+  const select = useCallback(
+    (f: PublicFacility) => {
+      try {
+        localStorage.setItem(facilityKey(token), f.id);
+      } catch {
+        // persistence is best-effort
+      }
+      setFacilityId(f.id);
+    },
+    [token],
+  );
+
+  const clear = useCallback(() => {
+    try {
+      localStorage.removeItem(facilityKey(token));
+    } catch {
+      // best-effort
+    }
+    setFacilityId(null);
+  }, [token]);
+
+  const facility =
+    facilityId && facilities ? facilities.find((f) => f.id === facilityId) ?? null : null;
+  // A stored id that no longer resolves (renamed roster, deactivated) is
+  // treated as unselected.
+  return { facility, select, clear };
+}
+
+/** Slim anonymous header: brand mark + facility chip with a "Not you?"
+ * escape. No sidebar, no account UI. */
 export function PublicShell({
   data,
+  facility,
+  onClearFacility,
   children,
 }: {
   data: PublicPortalData | null;
+  facility?: PublicFacility | null;
+  onClearFacility?: () => void;
   children: React.ReactNode;
 }) {
   return (
@@ -82,16 +135,43 @@ export function PublicShell({
             {data?.company.name || "Signature HealthCare"}
           </span>
         )}
-        {data && (
-          <span
-            className="truncate text-right"
-            style={{ fontSize: 12, color: "var(--fg-3)", maxWidth: "55%" }}
-            title={data.facility.name}
-          >
-            {data.facility.name}
+        {facility && (
+          <span className="flex items-center gap-2 min-w-0">
+            <span
+              className="truncate"
+              style={{
+                fontSize: 12,
+                color: "var(--ink)",
+                background: "var(--paper)",
+                border: "1px solid var(--hairline)",
+                borderRadius: 999,
+                padding: "3px 10px",
+                maxWidth: "48vw",
+              }}
+              title={facility.name}
+            >
+              {facility.shortName}
+            </span>
+            {onClearFacility && (
+              <button
+                onClick={onClearFacility}
+                style={{ fontSize: 11, color: "var(--fg-3)", whiteSpace: "nowrap" }}
+              >
+                Not you?
+              </button>
+            )}
           </span>
         )}
       </header>
+      {data?.tokenStale && (
+        <div
+          role="status"
+          className="px-5 sm:px-8 py-2 text-center"
+          style={{ background: "var(--paper)", borderBottom: "1px solid var(--hairline)", fontSize: 12, color: "var(--fg-2)" }}
+        >
+          This link is being replaced — ask your marketing contact for the new one.
+        </div>
+      )}
       <main className="flex-1">{children}</main>
     </div>
   );

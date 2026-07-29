@@ -16,7 +16,7 @@ export type Route =
   | { name: "settings" }
   | { name: "submissions" }
   | { name: "submissionDetail"; submissionId: string }
-  | { name: "facilityLinks" }
+  | { name: "portalAccess" }
   | { name: "publicPortal"; token: string }
   | { name: "publicTemplate"; token: string; templateId: string };
 
@@ -44,8 +44,8 @@ export function pathFor(route: Route): string {
       return "/submissions";
     case "submissionDetail":
       return `/submissions/${encodeURIComponent(route.submissionId)}`;
-    case "facilityLinks":
-      return "/facility-links";
+    case "portalAccess":
+      return "/portal-access";
     case "publicPortal":
       return `/g/${encodeURIComponent(route.token)}`;
     case "publicTemplate":
@@ -79,8 +79,9 @@ export function routeFor(pathname: string): Route {
       return { name: "settings" };
     case "submissions":
       return second ? { name: "submissionDetail", submissionId: second } : { name: "submissions" };
-    case "facility-links":
-      return { name: "facilityLinks" };
+    case "portal-access":
+    case "facility-links": // pre-v2.1 path, kept resolving
+      return { name: "portalAccess" };
     case "g":
       if (!second) return { name: "portal" };
       return third

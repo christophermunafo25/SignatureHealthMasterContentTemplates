@@ -8,7 +8,7 @@ import type {
   Company,
   DailyActivityPoint,
   DesignImportResult,
-  FacilityLink,
+  Facility,
   NewTemplateInput,
   TemplateSchema,
   TemplateStatus,
@@ -24,6 +24,10 @@ export interface CompanyStore {
   listCanvasPresets(): Promise<CanvasPreset[]>;
   /** Submission-notification recipients (Settings → Notifications). */
   setNotificationEmails(companyId: string, emails: string[]): Promise<void>;
+  /** Rotate the shared portal token server-side (RPC); previous token
+   * keeps working for the grace window. Returns the fresh token. */
+  rotatePortalToken(companyId: string, graceDays?: number): Promise<string>;
+  setPortalEnabled(companyId: string, enabled: boolean): Promise<void>;
 }
 
 export interface TemplateStore {
@@ -81,7 +85,7 @@ export interface SubmissionStore {
     companyId: string,
     filter?: {
       status?: import("../types").SubmissionStatus;
-      facilityLinkId?: string;
+      facilityId?: string;
       search?: string;
     },
   ): Promise<import("../types").Submission[]>;
@@ -98,16 +102,15 @@ export interface SubmissionStore {
   previewUrl(path: string): Promise<string | null>;
 }
 
-/** Admin management of anonymous facility links. Tokens are generated
- * server-side (database default) — the client never invents one. */
-export interface FacilityLinkStore {
-  list(companyId: string): Promise<FacilityLink[]>;
-  create(
-    companyId: string,
-    input: { facilityName: string; templateTags?: string[]; expiresAt?: string | null },
-  ): Promise<FacilityLink>;
-  /** Onboarding dozens of facilities at once from a pasted list. */
-  bulkCreate(companyId: string, facilityNames: string[]): Promise<FacilityLink[]>;
+/** The facility roster behind the shared portal link. Deactivate rather
+ * than delete — submissions.facility_name is denormalized and history
+ * stays readable. */
+export interface FacilityStore {
+  list(companyId: string): Promise<Facility[]>;
+  create(companyId: string, input: { name: string; shortName: string }): Promise<Facility>;
+  /** Onboarding dozens at once from a pasted list of legal names. */
+  bulkCreate(companyId: string, rows: Array<{ name: string; shortName: string }>): Promise<Facility[]>;
+  rename(id: string, patch: { name?: string; shortName?: string }): Promise<void>;
   setActive(id: string, active: boolean): Promise<void>;
 }
 
@@ -153,7 +156,7 @@ export interface Stores {
   brandAssets: BrandAssetStore;
   usage: UsageStore;
   people: PeopleStore;
-  facilityLinks: FacilityLinkStore;
+  facilities: FacilityStore;
   submissions: SubmissionStore;
   designImport: DesignImportProvider;
   /** "supabase" or "local" — surfaced in the dev switcher so it's obvious

@@ -8,7 +8,7 @@ interface Db {
   brandAssets: unknown[];
   templates: unknown[];
   usageEvents: unknown[];
-  facilityLinks: unknown[];
+  facilities: unknown[];
   submissions: unknown[];
 }
 
@@ -20,7 +20,7 @@ const empty = (): Db => ({
   brandAssets: [],
   templates: [],
   usageEvents: [],
-  facilityLinks: [],
+  facilities: [],
   submissions: [],
 });
 

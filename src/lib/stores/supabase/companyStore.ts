@@ -35,6 +35,23 @@ export class SupabaseCompanyStore implements CompanyStore {
     if (error) throw error;
   }
 
+  async rotatePortalToken(companyId: string, graceDays = 14): Promise<string> {
+    const { data, error } = await supabase().rpc("rotate_portal_token", {
+      p_company_id: companyId,
+      p_grace_days: graceDays,
+    });
+    if (error) throw error;
+    return data as string;
+  }
+
+  async setPortalEnabled(companyId: string, enabled: boolean): Promise<void> {
+    const { error } = await supabase()
+      .from("companies")
+      .update({ portal_enabled: enabled })
+      .eq("id", companyId);
+    if (error) throw error;
+  }
+
   async hasAnyCompany(): Promise<boolean> {
     const { count, error } = await supabase()
       .from("companies")

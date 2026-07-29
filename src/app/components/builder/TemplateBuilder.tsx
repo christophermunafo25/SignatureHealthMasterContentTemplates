@@ -85,11 +85,13 @@ function useViewportAtLeast(px: number): boolean {
   return matches;
 }
 
-/** Admin Template Builder: a guided wizard. Pick the source (PNG upload or
- * Figma import), then Step 1 Name → Step 2 Fields (element palette + canvas +
- * field list + inspector) → Step 3 Caption (optional) → Step 4 Tags & details
- * (optional) → Publish. Save draft is available at every step; completed
- * steps are jumpable from the persistent progress indicator. */
+/** Admin Template Builder: a guided wizard. Pick the source (PNG upload,
+ * Figma import, or blank + canvas size), then Step 1 Fields (element palette
+ * + canvas + field list + inspector) → Step 2 Caption (optional) → Step 3
+ * Name & publish (name, category, tags, description — and the publish
+ * action, gated on a real name right where the input lives). Save draft is
+ * available at every step; completed steps are jumpable from the persistent
+ * progress indicator. */
 export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   const { company } = useAuth();
   const { kit } = useBrand();
@@ -117,9 +119,9 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     reset: resetHistory,
   } = useHistory<NewTemplateInput>(() => ({
     companyId: company?.id ?? "",
-    // Marketers name things last — the default lets them reach the canvas
-    // immediately; publish demands a real name.
-    name: "Untitled template",
+    // Named on the LAST step — doSave falls back to "Untitled template" for
+    // the list label, so the input the admin sees stays genuinely empty.
+    name: "",
     description: "",
     category: "",
     tags: [],
@@ -135,8 +137,8 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
    * background, so backgroundUrl alone can't gate the wizard anymore. */
   const [started, setStarted] = useState<boolean>(Boolean(templateId));
   const [pickingSize, setPickingSize] = useState(false);
-  const [step, setStep] = useState<WizardStep>("name");
-  const [visited, setVisited] = useState<Set<WizardStep>>(() => new Set(["name"]));
+  const [step, setStep] = useState<WizardStep>("fields");
+  const [visited, setVisited] = useState<Set<WizardStep>>(() => new Set(["fields"]));
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -169,42 +171,39 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   useEffect(() => {
     if (templateState.status !== "ready" || !templateState.data) return;
     const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = templateState.data;
+    // "Untitled template" is a label the SYSTEM wrote for the list, not a
+    // name anyone chose — reopening an unnamed draft should prompt, not
+    // present the placeholder as a value.
+    if (rest.name.trim() === "Untitled template") rest.name = "";
     resetHistory(rest); // loading installs a fresh baseline — no undo across it
     savedSnapshotRef.current = JSON.stringify(rest);
     // Editing an existing template: every step is already completed.
-    setVisited(new Set<WizardStep>(["name", "fields", "caption", "details"]));
+    setVisited(new Set<WizardStep>(["fields", "caption", "details"]));
     setStep("fields");
   }, [templateState, resetHistory]);
 
   const sourceChosen = started || Boolean(draft.backgroundUrl);
-  const nameComplete = Boolean(draft.name.trim());
-  /** Publishing needs a REAL name, not the placeholder default. */
+  /** Publishing needs a REAL name — the magic-string comparison guards a
+   * draft autosaved under the placeholder from being published under it
+   * after a reload. */
   const hasRealName = Boolean(draft.name.trim()) && draft.name.trim() !== "Untitled template";
   const fieldsComplete = draft.fields.length > 0;
-  /** Set when Publish was pressed while the name is still the default. */
-  const [nameNeeded, setNameNeeded] = useState(false);
-  useEffect(() => {
-    if (hasRealName) setNameNeeded(false);
-  }, [hasRealName]);
 
   const complete = useMemo(() => {
     const s = new Set<WizardStep>();
-    if (nameComplete) s.add("name");
     if (fieldsComplete) s.add("fields");
     if (visited.has("caption")) s.add("caption");
-    if (visited.has("details")) s.add("details");
+    if (hasRealName) s.add("details");
     return s;
-  }, [nameComplete, fieldsComplete, visited]);
+  }, [fieldsComplete, hasRealName, visited]);
 
   const canGo = useCallback(
     (target: WizardStep): boolean => {
       if (!sourceChosen) return false;
-      if (target === "name") return true;
-      if (!nameComplete) return false;
       if (target === "fields") return true;
-      return fieldsComplete;
+      return fieldsComplete; // caption and publish need something on the canvas
     },
-    [sourceChosen, nameComplete, fieldsComplete],
+    [sourceChosen, fieldsComplete],
   );
 
   const goTo = useCallback((target: WizardStep) => {
@@ -498,12 +497,6 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   /** Publish: processing indicator → success marker → back to Templates
    * page (create new / edit existing). */
   const publish = async () => {
-    if (!hasRealName) {
-      // Name at the end is fine — but published templates need a real one.
-      setNameNeeded(true);
-      goTo("name"); // the name input autofocuses on mount
-      return;
-    }
     setPublishState("publishing");
     const saved = await save("published");
     if (!saved) {
@@ -746,9 +739,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
             });
             setPendingImport(null);
             setMode("edit");
-            // A brand-new import starts at Step 1 (Name); an existing
-            // template that pulled in more fields goes straight to Fields.
-            goTo(draft.name.trim() ? "fields" : "name");
+            goTo("fields");
             // Lift the chosen elements OFF the background: re-render the frame
             // without them and swap in the recomposed PNG. On any failure the
             // flat render stays (fields overlay their baked twins).
@@ -872,45 +863,6 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       ) : (
         <>
           <WizardStepper current={step} complete={complete} canGo={canGo} onGo={goTo} />
-
-          {step === "name" && (
-            <div className="max-w-xl mx-auto py-8">
-              <div className="sp-card p-6 space-y-4">
-                <div className="space-y-1">
-                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}>
-                    What should this template be called?
-                  </h2>
-                  <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
-                    Members see this name in Published Templates. You'll name
-                    each editable field next — field names become the caption's
-                    merge tags.
-                  </p>
-                </div>
-                <input
-                  autoFocus
-                  value={draft.name}
-                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }), "text:name")}
-                  onFocus={(e) => {
-                    // The default is a placeholder, not a choice — typing
-                    // should replace it, not append to it.
-                    if (e.target.value.trim() === "Untitled template") e.target.select();
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && nameComplete) goTo("fields");
-                  }}
-                  placeholder="e.g. Employee anniversary post"
-                  className="sp-input"
-                  style={{ fontSize: 16, padding: "12px 14px" }}
-                />
-                {nameNeeded && (
-                  <p role="alert" style={{ fontSize: 12, color: "var(--solar)" }}>
-                    Name the template before publishing — members find it by
-                    this name in Published Templates.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
 
           {step === "fields" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
@@ -1148,13 +1100,22 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
               <div className="sp-card p-6 space-y-4">
                 <div className="space-y-1">
                   <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}>
-                    Tags & details
-                    <span style={{ fontSize: 12, color: "var(--fg-4)", fontWeight: 400 }}> · optional</span>
+                    Name & publish
                   </h2>
                   <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
-                    Shown on the template's card in Published Templates.
+                    Members see the name in Published Templates; the rest is
+                    shown on the template's card.
                   </p>
                 </div>
+                <input
+                  autoFocus={!draft.name.trim()}
+                  value={draft.name}
+                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }), "text:name")}
+                  placeholder="e.g. Employee anniversary post"
+                  aria-label="Template name"
+                  className="sp-input"
+                  style={{ fontSize: 16, padding: "12px 14px" }}
+                />
                 <input
                   value={draft.description}
                   onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }), "text:description")}
@@ -1211,13 +1172,25 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                 </p>
                 <button
                   onClick={() => void publish()}
-                  disabled={saving || publishState !== "idle" || draft.fields.length === 0}
+                  disabled={saving || publishState !== "idle" || !fieldsComplete || !hasRealName}
+                  aria-describedby={!hasRealName ? "publish-blocked-reason" : undefined}
                   className="sp-btn sp-btn-primary w-full"
                   style={{ padding: "11px 14px" }}
                 >
                   <Send className="w-3.5 h-3.5" />
                   {draft.status === "published" ? "Publish changes" : "Publish template"}
                 </button>
+                {!hasRealName && (
+                  <p
+                    id="publish-blocked-reason"
+                    role="status"
+                    aria-live="polite"
+                    className="text-center"
+                    style={{ fontSize: 12, color: "var(--fg-3)" }}
+                  >
+                    Name this template before publishing.
+                  </p>
+                )}
               </div>
             </div>
           )}

@@ -2,7 +2,7 @@ import React from "react";
 import { DevAuthProvider, useAuth } from "@/lib/auth/AuthContext";
 import { SupabaseAuthProvider } from "@/lib/auth/SupabaseAuthProvider";
 import { stores } from "@/lib/stores";
-import { arrivedViaAuthLink, AUTH_LINK_TYPE, AuthPage, SetPasswordGate } from "./components/auth/AuthPage";
+import { arrivedViaAuthLink, arrivedViaSetPasswordLink, AUTH_LINK_TYPE, AuthPage, SetPasswordGate } from "./components/auth/AuthPage";
 import { AccountSetupGate } from "./components/auth/AccountSetup";
 import { PeopleAdmin } from "./components/admin/PeopleAdmin";
 import { BrandProvider, useBrand } from "@/lib/brand/BrandContext";
@@ -28,7 +28,7 @@ function Screen() {
   const { route } = useRouter();
   // Invite/recovery links sign the user in on arrival; the password gets
   // set on this side of the auth boundary, once, before the app proper.
-  const [passwordPending, setPasswordPending] = React.useState(arrivedViaAuthLink);
+  const [passwordPending, setPasswordPending] = React.useState(arrivedViaSetPasswordLink);
 
   if (loading) {
     return (

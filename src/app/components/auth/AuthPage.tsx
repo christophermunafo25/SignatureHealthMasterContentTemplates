@@ -11,7 +11,20 @@ const linkParams = new URLSearchParams(
   window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.search,
 );
 export const AUTH_LINK_TYPE = linkParams.get("type");
-export const arrivedViaAuthLink = AUTH_LINK_TYPE === "invite" || AUTH_LINK_TYPE === "recovery";
+/** Expired/consumed links: Supabase redirects with an error fragment and no
+ * type (e.g. #error=access_denied&error_code=otp_expired&…). */
+const AUTH_LINK_ERROR = linkParams.get("error");
+const AUTH_LINK_ERROR_DESCRIPTION = linkParams.get("error_description");
+/** A live invite/recovery arrival — carries a session, needs the gate. */
+export const arrivedViaSetPasswordLink = AUTH_LINK_TYPE === "invite" || AUTH_LINK_TYPE === "recovery";
+/** ANY email-link arrival, including failed ones — none of them belong on
+ * the public portal. */
+export const arrivedViaAuthLink = arrivedViaSetPasswordLink || Boolean(AUTH_LINK_ERROR);
+
+const authLinkErrorMessage = AUTH_LINK_ERROR
+  ? `${AUTH_LINK_ERROR_DESCRIPTION || "That email link is invalid or has expired."} ` +
+    "Ask an admin to send a new invite, or use Forgot password below."
+  : null;
 
 /** Shown once for a signed-in user who arrived through an invite or
  * recovery email: set the account password before entering the app. */
@@ -81,7 +94,9 @@ export function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // An expired/used email link explains itself instead of dumping the
+  // person on a bare sign-in form (or worse, the public portal).
+  const [error, setError] = useState<string | null>(authLinkErrorMessage);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {

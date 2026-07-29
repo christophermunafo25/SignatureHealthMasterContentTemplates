@@ -1,6 +1,23 @@
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import type { Role } from "../../types";
 import type { Member, PeopleStore } from "../interfaces";
 import { supabase } from "./client";
+
+/** Every Edge Function here returns { error: string } on failure, but
+ * functions.invoke wraps any non-2xx in a FunctionsHttpError whose message
+ * is always the same generic sentence — the real reason is in the response
+ * body. Surface it. */
+export async function functionErrorDetail(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = (await error.context.json()) as { error?: string } | null;
+      if (body?.error) return body.error;
+    } catch {
+      // fall through to the generic message
+    }
+  }
+  return error instanceof Error ? error.message : String(error);
+}
 
 interface MemberRow {
   user_id: string;
@@ -40,7 +57,7 @@ export class SupabasePeopleStore implements PeopleStore {
       // /admin, not the origin root — the root serves the public portal.
       body: { companyId, email, role, redirectTo: `${window.location.origin}/admin` },
     });
-    if (error) throw new Error(`Invite failed: ${error.message}`);
+    if (error) throw new Error(`Invite failed: ${await functionErrorDetail(error)}`);
     const body = data as { error?: string };
     if (body?.error) throw new Error(body.error);
   }

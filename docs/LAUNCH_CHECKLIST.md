@@ -11,9 +11,23 @@ record the result before the client-facing launch.
 | Minimum password length | **12** | ☑ 2026-07-29 |
 | Leaked password protection | **On** | ☐ |
 | Site URL | Production domain | ☑ 2026-07-29 |
-| Additional redirect URLs | Production + `http://localhost:5199` | ☑ 2026-07-29 |
+| Additional redirect URLs | `https://signaturehealthcare-graphics.vercel.app/**` + `http://localhost:5199/**` (wildcards — auth emails redirect to `/admin`, not the origin root) | ☑ 2026-07-29 |
+| Custom SMTP for auth email | **Required for launch** — the built-in sender allows 2 emails/hour (this is what makes invites fail after testing). Point it at the Resend account planned for submission notifications. | ☐ |
 | JWT expiry | Confirm and record | ☐ |
 | MFA | Decision required (open question) | ☐ |
+
+## Search indexing
+| Item | Required | Status |
+|---|---|---|
+| `noindex, nofollow` meta in `index.html` | Shipped in-repo | ☑ 2026-07-29 |
+| `public/robots.txt` disallowing `/` | Shipped in-repo | ☑ 2026-07-29 |
+
+## Stray-workspace audit (one workspace only)
+Run before launch and after any dev-account activity:
+`select count(*) from companies;` (expect 1) and
+`select company_id, count(*) from memberships where role='admin' group by company_id;` (expect one group).
+**Run 2026-07-29: 1 company (`signature-healthcare`), all admins on it, 0
+orphaned auth users. Clean.**
 
 **First admin bootstrapped 2026-07-29**: company `signature-healthcare`
 created; christophermunafo25@gmail.com invited via the GoTrue admin API

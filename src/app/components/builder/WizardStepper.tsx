@@ -1,7 +1,7 @@
 import React from "react";
 import { Check } from "lucide-react";
 
-export type WizardStep = "name" | "fields" | "caption" | "details";
+export type WizardStep = "fields" | "caption" | "details";
 
 export interface StepDef {
   key: WizardStep;
@@ -9,11 +9,13 @@ export interface StepDef {
   optional?: boolean;
 }
 
+// Naming happens LAST, on the same step as Publish — marketers name things
+// when the thing exists. The key stays "details" (renaming it would ripple
+// through every goTo/visited/complete reference for no gain).
 export const WIZARD_STEPS: StepDef[] = [
-  { key: "name", title: "Name" },
   { key: "fields", title: "Fields" },
   { key: "caption", title: "Caption", optional: true },
-  { key: "details", title: "Tags & details", optional: true },
+  { key: "details", title: "Name & publish" },
 ];
 
 interface WizardStepperProps {

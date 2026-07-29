@@ -1,6 +1,7 @@
 import type { DesignImportResult, LayerRenderResult } from "../../types";
 import type { DesignImportProvider, StyleImportResult } from "../interfaces";
 import { isSupabaseConfigured, supabase } from "./client";
+import { functionErrorDetail } from "./peopleStore";
 
 /**
  * Figma importer. The client NEVER talks to Figma directly — every call goes
@@ -29,14 +30,14 @@ export class FigmaImporter implements DesignImportProvider {
     const { error } = await supabase().functions.invoke("figma-connect", {
       body: { companyId, ...credential },
     });
-    if (error) throw new Error(`Figma connect failed: ${error.message}`);
+    if (error) throw new Error(`Figma connect failed: ${await functionErrorDetail(error)}`);
   }
 
   async importFromUrl(companyId: string, url: string): Promise<DesignImportResult> {
     const { data, error } = await supabase().functions.invoke("figma-import", {
       body: { companyId, url },
     });
-    if (error) throw new Error(`Figma import failed: ${error.message}`);
+    if (error) throw new Error(`Figma import failed: ${await functionErrorDetail(error)}`);
     return data as DesignImportResult;
   }
 
@@ -44,7 +45,7 @@ export class FigmaImporter implements DesignImportProvider {
     const { data, error } = await supabase().functions.invoke("figma-styles", {
       body: { companyId, url },
     });
-    if (error) throw new Error(`Figma style import failed: ${error.message}`);
+    if (error) throw new Error(`Figma style import failed: ${await functionErrorDetail(error)}`);
     return data as StyleImportResult;
   }
 
@@ -56,7 +57,7 @@ export class FigmaImporter implements DesignImportProvider {
     const { data, error } = await supabase().functions.invoke("figma-layers", {
       body: { companyId, url, excludeNodeIds },
     });
-    if (error) throw new Error(`Layered render failed: ${error.message}`);
+    if (error) throw new Error(`Layered render failed: ${await functionErrorDetail(error)}`);
     return data as LayerRenderResult;
   }
 }

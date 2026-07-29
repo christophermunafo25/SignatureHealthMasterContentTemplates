@@ -9,6 +9,7 @@ interface Db {
   templates: unknown[];
   usageEvents: unknown[];
   facilityLinks: unknown[];
+  submissions: unknown[];
 }
 
 const KEY = "shc-graphics-dev-db";
@@ -20,6 +21,7 @@ const empty = (): Db => ({
   templates: [],
   usageEvents: [],
   facilityLinks: [],
+  submissions: [],
 });
 
 export function readDb(): Db {

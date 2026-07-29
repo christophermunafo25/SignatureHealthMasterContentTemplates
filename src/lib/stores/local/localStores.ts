@@ -6,6 +6,8 @@ import type {
   DesignImportResult,
   FacilityLink,
   NewTemplateInput,
+  Submission,
+  SubmissionStatus,
   TemplateSchema,
   TemplateStatus,
   UsageAction,
@@ -18,6 +20,7 @@ import type {
   CompanyStore,
   DesignImportProvider,
   FacilityLinkStore,
+  SubmissionStore,
   TemplateStore,
   UsageStore,
 } from "../interfaces";
@@ -255,6 +258,73 @@ function randomToken(): string {
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+/** Dev-mode review queue: full implementation so the whole facility →
+ * review pipeline is demoable without Supabase. */
+export class LocalSubmissionStore implements SubmissionStore {
+  async list(
+    companyId: string,
+    filter?: { status?: SubmissionStatus; facilityLinkId?: string; search?: string },
+  ): Promise<Submission[]> {
+    let rows = (readDb().submissions as Submission[]).filter((s) => s.companyId === companyId);
+    if (filter?.status) rows = rows.filter((s) => s.status === filter.status);
+    if (filter?.facilityLinkId) rows = rows.filter((s) => s.facilityLinkId === filter.facilityLinkId);
+    if (filter?.search?.trim()) {
+      const q = filter.search.trim().toLowerCase();
+      rows = rows.filter(
+        (s) =>
+          s.facilityName.toLowerCase().includes(q) ||
+          s.submitterName.toLowerCase().includes(q) ||
+          s.caption.toLowerCase().includes(q) ||
+          s.templateName.toLowerCase().includes(q),
+      );
+    }
+    return rows.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async get(id: string): Promise<Submission | null> {
+    return (readDb().submissions as Submission[]).find((s) => s.id === id) ?? null;
+  }
+
+  async update(
+    id: string,
+    patch: Partial<Pick<Submission, "values" | "caption" | "status" | "internalNote">>,
+  ): Promise<Submission> {
+    return mutate((db) => {
+      const rows = db.submissions as Submission[];
+      const i = rows.findIndex((s) => s.id === id);
+      if (i < 0) throw new Error(`Submission ${id} not found`);
+      const isReview =
+        patch.values !== undefined || patch.caption !== undefined || patch.status !== undefined;
+      rows[i] = {
+        ...rows[i],
+        ...patch,
+        ...(isReview && !rows[i].reviewedAt
+          ? { reviewedAt: new Date().toISOString(), reviewedBy: "dev-admin" }
+          : {}),
+        updatedAt: new Date().toISOString(),
+      };
+      return rows[i];
+    });
+  }
+
+  async countNew(companyId: string): Promise<number> {
+    return (readDb().submissions as Submission[]).filter(
+      (s) => s.companyId === companyId && s.status === "submitted",
+    ).length;
+  }
+
+  async remove(id: string): Promise<void> {
+    mutate((db) => {
+      db.submissions = (db.submissions as Submission[]).filter((s) => s.id !== id);
+    });
+  }
+
+  async previewUrl(path: string): Promise<string | null> {
+    // Dev backend stores data URLs directly in preview_path.
+    return path || null;
+  }
 }
 
 /** Dev mode has no real users — People management needs the Supabase backend. */

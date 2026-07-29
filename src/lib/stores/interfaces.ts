@@ -71,6 +71,31 @@ export interface PeopleStore {
   remove(companyId: string, userId: string): Promise<void>;
 }
 
+/** The review queue. Admin-only: facility staff have no account and no
+ * read path back into the queue — anonymous inserts happen through the
+ * submit-content Edge Function via service role. */
+export interface SubmissionStore {
+  list(
+    companyId: string,
+    filter?: {
+      status?: import("../types").SubmissionStatus;
+      facilityLinkId?: string;
+      search?: string;
+    },
+  ): Promise<import("../types").Submission[]>;
+  get(id: string): Promise<import("../types").Submission | null>;
+  /** Sets reviewed_by/reviewed_at on the first edit or status change. */
+  update(
+    id: string,
+    patch: Partial<Pick<import("../types").Submission, "values" | "caption" | "status" | "internalNote">>,
+  ): Promise<import("../types").Submission>;
+  countNew(companyId: string): Promise<number>;
+  remove(id: string): Promise<void>;
+  /** Resolve a preview_path to a viewable URL (signed URL on Supabase; the
+   * stored data URL on the dev backend). */
+  previewUrl(path: string): Promise<string | null>;
+}
+
 /** Admin management of anonymous facility links. Tokens are generated
  * server-side (database default) — the client never invents one. */
 export interface FacilityLinkStore {
@@ -127,6 +152,7 @@ export interface Stores {
   usage: UsageStore;
   people: PeopleStore;
   facilityLinks: FacilityLinkStore;
+  submissions: SubmissionStore;
   designImport: DesignImportProvider;
   /** "supabase" or "local" — surfaced in the dev switcher so it's obvious
    * which backend is active. */

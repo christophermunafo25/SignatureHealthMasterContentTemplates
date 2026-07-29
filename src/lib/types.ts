@@ -267,3 +267,36 @@ export interface FacilityLink {
   createdAt: string;
   lastUsedAt?: string;
 }
+
+export type SubmissionStatus = "submitted" | "approved" | "posted" | "archived";
+
+/** A facility submission: an editable document (field values + frozen
+ * schema/brand snapshots). The PNG preview is a byproduct — the
+ * authoritative artifact is re-rendered from values + snapshot. */
+export interface Submission {
+  id: string;
+  companyId: string;
+  templateId?: string;
+  facilityLinkId?: string;
+  /** Denormalized so the queue reads correctly after link/template deletion. */
+  facilityName: string;
+  templateName: string;
+  submitterName: string;
+  submitterEmail?: string;
+  values: FieldValues;
+  /** Untouched copy of what the facility originally entered, for audit. */
+  originalValues: FieldValues;
+  caption: string;
+  originalCaption: string;
+  /** Frozen at submit time — later template/brand edits never change a
+   * queued item. */
+  schemaSnapshot: TemplateSchema;
+  brandSnapshot: { brandKit: BrandKit | null; logoUrl?: string | null; brandAssets: BrandAsset[] };
+  previewPath?: string;
+  status: SubmissionStatus;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  internalNote: string;
+  createdAt: string;
+  updatedAt: string;
+}

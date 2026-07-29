@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft, RefreshCw, Send } from "lucide-react";
 import type { FieldValues } from "@/lib/types";
 import { mergeCaption } from "@/lib/caption";
+import { submitPublicContent } from "@/lib/publicClient";
 import { useRouter } from "../../router";
 import { type SchemaRendererHandle } from "../SchemaRenderer";
 import { TemplateFillLayout, missingRequiredFields } from "../TemplateFillLayout";
@@ -68,10 +69,22 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
     setSubmitting(true);
     setSubmitError(null);
     try {
-      // Phase 4 wires this to /public-upload + /submit-content: render the
-      // preview blob, upload image field values, create the submission, and
-      // notify the social team. The UI contract is final now.
-      void mergeCaption; // caption text is finalized here and sent with the submission
+      // Best-effort preview of what the facility saw — the submission's
+      // authoritative artifact is re-rendered from values + snapshot.
+      let previewBlob: Blob | null = null;
+      try {
+        previewBlob = await rendererRef.current.renderBlob();
+      } catch (e) {
+        console.warn("Preview render failed; submitting without one", e);
+      }
+      await submitPublicContent(token, {
+        templateId: template.id,
+        submitterName: submitterName.trim(),
+        submitterEmail: submitterEmail.trim() || undefined,
+        values,
+        caption: caption ?? mergeCaption(template, values),
+        previewBlob,
+      });
       setSubmitted(true);
     } catch (e) {
       console.error("Submit failed", e);

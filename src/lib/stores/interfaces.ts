@@ -22,6 +22,8 @@ export interface CompanyStore {
   create(input: { name: string; slug: string }): Promise<Company>;
   hasAnyCompany(): Promise<boolean>; // first-run / onboarding routing
   listCanvasPresets(): Promise<CanvasPreset[]>;
+  /** Submission-notification recipients (Settings → Notifications). */
+  setNotificationEmails(companyId: string, emails: string[]): Promise<void>;
 }
 
 export interface TemplateStore {

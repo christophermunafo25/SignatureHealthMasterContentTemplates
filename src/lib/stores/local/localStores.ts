@@ -56,6 +56,12 @@ export class LocalCompanyStore implements CompanyStore {
   async hasAnyCompany(): Promise<boolean> {
     return readDb().companies.length > 0;
   }
+  async setNotificationEmails(companyId: string, emails: string[]): Promise<void> {
+    mutate((db) => {
+      const c = (db.companies as Company[]).find((x) => x.id === companyId);
+      if (c) c.notificationEmails = emails;
+    });
+  }
   async listCanvasPresets(): Promise<CanvasPreset[]> {
     return PRESETS.filter((p) => p.enabled);
   }

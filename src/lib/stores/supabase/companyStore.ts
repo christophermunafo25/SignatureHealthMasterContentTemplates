@@ -27,6 +27,14 @@ export class SupabaseCompanyStore implements CompanyStore {
     return toCompany(data as CompanyRow);
   }
 
+  async setNotificationEmails(companyId: string, emails: string[]): Promise<void> {
+    const { error } = await supabase()
+      .from("companies")
+      .update({ notification_emails: emails })
+      .eq("id", companyId);
+    if (error) throw error;
+  }
+
   async hasAnyCompany(): Promise<boolean> {
     const { count, error } = await supabase()
       .from("companies")

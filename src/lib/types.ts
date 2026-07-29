@@ -7,6 +7,9 @@ export interface Company {
   name: string;
   slug: string;
   createdAt: string;
+  /** Recipients for submission notifications — configuration, not a
+   * constant (see the v2 brief, D6). */
+  notificationEmails?: string[];
 }
 
 export interface BrandColor {

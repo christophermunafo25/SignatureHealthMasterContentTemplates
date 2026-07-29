@@ -19,6 +19,7 @@ export interface CompanyRow {
   name: string;
   slug: string;
   created_at: string;
+  notification_emails?: string[] | null;
 }
 
 export const toCompany = (r: CompanyRow): Company => ({
@@ -26,6 +27,7 @@ export const toCompany = (r: CompanyRow): Company => ({
   name: r.name,
   slug: r.slug,
   createdAt: r.created_at,
+  notificationEmails: r.notification_emails ?? [],
 });
 
 export interface CanvasPresetRow {

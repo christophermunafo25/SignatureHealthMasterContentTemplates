@@ -2,7 +2,7 @@ import React from "react";
 import { DevAuthProvider, useAuth } from "@/lib/auth/AuthContext";
 import { SupabaseAuthProvider } from "@/lib/auth/SupabaseAuthProvider";
 import { stores } from "@/lib/stores";
-import { AuthPage } from "./components/auth/AuthPage";
+import { arrivedViaAuthLink, AuthPage, SetPasswordGate } from "./components/auth/AuthPage";
 import { PeopleAdmin } from "./components/admin/PeopleAdmin";
 import { BrandProvider, useBrand } from "@/lib/brand/BrandContext";
 import { RouterProvider, useRouter } from "./router";
@@ -25,6 +25,9 @@ function Screen() {
   const { loading, error, retry, company, role, user, backend } = useAuth();
   const brand = useBrand();
   const { route } = useRouter();
+  // Invite/recovery links sign the user in on arrival; the password gets
+  // set on this side of the auth boundary, once, before the app proper.
+  const [passwordPending, setPasswordPending] = React.useState(arrivedViaAuthLink);
 
   if (loading) {
     return (
@@ -51,6 +54,9 @@ function Screen() {
   // Real auth: no session → sign in / sign up.
   if (backend === "supabase" && !user) {
     return <AuthPage />;
+  }
+  if (backend === "supabase" && user && passwordPending) {
+    return <SetPasswordGate email={user.email} onDone={() => setPasswordPending(false)} />;
   }
 
   // Same rule for the brand kit: don't render brand-aware screens against a

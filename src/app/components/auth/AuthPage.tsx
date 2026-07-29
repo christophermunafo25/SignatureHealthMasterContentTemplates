@@ -3,6 +3,75 @@ import { supabase } from "@/lib/stores/supabase/client";
 
 type View = "signin" | "forgot" | "setPassword";
 
+/** The email-link type, captured at first paint — supabase-js strips the
+ * URL fragment once it parses the session, and by then the user is signed
+ * in and AuthPage has unmounted. Invite and recovery links must land on a
+ * set-password screen INSIDE the signed-in tree (SetPasswordGate). */
+const linkParams = new URLSearchParams(
+  window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.search,
+);
+const AUTH_LINK_TYPE = linkParams.get("type");
+export const arrivedViaAuthLink = AUTH_LINK_TYPE === "invite" || AUTH_LINK_TYPE === "recovery";
+
+/** Shown once for a signed-in user who arrived through an invite or
+ * recovery email: set the account password before entering the app. */
+export function SetPasswordGate({ email, onDone }: { email: string; onDone(): void }) {
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const { error: err } = await supabase().auth.updateUser({ password });
+      if (err) throw err;
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "var(--linen)" }}>
+      <div className="w-full space-y-4" style={{ maxWidth: 380 }}>
+        <div>
+          <p className="sp-eyebrow mb-1">{email}</p>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", fontSize: 20, color: "var(--ink)" }}>
+            Set your password
+          </h1>
+          <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
+            Choose the password you'll sign in with from now on. At least 12
+            characters.
+          </p>
+        </div>
+        <div>
+          <label className="sp-eyebrow block mb-1" htmlFor="new-password">Password</label>
+          <input
+            id="new-password"
+            type="password"
+            className="sp-input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            autoFocus
+          />
+        </div>
+        {error && <p role="alert" style={{ fontSize: 12, color: "var(--danger)" }}>{error}</p>}
+        <button
+          className="sp-btn sp-btn-primary w-full"
+          disabled={busy || password.length < 12}
+          onClick={() => void save()}
+        >
+          {busy ? "Saving…" : "Save password"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** Sign in / password reset. INVITE-ONLY: there is no signup view —
  * accounts are created through People-page invites, and the dashboard's
  * public-signup switch must be off. Also handles the recovery redirect

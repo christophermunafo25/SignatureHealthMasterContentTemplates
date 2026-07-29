@@ -60,7 +60,59 @@ export function PortalAccess() {
         </p>
       </div>
       <LinkPanel companyId={companyId} refreshAuth={refresh} />
+      <PublicPortalPanel companyId={companyId} refreshAuth={refresh} />
       <RosterPanel companyId={companyId} />
+    </div>
+  );
+}
+
+/** Opt-in: serve the facility portal at the bare site URL, no token in the
+ * address. The portal on/off switch above still kills it; rotation no
+ * longer locks out someone who only knows the root address. */
+function PublicPortalPanel({ companyId, refreshAuth }: { companyId: string; refreshAuth?: () => Promise<void> }) {
+  const { company } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const isPublic = company?.portalPublic ?? false;
+  const rootUrl = `${window.location.origin}/`;
+
+  const toggle = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await stores.companies.setPortalPublic(companyId, !isPublic);
+      await refreshAuth?.();
+    } catch (e) {
+      console.error("Public portal toggle failed", e);
+      setError("Couldn't update the public portal setting. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="sp-card p-5 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="sp-panel-title">Public portal at the site address</h2>
+        <button
+          className="sp-btn sp-btn-ghost"
+          style={{ minHeight: 32, padding: "4px 12px" }}
+          onClick={() => void toggle()}
+          disabled={busy}
+          aria-pressed={isPublic}
+        >
+          <Power style={{ width: 13, height: 13, color: isPublic ? "var(--success)" : "var(--fg-4)" }} />
+          {isPublic ? "On" : "Off"}
+        </button>
+      </div>
+      <p style={{ fontSize: 13, color: "var(--fg-3)" }}>
+        When on, anyone who visits{" "}
+        <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink)" }}>{rootUrl}</code>{" "}
+        gets the facility portal directly — no shared link needed. Staff still
+        pick their facility before submitting, and disabling the portal above
+        cuts this off too. Leave off if access should require the shared link.
+      </p>
+      {error && <p style={{ fontSize: 12, color: "var(--danger)" }}>{error}</p>}
     </div>
   );
 }

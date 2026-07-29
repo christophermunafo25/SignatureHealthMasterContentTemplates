@@ -52,6 +52,14 @@ export class SupabaseCompanyStore implements CompanyStore {
     if (error) throw error;
   }
 
+  async setPortalPublic(companyId: string, isPublic: boolean): Promise<void> {
+    const { error } = await supabase()
+      .from("companies")
+      .update({ portal_public: isPublic })
+      .eq("id", companyId);
+    if (error) throw error;
+  }
+
   async hasAnyCompany(): Promise<boolean> {
     const { count, error } = await supabase()
       .from("companies")

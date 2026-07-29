@@ -16,6 +16,9 @@ export interface Company {
   portalTokenPrevious?: string;
   portalTokenPreviousExpires?: string;
   portalEnabled?: boolean;
+  /** Root-URL public portal opt-in: the facility portal is also served at
+   * the bare production URL (no token). portal_enabled still kills it. */
+  portalPublic?: boolean;
 }
 
 export interface BrandColor {

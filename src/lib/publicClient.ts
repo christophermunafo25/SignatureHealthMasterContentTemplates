@@ -8,6 +8,11 @@ import type { BrandAsset, BrandKit, Company, Facility, TemplateSchema } from "./
 import { isSupabaseConfigured } from "./stores/supabase/client";
 import { mutate, newId, readDb } from "./stores/local/db";
 
+/** Reserved portal ref for the root-URL public portal. Real tokens are 16+
+ * chars, so this can never collide with one; the Edge Functions resolve it
+ * to the single company that opted in via portal_public. */
+export const HOME_REF = "~home";
+
 export interface PublicFacility {
   id: string;
   name: string;
@@ -64,6 +69,10 @@ async function fetchRemote(
 function resolveLocalCompany(token: string): (Company & { id: string }) | null {
   const db = readDb();
   const companies = db.companies as Company[];
+  if (token === HOME_REF) {
+    const pub = companies.filter((c) => c.portalPublic && c.portalEnabled);
+    return pub.length === 1 ? pub[0] : null;
+  }
   const byCurrent = companies.find((c) => c.portalToken === token);
   if (byCurrent) return byCurrent.portalEnabled ? byCurrent : null;
   const byPrev = companies.find((c) => c.portalTokenPrevious === token);
@@ -85,7 +94,7 @@ async function fetchLocal(
 ): Promise<PublicPortalData> {
   const company = resolveLocalCompany(token);
   if (!company) throw new LinkInactiveError();
-  const stale = company.portalToken !== token;
+  const stale = token !== HOME_REF && company.portalToken !== token;
 
   const db = readDb();
   const facilities = (db.facilities as Facility[])

@@ -28,6 +28,8 @@ export interface CompanyStore {
    * keeps working for the grace window. Returns the fresh token. */
   rotatePortalToken(companyId: string, graceDays?: number): Promise<string>;
   setPortalEnabled(companyId: string, enabled: boolean): Promise<void>;
+  /** Opt the company's facility portal into the bare root URL (no token). */
+  setPortalPublic(companyId: string, isPublic: boolean): Promise<void>;
 }
 
 export interface TemplateStore {

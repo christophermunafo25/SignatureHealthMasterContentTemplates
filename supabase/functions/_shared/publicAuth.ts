@@ -21,13 +21,31 @@ export function linkNotFound(): Response {
   return json({ error: "This link isn't active." }, 404);
 }
 
-/** Resolve a portal token to its company. Current token first, then the
- * previous token while inside the rotation grace window. Every other case
- * is null (callers respond with linkNotFound()). */
+/** Reserved ref for the root-URL public portal. Real tokens are 16+ chars,
+ * so this can never collide with one. */
+export const HOME_TOKEN = "~home";
+
+/** Resolve a portal token to its company. The HOME_TOKEN sentinel resolves
+ * to the single company that opted into the root-URL public portal
+ * (portal_public), still behind the portal_enabled kill switch. Otherwise:
+ * current token first, then the previous token while inside the rotation
+ * grace window. Every other case is null (callers respond with
+ * linkNotFound()). */
 export async function requirePortalCompany(
   db: SupabaseClient,
   token: unknown,
 ): Promise<PortalCompany | null> {
+  if (token === HOME_TOKEN) {
+    const { data } = await db
+      .from("companies")
+      .select("id, name")
+      .eq("portal_public", true)
+      .eq("portal_enabled", true);
+    // Exactly one opted-in company or nothing — two public tenants on one
+    // deployment would make the root portal ambiguous.
+    if (!data || data.length !== 1) return null;
+    return { companyId: data[0].id, companyName: data[0].name, tokenStale: false };
+  }
   if (typeof token !== "string" || token.length < 16 || token.length > 128) return null;
 
   const { data: current } = await db

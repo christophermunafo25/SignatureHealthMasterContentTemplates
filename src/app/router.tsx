@@ -18,12 +18,20 @@ export type Route =
   | { name: "submissionDetail"; submissionId: string }
   | { name: "portalAccess" }
   | { name: "publicPortal"; token: string }
-  | { name: "publicTemplate"; token: string; templateId: string };
+  | { name: "publicTemplate"; token: string; templateId: string }
+  // Root-URL public portal (no token in the address; resolved server-side
+  // to the company that opted in via portal_public).
+  | { name: "publicHome" }
+  | { name: "publicHomeTemplate"; templateId: string };
 
 export function pathFor(route: Route): string {
   switch (route.name) {
     case "portal":
+      return "/admin";
+    case "publicHome":
       return "/";
+    case "publicHomeTemplate":
+      return `/p/${encodeURIComponent(route.templateId)}`;
     case "onboarding":
       return "/onboarding";
     case "template":
@@ -60,7 +68,13 @@ export function routeFor(pathname: string): Route {
   const [head, second, third] = parts;
   switch (head) {
     case undefined:
+      // The bare URL is the anonymous facility portal; the signed-in app
+      // lives under /admin.
+      return { name: "publicHome" };
+    case "admin":
       return { name: "portal" };
+    case "p":
+      return second ? { name: "publicHomeTemplate", templateId: second } : { name: "publicHome" };
     case "onboarding":
       return { name: "onboarding" };
     case "t":

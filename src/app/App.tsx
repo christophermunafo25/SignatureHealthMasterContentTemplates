@@ -123,7 +123,12 @@ function NoMembership() {
  * trigger a session lookup (a failed one would render the sign-in page). */
 function RootSwitch() {
   const { route } = useRouter();
-  if (route.name === "publicPortal" || route.name === "publicTemplate") {
+  if (
+    route.name === "publicPortal" ||
+    route.name === "publicTemplate" ||
+    route.name === "publicHome" ||
+    route.name === "publicHomeTemplate"
+  ) {
     return <PublicApp />;
   }
   // Mount-time guard (one of three): never run the no-auth dev backend in

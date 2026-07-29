@@ -1,6 +1,7 @@
 import React from "react";
 import type { PublicFacility } from "@/lib/publicClient";
 import { FacilityCombobox } from "../FacilityCombobox";
+import { AdminSignInLink } from "./PublicApp";
 
 /** First thing behind the shared link when no facility is stored for this
  * token: pick your facility before anything else. Mobile-first — a
@@ -10,10 +11,13 @@ export function FacilityGate({
   companyName,
   facilities,
   onSelect,
+  adminLink,
 }: {
   companyName: string;
   facilities: PublicFacility[];
   onSelect(facility: PublicFacility): void;
+  /** Root-URL mode: an admin landing here needs a way into the real app. */
+  adminLink?: boolean;
 }) {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--linen)" }}>
@@ -47,6 +51,11 @@ export function FacilityGate({
             </span>
           }
         />
+        {adminLink && (
+          <div className="text-center pt-6">
+            <AdminSignInLink />
+          </div>
+        )}
       </div>
     </div>
   );

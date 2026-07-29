@@ -1,10 +1,19 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { fetchPublicPortal, LinkInactiveError, type PublicFacility, type PublicPortalData } from "@/lib/publicClient";
+import { fetchPublicPortal, HOME_REF, LinkInactiveError, type PublicFacility, type PublicPortalData } from "@/lib/publicClient";
 import { applyBrandTheme } from "@/lib/theme";
 import { loadBrandFonts } from "@/lib/render/fonts";
-import { useRouter } from "../../router";
+import { useRouter, type Route } from "../../router";
 import { PublicPortal } from "./PublicPortal";
 import { PublicTemplateUse } from "./PublicTemplateUse";
+
+/** Home-aware route builders: the same components serve the tokened shared
+ * link (/g/…) and the root-URL public portal (ref === HOME_REF). */
+export const portalRoute = (token: string): Route =>
+  token === HOME_REF ? { name: "publicHome" } : { name: "publicPortal", token };
+export const templateRoute = (token: string, templateId: string): Route =>
+  token === HOME_REF
+    ? { name: "publicHomeTemplate", templateId }
+    : { name: "publicTemplate", token, templateId };
 
 export type PublicDataState =
   | { status: "loading" }
@@ -101,15 +110,32 @@ export function useSelectedFacility(token: string, facilities: PublicFacility[] 
 
 /** Slim anonymous header: brand mark + facility chip with a "Not you?"
  * escape. No sidebar, no account UI. */
+/** Quiet path into the signed-in app for staff who land on the public root.
+ * A plain anchor: /admin mounts a different provider tree, so a full page
+ * load is exactly right. */
+export function AdminSignInLink() {
+  return (
+    <a
+      href="/admin"
+      style={{ fontSize: 12, color: "var(--fg-3)", textDecoration: "underline", textUnderlineOffset: 3 }}
+    >
+      Admin sign in
+    </a>
+  );
+}
+
 export function PublicShell({
   data,
   facility,
   onClearFacility,
+  adminLink,
   children,
 }: {
   data: PublicPortalData | null;
   facility?: PublicFacility | null;
   onClearFacility?: () => void;
+  /** Root-URL mode: show the quiet admin entry in the footer. */
+  adminLink?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -173,19 +199,32 @@ export function PublicShell({
         </div>
       )}
       <main className="flex-1">{children}</main>
+      {adminLink && (
+        <footer className="text-center py-5">
+          <AdminSignInLink />
+        </footer>
+      )}
     </div>
   );
 }
 
-export function PublicInactive() {
+export function PublicInactive({ adminLink }: { adminLink?: boolean }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "var(--linen)" }}>
       <div className="text-center space-y-2" style={{ maxWidth: 360 }}>
-        <p style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>This link isn't active.</p>
-        <p style={{ fontSize: 13, color: "var(--fg-3)" }}>
-          It may have been replaced or turned off. Ask your marketing team for a
-          current link to the template portal.
+        <p style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>
+          {adminLink ? "The portal isn't open yet." : "This link isn't active."}
         </p>
+        <p style={{ fontSize: 13, color: "var(--fg-3)" }}>
+          {adminLink
+            ? "Facility staff: use the link your marketing team shared with you."
+            : "It may have been replaced or turned off. Ask your marketing team for a current link to the template portal."}
+        </p>
+        {adminLink && (
+          <p style={{ paddingTop: 8 }}>
+            <AdminSignInLink />
+          </p>
+        )}
       </div>
     </div>
   );
@@ -221,6 +260,12 @@ export function PublicApp() {
   }
   if (route.name === "publicPortal") {
     return <PublicPortal token={route.token} />;
+  }
+  if (route.name === "publicHomeTemplate") {
+    return <PublicTemplateUse token={HOME_REF} templateId={route.templateId} />;
+  }
+  if (route.name === "publicHome") {
+    return <PublicPortal token={HOME_REF} />;
   }
   return <PublicInactive />;
 }

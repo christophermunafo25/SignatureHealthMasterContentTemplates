@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { ArrowRight, Search } from "lucide-react";
+import { HOME_REF } from "@/lib/publicClient";
 import { useRouter } from "../../router";
 import { TemplateThumbnailBase } from "../TemplateThumbnail";
 import { FacilityGate } from "./FacilityGate";
-import { PublicError, PublicInactive, PublicLoading, PublicShell, usePublicPortal, useSelectedFacility } from "./PublicApp";
+import { PublicError, PublicInactive, PublicLoading, PublicShell, templateRoute, usePublicPortal, useSelectedFacility } from "./PublicApp";
 
 /** Anonymous facility library: the published template grid behind a
  * facility link. Mobile-first — a director of nursing on a phone, not a
@@ -30,17 +31,25 @@ export function PublicPortal({ token }: { token: string }) {
     );
   }, [templates, query]);
 
+  const isHome = token === HOME_REF;
   if (state.status === "loading") return <PublicLoading />;
-  if (state.status === "inactive") return <PublicInactive />;
+  if (state.status === "inactive") return <PublicInactive adminLink={isHome} />;
   if (state.status === "error") return <PublicError retry={state.retry} />;
 
   const { data } = state;
   // The gate comes first: no facility, no library.
   if (!facility) {
-    return <FacilityGate companyName={data.company.name} facilities={data.facilities} onSelect={select} />;
+    return (
+      <FacilityGate
+        companyName={data.company.name}
+        facilities={data.facilities}
+        onSelect={select}
+        adminLink={isHome}
+      />
+    );
   }
   return (
-    <PublicShell data={data} facility={facility} onClearFacility={clear}>
+    <PublicShell data={data} facility={facility} onClearFacility={clear} adminLink={isHome}>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-8 pb-2">
         <p className="sp-eyebrow mb-2">{facility.name}</p>
         <h1
@@ -91,7 +100,7 @@ export function PublicPortal({ token }: { token: string }) {
             {filtered.map((t) => (
               <button
                 key={t.id}
-                onClick={() => navigate({ name: "publicTemplate", token, templateId: t.id })}
+                onClick={() => navigate(templateRoute(token, t.id))}
                 aria-label={t.category ? `${t.name} — ${t.category}` : t.name}
                 className="group text-left overflow-hidden transition-all flex flex-col"
                 style={{

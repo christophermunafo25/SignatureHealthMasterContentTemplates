@@ -88,6 +88,12 @@ export class LocalCompanyStore implements CompanyStore {
       if (c) c.portalEnabled = enabled;
     });
   }
+  async setPortalPublic(companyId: string, isPublic: boolean): Promise<void> {
+    mutate((db) => {
+      const c = (db.companies as Company[]).find((x) => x.id === companyId);
+      if (c) c.portalPublic = isPublic;
+    });
+  }
   async listCanvasPresets(): Promise<CanvasPreset[]> {
     return PRESETS.filter((p) => p.enabled);
   }

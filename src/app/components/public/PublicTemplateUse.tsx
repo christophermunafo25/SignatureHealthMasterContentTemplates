@@ -7,7 +7,8 @@ import { useRouter } from "../../router";
 import { type SchemaRendererHandle } from "../SchemaRenderer";
 import { TemplateFillLayout, missingRequiredFields } from "../TemplateFillLayout";
 import { FacilityGate } from "./FacilityGate";
-import { PublicError, PublicInactive, PublicLoading, PublicShell, usePublicPortal, useSelectedFacility } from "./PublicApp";
+import { HOME_REF } from "@/lib/publicClient";
+import { PublicError, PublicInactive, PublicLoading, PublicShell, portalRoute, usePublicPortal, useSelectedFacility } from "./PublicApp";
 import { PublicSubmitted } from "./PublicSubmitted";
 
 /** Anonymous facility fill page: TemplateFillLayout with a submitter panel
@@ -46,8 +47,9 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
     [template, values],
   );
 
+  const isHome = token === HOME_REF;
   if (state.status === "loading") return <PublicLoading />;
-  if (state.status === "inactive") return <PublicInactive />;
+  if (state.status === "inactive") return <PublicInactive adminLink={isHome} />;
   if (state.status === "error") return <PublicError retry={state.retry} />;
   if (!facility) {
     return (
@@ -55,6 +57,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
         companyName={state.data.company.name}
         facilities={state.data.facilities}
         onSelect={select}
+        adminLink={isHome}
       />
     );
   }
@@ -77,7 +80,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
           values={values}
           facilityName={facility.name}
           submitterEmail={submitterEmail.trim() || undefined}
-          onCreateAnother={() => navigate({ name: "publicPortal", token })}
+          onCreateAnother={() => navigate(portalRoute(token))}
         />
       </PublicShell>
     );
@@ -120,7 +123,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
     <PublicShell data={data} facility={facility} onClearFacility={clear}>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-6">
         <button
-          onClick={() => navigate({ name: "publicPortal", token })}
+          onClick={() => navigate(portalRoute(token))}
           className="flex items-center gap-1.5 mb-5"
           style={{ fontSize: 13, color: "var(--fg-2)" }}
         >

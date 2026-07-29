@@ -24,6 +24,7 @@ export interface CompanyRow {
   portal_token_previous?: string | null;
   portal_token_previous_expires?: string | null;
   portal_enabled?: boolean | null;
+  portal_public?: boolean | null;
 }
 
 export const toCompany = (r: CompanyRow): Company => ({
@@ -36,6 +37,7 @@ export const toCompany = (r: CompanyRow): Company => ({
   portalTokenPrevious: r.portal_token_previous ?? undefined,
   portalTokenPreviousExpires: r.portal_token_previous_expires ?? undefined,
   portalEnabled: r.portal_enabled ?? false,
+  portalPublic: r.portal_public ?? false,
 });
 
 export interface CanvasPresetRow {

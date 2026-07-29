@@ -116,6 +116,18 @@ are indistinguishable (uniform 404). No RLS policy grants anything to
 `anon`; all three endpoints are rate-limited per token and per IP via
 the service-role-only `rate_limits` table.
 
+**Root-URL public portal (opt-in).** The bare site URL (`/`) mounts the
+same anonymous facility tree; the signed-in app lives at `/admin`. The
+client sends the reserved ref `~home` through the existing `token` field
+(real tokens are 16+ chars, so no collision), and `requirePortalCompany`
+resolves it to the single company with `portal_public = true` — still
+gated by the `portal_enabled` kill switch, still behind the facility
+gate, and 404 when zero or more than one company opted in. The toggle
+lives on Portal Access ("Public portal at the site address", default
+off). When it's off, the root shows "the portal isn't open yet" with a
+quiet Admin sign in link; the tokened `/g/:token` link works
+independently either way.
+
 ## Submission model (v2)
 
 A submission is an editable document, not an image: the facility's field

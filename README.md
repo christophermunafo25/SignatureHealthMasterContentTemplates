@@ -21,8 +21,11 @@ keyboard flow; the social team fixes typos against a frozen snapshot,
 downloads the corrected PNG, marks it posted — or declines with a
 required reason that can be emailed to the submitter, reversibly. The
 link, its 14-day rotation grace window, the kill switch, and the
-facility roster live on the Portal Access screen. Sign-in is
-invite-only, and the interface is a single clean-white theme.
+facility roster live on the Portal Access screen. An admin can also opt
+the portal into the **bare site URL** (Portal Access → "Public portal at
+the site address"): the root serves the same facility experience with no
+token in the address, while the signed-in app lives at `/admin`. Sign-in
+is invite-only, and the interface is a single clean-white theme.
 
 **Brand Studio** holds each company's kit: unlimited palette colors, heading and body fonts (Google Fonts or uploads), logos, and named type styles that act as a rules engine. A field bound to the "Heading" style inherits everything that style defines, and changing the style restyles every bound field across every template instantly.
 

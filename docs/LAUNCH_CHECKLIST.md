@@ -41,6 +41,16 @@ Signature IT or notifications land in spam. Raise before launch day.
 - Two-company tenant isolation pass with real admin accounts.
 - Decline email delivery once Resend + SPF/DKIM are live.
 
+## Root-URL public portal
+The bare production URL can serve the facility portal directly (Portal
+Access → "Public portal at the site address", default **off**). Decide
+with the client whether root access stays link-only or goes public —
+turning it on makes the template library reachable by anyone who finds
+the domain, and makes link rotation moot for root visitors.
+| Decision | Status |
+|---|---|
+| Public portal at the root URL: on or off for launch | ☐ |
+
 ## Open client questions (from the v2.1 spec)
 Shared-link distribution method (grace period length), roster ownership,
 resident-photo consent/retention (in writing), submission retention

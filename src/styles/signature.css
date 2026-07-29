@@ -108,10 +108,11 @@
   --mesh-warm: #003b71;
   --mesh-soft: #003b71;
 
-  /* Primary action: navy fill + white text */
+  /* Primary action: navy fill + white text; hover keeps the navy and turns
+     the text Signature orange (brand rule: every navy button hovers orange). */
   --btn-primary-bg: #003b71;
   --btn-primary-fg: #ffffff;
-  --btn-primary-bg-hover: color-mix(in srgb, #003b71 86%, #fff);
+  --btn-primary-fg-hover: #ff9e18;
 
   /* Data-viz series (validated against the light surface — navy + readable
      teal; brights are fills-not-marks on light) */
@@ -215,7 +216,7 @@ button, input, select, textarea, optgroup {
 }
 .sp-btn:disabled { opacity: 0.4; cursor: default; }
 .sp-btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
-.sp-btn-primary:hover:not(:disabled) { background: var(--btn-primary-bg-hover); }
+.sp-btn-primary:hover:not(:disabled) { background: var(--btn-primary-bg); color: var(--btn-primary-fg-hover); }
 .sp-btn-ghost { background: transparent; color: var(--fg-2); border-color: var(--hairline-strong); }
 .sp-btn-ghost:hover:not(:disabled) { background: var(--surface-sunken); color: var(--fg-1); }
 /* Orange CTA — same fill both modes; navy carries the text */

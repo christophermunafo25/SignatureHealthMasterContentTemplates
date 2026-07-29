@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { fetchPublicPortal, HOME_REF, LinkInactiveError, type PublicFacility, type PublicPortalData } from "@/lib/publicClient";
+import { isSupabaseConfigured, supabase } from "@/lib/stores/supabase/client";
 import { applyBrandTheme } from "@/lib/theme";
 import { loadBrandFonts } from "@/lib/render/fonts";
 import { useRouter, type Route } from "../../router";
@@ -108,18 +109,43 @@ export function useSelectedFacility(token: string, facilities: PublicFacility[] 
   return { facility, select, clear };
 }
 
-/** Slim anonymous header: brand mark + facility chip with a "Not you?"
- * escape. No sidebar, no account UI. */
-/** Quiet path into the signed-in app for staff who land on the public root.
- * A plain anchor: /admin mounts a different provider tree, so a full page
- * load is exactly right. */
-export function AdminSignInLink() {
+/** The admin entry into the signed-in app for staff who land on the public
+ * root. A plain anchor: /admin mounts a different provider tree, so a full
+ * page load is exactly right. The label follows the session — telling an
+ * already-signed-in admin to "sign in" is a dead end — and the read is
+ * non-blocking: the library paints regardless of how it resolves. */
+export function AdminSignInLink({ variant = "link" }: { variant?: "link" | "button" }) {
+  const [hasSession, setHasSession] = useState(false);
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let alive = true;
+    supabase()
+      .auth.getSession()
+      .then(({ data }) => {
+        if (alive) setHasSession(Boolean(data.session));
+      })
+      .catch(() => {
+        /* no session is the normal case here, not an error */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const label = hasSession ? "Go to admin" : "Admin sign in";
+
+  if (variant === "button") {
+    return (
+      <a href="/admin" className="sp-btn sp-btn-primary" style={{ minHeight: 32, padding: "6px 14px", fontSize: 12 }}>
+        {label}
+      </a>
+    );
+  }
   return (
     <a
       href="/admin"
       style={{ fontSize: 12, color: "var(--fg-3)", textDecoration: "underline", textUnderlineOffset: 3 }}
     >
-      Admin sign in
+      {label}
     </a>
   );
 }
@@ -130,7 +156,7 @@ export function PublicShell({
   children,
 }: {
   data: PublicPortalData | null;
-  /** Root-URL mode: show the quiet admin entry in the footer. */
+  /** Root-URL mode: show the admin entry in the header. */
   adminLink?: boolean;
   children: React.ReactNode;
 }) {
@@ -157,6 +183,7 @@ export function PublicShell({
             {data?.company.name || "Signature HealthCare"}
           </span>
         )}
+        {adminLink && <AdminSignInLink variant="button" />}
       </header>
       {data?.tokenStale && (
         <div
@@ -168,11 +195,6 @@ export function PublicShell({
         </div>
       )}
       <main className="flex-1">{children}</main>
-      {adminLink && (
-        <footer className="text-center py-5">
-          <AdminSignInLink />
-        </footer>
-      )}
     </div>
   );
 }

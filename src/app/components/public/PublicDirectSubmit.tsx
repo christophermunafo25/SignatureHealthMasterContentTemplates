@@ -10,7 +10,6 @@ import {
 } from "@/lib/releaseForm";
 import { useRouter } from "../../router";
 import {
-  BRAND_PAGE_GRADIENT,
   PublicError,
   PublicInactive,
   PublicLoading,
@@ -155,7 +154,7 @@ export function PublicDirectSubmit({ token }: { token: string }) {
   };
 
   return (
-    <PublicShell data={data} adminLink={isHome} pageBackground={BRAND_PAGE_GRADIENT}>
+    <PublicShell data={data} adminLink={isHome}>
       <div className="mx-auto px-5 sm:px-8 py-6" style={{ maxWidth: 640 }}>
         {/* Light-on-navy treatment for everything outside the white cards */}
         <button

@@ -3,7 +3,6 @@ import { ArrowRight, Image, Upload } from "lucide-react";
 import { HOME_REF } from "@/lib/publicClient";
 import { useRouter } from "../../router";
 import {
-  BRAND_PAGE_GRADIENT,
   PublicError,
   PublicInactive,
   PublicLoading,
@@ -77,7 +76,7 @@ export function PublicChooser({ token }: { token: string }) {
   );
 
   return (
-    <PublicShell data={data} adminLink={isHome} pageBackground={BRAND_PAGE_GRADIENT}>
+    <PublicShell data={data} adminLink={isHome}>
       <div className="max-w-3xl mx-auto px-5 sm:px-8 py-10 sm:py-14">
         {/* Light-on-navy header treatment — the page sits on the brand wash */}
         <p className="sp-eyebrow mb-2" style={{ color: "var(--mint)" }}>{data.company.name}</p>

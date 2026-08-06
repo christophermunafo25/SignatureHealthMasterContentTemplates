@@ -218,16 +218,37 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
   return (
     <PublicShell data={data} adminLink={isHome}>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-6">
+        {/* Light-on-navy: this page sits on the brand wash */}
         <button
           onClick={() => navigate(libraryRoute(token))}
           className="flex items-center gap-1.5 mb-5"
-          style={{ fontSize: 13, color: "var(--fg-2)" }}
+          style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}
         >
           <ArrowLeft style={{ width: 14, height: 14 }} />
           All templates
         </button>
 
         <TemplateFillLayout
+          header={
+            <div>
+              <h1
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  fontSize: "clamp(19px, 2.6vw, 28px)",
+                  lineHeight: 1.1,
+                  color: "#ffffff",
+                }}
+              >
+                {template.name}
+              </h1>
+              {template.description && (
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 4 }}>{template.description}</p>
+              )}
+            </div>
+          }
           template={template}
           brandKit={data.brandKit}
           values={values}

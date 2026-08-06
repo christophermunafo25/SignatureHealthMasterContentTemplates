@@ -149,16 +149,18 @@ export function AdminSignInLink({ variant = "link" }: { variant?: "link" | "butt
   return (
     <a
       href="/admin"
-      style={{ fontSize: 12, color: "var(--fg-3)", textDecoration: "underline", textUnderlineOffset: 3 }}
+      // Link variant renders on the brand gradient (PublicInactive) — light.
+      style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", textDecoration: "underline", textUnderlineOffset: 3 }}
     >
       {label}
     </a>
   );
 }
 
-/** Brand page wash for the intake screens (chooser + direct submit): navy
- * deepening into the lighter brand blue. Text outside white cards must use
- * the light-on-navy treatments when this is the page background. */
+/** Brand page wash for the WHOLE public system: navy deepening into the
+ * lighter brand blue. Every facility-facing screen sits on it; text outside
+ * white cards must use the light-on-navy treatments. The signed-in admin
+ * app keeps its clean-white theme — this wash never crosses /admin. */
 export const BRAND_PAGE_GRADIENT = "linear-gradient(180deg, #003b71 0%, #0067b1 100%)";
 
 export function PublicShell({
@@ -170,12 +172,12 @@ export function PublicShell({
   data: PublicPortalData | null;
   /** Root-URL mode: show the admin entry in the header. */
   adminLink?: boolean;
-  /** Override the default linen page wash (e.g. BRAND_PAGE_GRADIENT). */
+  /** Override the default brand gradient wash. */
   pageBackground?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: pageBackground ?? "var(--linen)" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: pageBackground ?? BRAND_PAGE_GRADIENT }}>
       <header
         className="flex items-center justify-between gap-3 px-5 sm:px-8"
         style={{ height: 56, background: "var(--lift)", borderBottom: "1px solid var(--hairline)" }}
@@ -215,12 +217,12 @@ export function PublicShell({
 
 export function PublicInactive({ adminLink }: { adminLink?: boolean }) {
   return (
-    <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "var(--linen)" }}>
+    <div className="min-h-screen flex items-center justify-center p-6" style={{ background: BRAND_PAGE_GRADIENT }}>
       <div className="text-center space-y-2" style={{ maxWidth: 360 }}>
-        <p style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>
+        <p style={{ fontSize: 16, fontWeight: 600, color: "#ffffff" }}>
           {adminLink ? "The portal isn't open yet." : "This link isn't active."}
         </p>
-        <p style={{ fontSize: 13, color: "var(--fg-3)" }}>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.8)" }}>
           {adminLink
             ? "Facility staff: use the link your marketing team shared with you."
             : "It may have been replaced or turned off. Ask your marketing team for a current link to the template portal."}
@@ -237,19 +239,19 @@ export function PublicInactive({ adminLink }: { adminLink?: boolean }) {
 
 export function PublicLoading() {
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--linen)" }}>
-      <p style={{ fontSize: 13, color: "var(--fg-3)" }}>Loading…</p>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: BRAND_PAGE_GRADIENT }}>
+      <p style={{ fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Loading…</p>
     </div>
   );
 }
 
 export function PublicError({ retry }: { retry(): void }) {
   return (
-    <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "var(--linen)" }}>
+    <div className="min-h-screen flex items-center justify-center p-6" style={{ background: BRAND_PAGE_GRADIENT }}>
       <div className="text-center space-y-3">
-        <p style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>We couldn't load the templates.</p>
-        <p style={{ fontSize: 13, color: "var(--fg-3)" }}>Check your connection and try again.</p>
-        <button className="sp-btn sp-btn-primary" onClick={retry}>Try again</button>
+        <p style={{ fontSize: 14, fontWeight: 500, color: "#ffffff" }}>We couldn't load the templates.</p>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Check your connection and try again.</p>
+        <button className="sp-btn sp-btn-solar" onClick={retry}>Try again</button>
       </div>
     </div>
   );

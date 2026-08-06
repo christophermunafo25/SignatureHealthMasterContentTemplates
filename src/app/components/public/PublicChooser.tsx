@@ -25,31 +25,55 @@ export function PublicChooser({ token }: { token: string }) {
   if (state.status === "error") return <PublicError retry={state.retry} />;
   const { data } = state;
 
-  const card: React.CSSProperties = {
-    background: "var(--lift)",
-    border: "1px solid var(--hairline)",
-    borderRadius: "var(--radius-card)",
-    boxShadow: "var(--shadow-e1)",
-  };
-
   const paths = [
     {
+      qualifier: "I already have the photo or video",
       title: "Submit content",
       body:
-        "You already have the photo or video. Upload it with the caption you'd like, answer a few release questions, and send it to the social team.",
+        "Upload what you shot, write the caption you'd like, answer a few release questions, and send it to the social team.",
+      steps: ["Upload", "Answer the form", "Sent for review"],
       bestFor: "Event photos, resident spotlights, anything you shot yourself.",
+      cta: "Upload your content",
+      accent: "var(--mint)",
+      tile: "var(--peach)",
       Icon: Upload,
       go: () => navigate(submitRoute(token)),
     },
     {
+      qualifier: "I need a graphic made",
       title: "Use a brand template",
       body:
-        "Build the graphic here. Pick a Signature template, fill in the details, and we'll take care of the design. The release questions come at the end.",
+        "Pick a Signature template, fill in the details, and we'll take care of the design. The release questions come at the end.",
+      steps: ["Pick a template", "Fill it in", "Answer the form"],
       bestFor: "Birthdays, work anniversaries, hiring posts, holidays.",
+      cta: "Browse templates",
+      accent: "var(--sky)",
+      tile: "var(--sky)",
       Icon: Image,
       go: () => navigate(libraryRoute(token)),
     },
   ];
+
+  const orBadge = (
+    <span
+      className="flex items-center justify-center rounded-full flex-shrink-0"
+      style={{
+        width: 36,
+        height: 36,
+        background: "var(--lift)",
+        border: "1px solid var(--hairline-strong)",
+        fontFamily: "var(--font-mono)",
+        fontSize: 10,
+        fontWeight: 600,
+        letterSpacing: "0.08em",
+        color: "var(--fg-3)",
+        boxShadow: "var(--shadow-e1)",
+      }}
+      aria-hidden
+    >
+      OR
+    </span>
+  );
 
   return (
     <PublicShell data={data} adminLink={isHome}>
@@ -74,45 +98,93 @@ export function PublicChooser({ token }: { token: string }) {
           brand&rsquo;s channels.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {paths.map(({ title, body, bestFor, Icon, go }) => (
-            <button
-              key={title}
-              onClick={go}
-              className="group text-left p-5 flex flex-col gap-3 transition-all"
-              style={card}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span
-                  className="flex items-center justify-center flex-shrink-0 rounded-full"
-                  style={{ width: 36, height: 36, background: "var(--peach)" }}
-                >
-                  <Icon style={{ width: 16, height: 16, color: "var(--ink)" }} />
-                </span>
-                <span
-                  className="flex items-center justify-center flex-shrink-0 rounded-full transition-transform group-hover:translate-x-0.5"
-                  style={{ width: 30, height: 30, background: "var(--peach)" }}
-                >
-                  <ArrowRight style={{ width: 14, height: 14, color: "var(--ink)" }} />
-                </span>
-              </div>
-              <h2
+        <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
+          {/* Desktop: the OR badge floats between the two cards. */}
+          <span className="hidden sm:flex absolute inset-0 items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
+            {orBadge}
+          </span>
+          {paths.map(({ qualifier, title, body, steps, bestFor, cta, accent, tile, Icon, go }, i) => (
+            <React.Fragment key={title}>
+              {/* Mobile: the OR divider sits between the stacked cards. */}
+              {i === 1 && <span className="flex sm:hidden justify-center -my-1">{orBadge}</span>}
+              <button
+                onClick={go}
+                className="group text-left flex flex-col overflow-hidden transition-all"
                 style={{
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  fontSize: 16,
-                  letterSpacing: "0.04em",
-                  color: "var(--ink)",
+                  background: "var(--lift)",
+                  border: "1px solid var(--hairline)",
+                  borderTop: `4px solid ${accent}`,
+                  borderRadius: "var(--radius-card)",
+                  boxShadow: "var(--shadow-e1)",
                 }}
               >
-                {title}
-              </h2>
-              <p style={{ fontSize: 13, lineHeight: 1.55, color: "var(--fg-2)" }}>{body}</p>
-              <p style={{ fontSize: 12, lineHeight: 1.5, color: "var(--fg-3)" }}>
-                <span style={{ fontWeight: 600, color: "var(--fg-2)" }}>Best for:</span> {bestFor}
-              </p>
-            </button>
+                <span className="flex flex-col gap-3 p-5 flex-1">
+                  {/* The decision, in the visitor's own words */}
+                  <span
+                    className="self-start rounded-full px-3 py-1"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 10.5,
+                      fontWeight: 600,
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      color: "var(--ink)",
+                      background: `color-mix(in srgb, ${accent} 22%, transparent)`,
+                    }}
+                  >
+                    {qualifier}
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span
+                      className="flex items-center justify-center flex-shrink-0"
+                      style={{ width: 40, height: 40, borderRadius: "var(--radius-icon, 10px)", background: tile }}
+                    >
+                      <Icon style={{ width: 17, height: 17, color: "var(--ink)" }} />
+                    </span>
+                    <h2
+                      style={{
+                        fontFamily: "var(--font-display)",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        fontSize: 17,
+                        letterSpacing: "0.04em",
+                        color: "var(--ink)",
+                      }}
+                    >
+                      {title}
+                    </h2>
+                  </span>
+                  <p style={{ fontSize: 13, lineHeight: 1.55, color: "var(--fg-2)" }}>{body}</p>
+                  {/* How the path unfolds, at a glance */}
+                  <span className="flex items-center flex-wrap gap-1.5" aria-label={`Steps: ${steps.join(", then ")}`}>
+                    {steps.map((step, si) => (
+                      <React.Fragment key={step}>
+                        {si > 0 && <ArrowRight aria-hidden style={{ width: 10, height: 10, color: "var(--fg-4)" }} />}
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--fg-3)", whiteSpace: "nowrap" }}>
+                          {step}
+                        </span>
+                      </React.Fragment>
+                    ))}
+                  </span>
+                  <p style={{ fontSize: 12, lineHeight: 1.5, color: "var(--fg-3)", marginTop: "auto" }}>
+                    <span style={{ fontWeight: 600, color: "var(--fg-2)" }}>Best for:</span> {bestFor}
+                  </p>
+                </span>
+                {/* Labeled CTA footer — each path says where it goes */}
+                <span
+                  className="flex items-center justify-between px-5 py-3"
+                  style={{ borderTop: "1px solid var(--hairline)", background: "var(--paper)" }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{cta}</span>
+                  <span
+                    className="flex items-center justify-center flex-shrink-0 rounded-full transition-transform group-hover:translate-x-0.5"
+                    style={{ width: 28, height: 28, background: tile }}
+                  >
+                    <ArrowRight style={{ width: 13, height: 13, color: "var(--ink)" }} />
+                  </span>
+                </span>
+              </button>
+            </React.Fragment>
           ))}
         </div>
 

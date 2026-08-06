@@ -156,18 +156,26 @@ export function AdminSignInLink({ variant = "link" }: { variant?: "link" | "butt
   );
 }
 
+/** Brand page wash for the intake screens (chooser + direct submit): navy
+ * deepening into the lighter brand blue. Text outside white cards must use
+ * the light-on-navy treatments when this is the page background. */
+export const BRAND_PAGE_GRADIENT = "linear-gradient(180deg, #003b71 0%, #0067b1 100%)";
+
 export function PublicShell({
   data,
   adminLink,
+  pageBackground,
   children,
 }: {
   data: PublicPortalData | null;
   /** Root-URL mode: show the admin entry in the header. */
   adminLink?: boolean;
+  /** Override the default linen page wash (e.g. BRAND_PAGE_GRADIENT). */
+  pageBackground?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "var(--linen)" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: pageBackground ?? "var(--linen)" }}>
       <header
         className="flex items-center justify-between gap-3 px-5 sm:px-8"
         style={{ height: 56, background: "var(--lift)", borderBottom: "1px solid var(--hairline)" }}

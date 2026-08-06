@@ -3,6 +3,7 @@ import { ArrowRight, Image, Upload } from "lucide-react";
 import { HOME_REF } from "@/lib/publicClient";
 import { useRouter } from "../../router";
 import {
+  BRAND_PAGE_GRADIENT,
   PublicError,
   PublicInactive,
   PublicLoading,
@@ -76,9 +77,10 @@ export function PublicChooser({ token }: { token: string }) {
   );
 
   return (
-    <PublicShell data={data} adminLink={isHome}>
+    <PublicShell data={data} adminLink={isHome} pageBackground={BRAND_PAGE_GRADIENT}>
       <div className="max-w-3xl mx-auto px-5 sm:px-8 py-10 sm:py-14">
-        <p className="sp-eyebrow mb-2">{data.company.name}</p>
+        {/* Light-on-navy header treatment — the page sits on the brand wash */}
+        <p className="sp-eyebrow mb-2" style={{ color: "var(--mint)" }}>{data.company.name}</p>
         <h1
           style={{
             fontFamily: "var(--font-display)",
@@ -87,13 +89,13 @@ export function PublicChooser({ token }: { token: string }) {
             fontSize: "clamp(22px, 3.2vw, 34px)",
             letterSpacing: "0.06em",
             lineHeight: 1.05,
-            color: "var(--ink)",
+            color: "#ffffff",
             marginBottom: 8,
           }}
         >
           Send us something to post
         </h1>
-        <p style={{ fontFamily: "var(--font-body)", color: "var(--fg-2)", fontSize: 14, maxWidth: 440, marginBottom: 24 }}>
+        <p style={{ fontFamily: "var(--font-body)", color: "rgba(255,255,255,0.85)", fontSize: 14, maxWidth: 440, marginBottom: 24 }}>
           The Signature social team reviews everything before it goes live on the
           brand&rsquo;s channels.
         </p>
@@ -188,7 +190,7 @@ export function PublicChooser({ token }: { token: string }) {
           ))}
         </div>
 
-        <p className="text-center" style={{ fontSize: 12, color: "var(--fg-4)", marginTop: 20 }}>
+        <p className="text-center" style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 20 }}>
           Not sure which? Start with a template. You can always upload your own
           photo inside one.
         </p>

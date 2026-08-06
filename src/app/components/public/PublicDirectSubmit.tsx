@@ -10,6 +10,7 @@ import {
 } from "@/lib/releaseForm";
 import { useRouter } from "../../router";
 import {
+  BRAND_PAGE_GRADIENT,
   PublicError,
   PublicInactive,
   PublicLoading,
@@ -154,19 +155,20 @@ export function PublicDirectSubmit({ token }: { token: string }) {
   };
 
   return (
-    <PublicShell data={data} adminLink={isHome}>
+    <PublicShell data={data} adminLink={isHome} pageBackground={BRAND_PAGE_GRADIENT}>
       <div className="mx-auto px-5 sm:px-8 py-6" style={{ maxWidth: 640 }}>
+        {/* Light-on-navy treatment for everything outside the white cards */}
         <button
           onClick={() => navigate(portalRoute(token))}
           className="flex items-center gap-1.5 mb-5"
-          style={{ fontSize: 13, color: "var(--fg-2)" }}
+          style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}
         >
           <ArrowLeft style={{ width: 14, height: 14 }} />
           Back
         </button>
 
         <div id="rf-info" className="mb-5">
-          <p className="sp-eyebrow mb-2">{data.company.name}</p>
+          <p className="sp-eyebrow mb-2" style={{ color: "var(--mint)" }}>{data.company.name}</p>
           <h1
             style={{
               fontFamily: "var(--font-display)",
@@ -175,12 +177,12 @@ export function PublicDirectSubmit({ token }: { token: string }) {
               fontSize: "clamp(20px, 3vw, 30px)",
               letterSpacing: "0.06em",
               lineHeight: 1.05,
-              color: "var(--ink)",
+              color: "#ffffff",
             }}
           >
             Submit content
           </h1>
-          <p style={{ fontSize: 13, color: "var(--fg-2)", marginTop: 6, maxWidth: 460 }}>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 6, maxWidth: 460 }}>
             Upload your photo or video, answer the release questions, and the
             Signature social team takes it from there.
           </p>
@@ -208,10 +210,11 @@ export function PublicDirectSubmit({ token }: { token: string }) {
         />
 
         <div className="mt-4 space-y-2">
+          {/* Orange CTA — the navy primary button would vanish on this wash */}
           <button
             onClick={() => void handleSubmit()}
             disabled={busy}
-            className="sp-btn sp-btn-primary w-full"
+            className="sp-btn sp-btn-solar w-full"
             style={{ padding: "11px 14px" }}
           >
             {busy ? (
@@ -221,11 +224,15 @@ export function PublicDirectSubmit({ token }: { token: string }) {
             )}
             {uploading ? uploadStatus ?? "Uploading…" : submitting ? "Sending…" : "Submit for review"}
           </button>
-          <p className="text-center" style={{ fontSize: 11, color: "var(--fg-4)" }}>
+          <p className="text-center" style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>
             The Signature social team reviews and posts submissions.
           </p>
           {submitError && (
-            <p role="alert" className="flex items-center gap-1.5 justify-center" style={{ fontSize: 12, color: "var(--danger)" }}>
+            <p
+              role="alert"
+              className="flex items-center gap-1.5 justify-center rounded-lg px-3 py-2"
+              style={{ fontSize: 12, color: "var(--danger)", background: "var(--lift)" }}
+            >
               <AlertTriangle style={{ width: 13, height: 13, flexShrink: 0 }} />
               {submitError}
             </p>

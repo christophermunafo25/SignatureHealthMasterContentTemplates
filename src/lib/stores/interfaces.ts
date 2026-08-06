@@ -97,23 +97,45 @@ export interface PeopleStore {
   remove(companyId: string, userId: string): Promise<void>;
 }
 
+/** Query-side filter for the submissions register — shared by the Kanban
+ * board, the list view, and Form Records. Every field is applied IN THE
+ * QUERY, never in post-fetch JS. */
+export interface SubmissionFilter {
+  status?: import("../types").SubmissionStatus | "all";
+  statuses?: import("../types").SubmissionStatus[];
+  kind?: import("../types").SubmissionKind | "all";
+  facilityId?: string;
+  templateId?: string;
+  /** created_at range (ISO). */
+  from?: string;
+  to?: string;
+  /** requested_post_date range (YYYY-MM-DD). */
+  postDateFrom?: string;
+  postDateTo?: string;
+  platform?: string;
+  flaggedOnly?: boolean;
+  search?: string;
+  /** Sort column (default createdAt) and direction (default desc) — the
+   * records register sorts in the QUERY so pagination stays correct. */
+  orderBy?: "createdAt" | "requestedPostDate";
+  orderDir?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+}
+
 /** The review queue. Admin-only: facility staff have no account and no
  * read path back into the queue — anonymous inserts happen through the
  * submit-content Edge Function via service role. */
 export interface SubmissionStore {
   /** Filtering happens IN THE QUERY — 69 facilities submitting weekly
    * outgrow fetch-then-filter-in-JS within months. */
-  list(
+  list(companyId: string, filter?: SubmissionFilter): Promise<import("../types").Submission[]>;
+  /** Per-status counts under the current filter, for the board's column
+   * headers. Counted in the QUERY (head + exact), never by listing rows. */
+  counts(
     companyId: string,
-    filter?: {
-      status?: import("../types").SubmissionStatus | "all";
-      facilityId?: string;
-      templateId?: string;
-      from?: string;
-      to?: string;
-      search?: string;
-    },
-  ): Promise<import("../types").Submission[]>;
+    filter?: Omit<SubmissionFilter, "status" | "statuses" | "limit" | "offset">,
+  ): Promise<Record<import("../types").SubmissionStatus, number>>;
   /** The dashboard stat strip. */
   stats(companyId: string): Promise<{
     awaitingReview: number;
@@ -141,6 +163,9 @@ export interface SubmissionStore {
   /** Resolve a preview_path to a viewable URL (signed URL on Supabase; the
    * stored data URL on the dev backend). */
   previewUrl(path: string): Promise<string | null>;
+  /** Batch-sign uploaded assets for display and download, keyed by path.
+   * Signed URLs are a render-time projection and are never persisted. */
+  assetUrls(assets: import("../types").SubmissionAsset[]): Promise<Record<string, string>>;
 }
 
 /** The facility roster behind the shared portal link. Deactivate rather

@@ -11,21 +11,32 @@ The core design principle is **subtraction**: the only thing an end user can cha
 **Members** open a published template, fill in the fields the admin exposed (with guardrails like character limits, required fields, and auto-fit text), preview the result live, and export a pixel-perfect PNG. A caption template merges their answers into ready-to-post copy.
 
 **Facilities** (v2.1) reach the portal through ONE shared company link —
-an unguessable URL (and printable QR) with a searchable facility gate in
-front: staff pick their facility once, then browse a mobile-first library
-of published templates, fill in fields, edit the caption, and **submit
-for review** (no download, no caption copy on the facility side). The
-submission lands in the admin **Submissions** dashboard with a stat
-strip, status tabs, query-side filters, bulk actions, and J/K/Enter/A/D
-keyboard flow; the social team fixes typos against a frozen snapshot,
-downloads the corrected PNG, marks it posted — or declines with a
-required reason that can be emailed to the submitter, reversibly. The
-link, its 14-day rotation grace window, the kill switch, and the
-facility roster live on the Portal Access screen. An admin can also opt
-the portal into the **bare site URL** (Portal Access → "Public portal at
-the site address"): the root serves the same facility experience with no
-token in the address, while the signed-in app lives at `/admin`. Sign-in
-is invite-only, and the interface is a single clean-white theme.
+an unguessable URL (and printable QR): staff browse a mobile-first
+library of published templates, fill in fields, edit the caption, and
+**submit for review** (no download, no caption copy on the facility
+side). The link, its 14-day rotation grace window, the kill switch, and
+the facility roster live on the Portal Access screen. An admin can also
+opt the portal into the **bare site URL** (Portal Access → "Public
+portal at the site address"): the root serves the same facility
+experience with no token in the address, while the signed-in app lives
+at `/admin`. Sign-in is invite-only, and the interface is a single
+clean-white theme.
+
+**Dual intake + release form** (v2.2): the public root is a chooser
+between two paths that share one **Social Media Update Form**. *Submit
+content* lets a facility upload its own photos, videos, or documents
+(up to 10 files, 200 MB each) with proposed post copy — no template
+involved. *Use a brand template* keeps the build-then-submit flow, with
+the release form appearing as a modal at submit time, the rendered
+graphic and caption pre-loaded. Answering "No" to the photo, minor, or
+off-campus release questions blocks submission with guidance; "No" on
+VP-of-Operations approval flags the submission for review instead. The
+admin **Submissions** screen is now a Kanban **board** (Submissions /
+Approved / Declined / Posted, drag-and-drop plus a keyboard-and-touch
+"Move to…" menu), with the classic list — stat strip, tabs, bulk
+actions, J/K/Enter/A/D — one toggle away. **Form Records** (`/records`)
+is a searchable, filterable register of every release form with
+read-only detail views and CSV export.
 
 **Brand Studio** holds each company's kit: unlimited palette colors, heading and body fonts (Google Fonts or uploads), logos, and named type styles that act as a rules engine. A field bound to the "Heading" style inherits everything that style defines, and changing the style restyles every bound field across every template instantly.
 
@@ -39,6 +50,9 @@ is invite-only, and the interface is a single clean-white theme.
 - Guarded member inputs: max length, required, auto-fit and fixed-width text, aspect-ratio-enforced image cropping
 - Caption templates with `{field_key}` merge tags
 - Reliable PNG export (fonts embedded, cross-origin images pre-converted, mobile share sheet support)
+- Dual public intake (v2.2): direct media upload or brand template, both gated by the Social Media Update Form with hard blocks on missing releases
+- Kanban submissions board with drag-and-drop review flow, plus the classic keyboard-driven list view
+- Form Records: audit register of every release form, filterable by two independent date ranges, exportable to CSV
 - Insights dashboard: opens, downloads, 30-day trend, template leaderboard
 - Multi-tenant auth on Supabase (email/password, invites, admin and member roles, row-level security), with light and dark themes throughout
 
@@ -66,6 +80,12 @@ Open the printed localhost URL and the first-run wizard walks you through creati
 
 2. Apply the migrations in `supabase/migrations/` (via `supabase db push` or the SQL editor). The database ships empty of tenant data; onboarding creates everything.
 
+   **v2.2 storage note:** migration `0028` raises the `submissions`
+   bucket to 200 MB per file and widens its allowed types to photos,
+   videos, PDFs, and Office documents — but the project's **global**
+   upload size limit (Dashboard → Storage → Settings) must also be
+   raised to at least 200 MB or the bucket limit has no effect.
+
 3. Deploy the Edge Functions:
 
    ```bash
@@ -75,6 +95,12 @@ Open the printed localhost URL and the first-run wizard walks you through creati
 
    The three `public-*` functions are token-verified, not JWT-verified —
    `supabase/config.toml` sets `verify_jwt = false` for them.
+
+   Upgrading to v2.2 redeploys two existing functions (no new ones):
+
+   ```bash
+   supabase functions deploy public-upload submit-content
+   ```
 
    For submission notification email, set the function secrets (and have
    IT add SPF/DKIM on the sending domain):

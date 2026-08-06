@@ -1,25 +1,40 @@
 import React from "react";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Files } from "lucide-react";
 import type { BrandKit, FieldValues, TemplateSchema } from "@/lib/types";
+import type { ReleaseForm } from "@/lib/releaseForm";
 import { SchemaRenderer } from "../SchemaRenderer";
+import type { PendingAsset } from "./ReleaseForm";
 
 /** Confirmation state after a facility submission: what was sent, a
- * thumbnail, and plain-language copy about what happens next. */
+ * thumbnail, and plain-language copy about what happens next. Template
+ * submissions preview through SchemaRenderer; direct submissions show the
+ * first uploaded image (or a file-count summary). */
 export function PublicSubmitted({
   template,
   brandKit,
   values,
+  assets = [],
+  releaseForm,
   facilityName,
   submitterEmail,
   onCreateAnother,
 }: {
-  template: TemplateSchema;
+  template: TemplateSchema | null;
   brandKit: BrandKit | null;
   values: FieldValues;
+  assets?: PendingAsset[];
+  releaseForm?: ReleaseForm;
   facilityName: string;
   submitterEmail?: string;
   onCreateAnother(): void;
 }) {
+  const firstImage = assets.find((a) => a.mimeType.startsWith("image/") && a.previewUrl);
+  const requested = releaseForm?.requestedPostDate
+    ? `You asked for it to go up on ${formatDate(releaseForm.requestedPostDate)}${
+        releaseForm.requestedPostTime ? ` at ${releaseForm.requestedPostTime}` : ""
+      }.`
+    : "";
+
   return (
     <div className="max-w-md mx-auto px-5 py-10 text-center space-y-5">
       <CheckCircle2 style={{ width: 40, height: 40, color: "var(--success)", margin: "0 auto" }} />
@@ -37,28 +52,59 @@ export function PublicSubmitted({
           Sent for review
         </h1>
         <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--fg-2)" }}>
-          The Signature social team has your graphic from {facilityName}. They'll
-          review it and post it on the brand's channels — no further action
-          needed on your end.
+          The Signature social team has your {template ? "graphic" : "content"} from {facilityName}.
+          {" "}
+          {requested && <b style={{ color: "var(--fg-1)", fontWeight: 600 }}>{requested}</b>}
+          {" "}They&rsquo;ll review it and post it on the brand&rsquo;s channels — no
+          further action needed on your end.
           {submitterEmail ? ` A confirmation copy is on its way to ${submitterEmail}.` : ""}
         </p>
       </div>
-      <div
-        className="mx-auto overflow-hidden rounded-xl"
-        style={{
-          maxWidth: 280,
-          border: "1px solid var(--hairline)",
-          background: "var(--surface-sunken)",
-          aspectRatio: `${template.canvasWidth} / ${template.canvasHeight}`,
-        }}
-      >
-        <div className="pointer-events-none w-full h-full">
-          <SchemaRenderer schema={template} values={values} brandKit={brandKit} instrument={false} />
+
+      {template ? (
+        <div
+          className="mx-auto overflow-hidden rounded-xl"
+          style={{
+            maxWidth: 280,
+            border: "1px solid var(--hairline)",
+            background: "var(--surface-sunken)",
+            aspectRatio: `${template.canvasWidth} / ${template.canvasHeight}`,
+          }}
+        >
+          <div className="pointer-events-none w-full h-full">
+            <SchemaRenderer schema={template} values={values} brandKit={brandKit} instrument={false} />
+          </div>
         </div>
-      </div>
+      ) : firstImage ? (
+        <div
+          className="mx-auto overflow-hidden rounded-xl"
+          style={{ maxWidth: 280, border: "1px solid var(--hairline)", background: "var(--surface-sunken)" }}
+        >
+          <img src={firstImage.previewUrl} alt="Your submitted photo" style={{ width: "100%", display: "block" }} />
+        </div>
+      ) : assets.length > 0 ? (
+        <p
+          className="mx-auto flex items-center justify-center gap-2 rounded-xl px-4 py-3"
+          style={{ maxWidth: 280, border: "1px solid var(--hairline)", background: "var(--lift)", fontSize: 13, color: "var(--fg-2)" }}
+        >
+          <Files style={{ width: 15, height: 15, color: "var(--fg-3)" }} />
+          {assets.length} file{assets.length === 1 ? "" : "s"} attached
+        </p>
+      ) : null}
+
       <button className="sp-btn sp-btn-primary" onClick={onCreateAnother}>
         Create another
       </button>
     </div>
   );
+}
+
+function formatDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 }

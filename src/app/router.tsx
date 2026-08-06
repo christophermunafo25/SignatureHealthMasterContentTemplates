@@ -17,12 +17,21 @@ export type Route =
   | { name: "submissions" }
   | { name: "submissionDetail"; submissionId: string }
   | { name: "portalAccess" }
-  | { name: "publicPortal"; token: string }
+  // v2.2 public intake: the root (tokened or not) is a CHOOSER between the
+  // direct-upload path and the template library; the grid moved to /browse.
+  | { name: "publicPortal"; token: string } // chooser (tokened)
+  | { name: "publicLibrary"; token: string }
+  | { name: "publicSubmit"; token: string }
   | { name: "publicTemplate"; token: string; templateId: string }
   // Root-URL public portal (no token in the address; resolved server-side
   // to the company that opted in via portal_public).
-  | { name: "publicHome" }
-  | { name: "publicHomeTemplate"; templateId: string };
+  | { name: "publicHome" } // chooser (root mode)
+  | { name: "publicHomeLibrary" }
+  | { name: "publicHomeSubmit" }
+  | { name: "publicHomeTemplate"; templateId: string }
+  // v2.2 Form Records — the admin register of release forms.
+  | { name: "records" }
+  | { name: "recordDetail"; submissionId: string };
 
 export function pathFor(route: Route): string {
   switch (route.name) {
@@ -30,6 +39,10 @@ export function pathFor(route: Route): string {
       return "/admin";
     case "publicHome":
       return "/";
+    case "publicHomeLibrary":
+      return "/browse";
+    case "publicHomeSubmit":
+      return "/submit";
     case "publicHomeTemplate":
       return `/p/${encodeURIComponent(route.templateId)}`;
     case "onboarding":
@@ -54,10 +67,18 @@ export function pathFor(route: Route): string {
       return `/submissions/${encodeURIComponent(route.submissionId)}`;
     case "portalAccess":
       return "/portal-access";
+    case "records":
+      return "/records";
+    case "recordDetail":
+      return `/records/${encodeURIComponent(route.submissionId)}`;
     case "publicPortal":
       return `/g/${encodeURIComponent(route.token)}`;
+    case "publicLibrary":
+      return `/g/${encodeURIComponent(route.token)}/browse`;
+    case "publicSubmit":
+      return `/g/${encodeURIComponent(route.token)}/submit`;
     case "publicTemplate":
-      return `/g/${encodeURIComponent(route.token)}/${encodeURIComponent(route.templateId)}`;
+      return `/g/${encodeURIComponent(route.token)}/t/${encodeURIComponent(route.templateId)}`;
   }
 }
 
@@ -65,12 +86,16 @@ export function pathFor(route: Route): string {
  * decides what the signed-in user may actually see from there. */
 export function routeFor(pathname: string): Route {
   const parts = pathname.split("/").filter(Boolean).map(decodeURIComponent);
-  const [head, second, third] = parts;
+  const [head, second, third, fourth] = parts;
   switch (head) {
     case undefined:
       // The bare URL is the anonymous facility portal; the signed-in app
       // lives under /admin.
       return { name: "publicHome" };
+    case "browse":
+      return { name: "publicHomeLibrary" };
+    case "submit":
+      return { name: "publicHomeSubmit" };
     case "admin":
       return { name: "portal" };
     case "p":
@@ -96,11 +121,21 @@ export function routeFor(pathname: string): Route {
     case "portal-access":
     case "facility-links": // pre-v2.1 path, kept resolving
       return { name: "portalAccess" };
+    case "records":
+      return second ? { name: "recordDetail", submissionId: second } : { name: "records" };
     case "g":
       if (!second) return { name: "portal" };
-      return third
-        ? { name: "publicTemplate", token: second, templateId: third }
-        : { name: "publicPortal", token: second };
+      if (!third) return { name: "publicPortal", token: second };
+      if (third === "browse") return { name: "publicLibrary", token: second };
+      if (third === "submit") return { name: "publicSubmit", token: second };
+      if (third === "t") {
+        return fourth
+          ? { name: "publicTemplate", token: second, templateId: fourth }
+          : { name: "publicLibrary", token: second };
+      }
+      // Legacy shape /g/:token/:templateId — links already in circulation
+      // keep opening their template.
+      return { name: "publicTemplate", token: second, templateId: third };
     default:
       return { name: "portal" };
   }

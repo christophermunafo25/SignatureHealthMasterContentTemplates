@@ -4,6 +4,8 @@ import { isSupabaseConfigured, supabase } from "@/lib/stores/supabase/client";
 import { applyBrandTheme } from "@/lib/theme";
 import { loadBrandFonts } from "@/lib/render/fonts";
 import { useRouter, type Route } from "../../router";
+import { PublicChooser } from "./PublicChooser";
+import { PublicDirectSubmit } from "./PublicDirectSubmit";
 import { PublicPortal } from "./PublicPortal";
 import { PublicTemplateUse } from "./PublicTemplateUse";
 
@@ -11,6 +13,10 @@ import { PublicTemplateUse } from "./PublicTemplateUse";
  * link (/g/…) and the root-URL public portal (ref === HOME_REF). */
 export const portalRoute = (token: string): Route =>
   token === HOME_REF ? { name: "publicHome" } : { name: "publicPortal", token };
+export const libraryRoute = (token: string): Route =>
+  token === HOME_REF ? { name: "publicHomeLibrary" } : { name: "publicLibrary", token };
+export const submitRoute = (token: string): Route =>
+  token === HOME_REF ? { name: "publicHomeSubmit" } : { name: "publicSubmit", token };
 export const templateRoute = (token: string, templateId: string): Route =>
   token === HOME_REF
     ? { name: "publicHomeTemplate", templateId }
@@ -250,13 +256,25 @@ export function PublicApp() {
     return <PublicTemplateUse token={route.token} templateId={route.templateId} />;
   }
   if (route.name === "publicPortal") {
+    return <PublicChooser token={route.token} />;
+  }
+  if (route.name === "publicLibrary") {
     return <PublicPortal token={route.token} />;
+  }
+  if (route.name === "publicSubmit") {
+    return <PublicDirectSubmit token={route.token} />;
   }
   if (route.name === "publicHomeTemplate") {
     return <PublicTemplateUse token={HOME_REF} templateId={route.templateId} />;
   }
   if (route.name === "publicHome") {
+    return <PublicChooser token={HOME_REF} />;
+  }
+  if (route.name === "publicHomeLibrary") {
     return <PublicPortal token={HOME_REF} />;
+  }
+  if (route.name === "publicHomeSubmit") {
+    return <PublicDirectSubmit token={HOME_REF} />;
   }
   return <PublicInactive />;
 }

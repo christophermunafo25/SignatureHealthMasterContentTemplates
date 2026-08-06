@@ -2,14 +2,28 @@
 // client's claims are re-validated server-side — the client validates for
 // UX, this function validates for truth.
 //
-// POST { token, facilityId, templateId, submitterName, submitterEmail,
-//        values, caption, previewPath? }
+// v2.2: two intake kinds share this endpoint. 'template' is the brand
+// template flow (frozen schema snapshot, filled values); 'direct' is a
+// facility uploading their own media with proposed copy. Both carry the
+// Social Media Update Form (release_form).
+//
+// POST { token, kind, facilityId, submitterName, submitterEmail,
+//        releaseForm, assets, previewPath?,
+//        templateId?, values?, caption? }        // template kind only
 // → { ok: true, submissionId }
 
 import { handleOptions, json, serviceClient } from "../_shared/figma.ts";
 import { linkNotFound, rateLimitPublic, requireFacility, requirePortalCompany } from "../_shared/publicAuth.ts";
 import { loadBrandKit, toTemplate } from "../_shared/portalData.ts";
 import { sendSubmissionNotification } from "../_shared/email.ts";
+import {
+  ALLOWED_UPLOAD_MIME,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_FILES,
+  isBlocked,
+  validateReleaseForm,
+  type ReleaseForm,
+} from "../_shared/releaseForm.ts";
 
 // deno-lint-ignore no-explicit-any
 type Row = Record<string, any>;
@@ -50,6 +64,11 @@ function validateValues(
   return null;
 }
 
+/** A storage path claimed by the client must live inside the link's company
+ * prefix and contain no traversal. */
+const validPath = (path: unknown, companyId: string): path is string =>
+  typeof path === "string" && path.startsWith(`${companyId}/`) && !path.includes("..");
+
 Deno.serve(async (req) => {
   const options = handleOptions(req);
   if (options) return options;
@@ -76,6 +95,8 @@ Deno.serve(async (req) => {
   const facility = await requireFacility(db, portal.companyId, body.facilityId);
   if (!facility) return json({ error: "Pick your facility before submitting." }, 400);
 
+  const kind = body.kind === "direct" ? "direct" : "template";
+
   const submitterName = typeof body.submitterName === "string" ? body.submitterName.trim() : "";
   if (submitterName.length < 2 || submitterName.length > 120) {
     return json({ error: "Submitter name is required" }, 400);
@@ -89,52 +110,105 @@ Deno.serve(async (req) => {
   if (!submitterEmail) {
     return json({ error: "A valid email is required." }, 400);
   }
-  const caption = typeof body.caption === "string" ? body.caption.slice(0, 4000) : "";
+
+  // 2. The release form is required on every v2.2 submission and is
+  //    re-validated here with the SAME rules the client ran.
+  const releaseForm = (body.releaseForm && typeof body.releaseForm === "object"
+    ? body.releaseForm
+    : null) as ReleaseForm | null;
+  if (!releaseForm) return json({ error: "The release form is required." }, 400);
+
+  const assets: Array<{ path: string; name: string; mimeType: string; size: number }> =
+    Array.isArray(body.assets) ? body.assets : [];
+  if (assets.length > MAX_UPLOAD_FILES) {
+    return json({ error: `At most ${MAX_UPLOAD_FILES} files per submission.` }, 400);
+  }
+  for (const a of assets) {
+    if (!a || !validPath(a.path, portal.companyId)) {
+      return json({ error: "Invalid asset path" }, 400);
+    }
+    if (typeof a.mimeType !== "string" || !ALLOWED_UPLOAD_MIME[a.mimeType]) {
+      return json({ error: "Unsupported asset type" }, 400);
+    }
+    if (typeof a.size !== "number" || a.size < 0 || a.size > MAX_UPLOAD_BYTES) {
+      return json({ error: "Asset exceeds the 200 MB limit" }, 400);
+    }
+    if (typeof a.name !== "string" || !a.name) return json({ error: "Asset name missing" }, 400);
+  }
+
+  const issues = validateReleaseForm(releaseForm, {
+    hasGeneratedGraphic: kind === "template",
+    assetCount: assets.length,
+  });
+  const blockingIssues = issues.filter((i) => i.severity === "blocking");
+  if (isBlocked(issues)) {
+    return json({ error: blockingIssues[0].message, issues }, 400);
+  }
+  const releaseFlagged = issues.some((i) => i.severity === "flag");
+
   const previewPath = typeof body.previewPath === "string" ? body.previewPath : null;
-  if (previewPath && (!previewPath.startsWith(`${portal.companyId}/`) || previewPath.includes(".."))) {
+  if (previewPath && !validPath(previewPath, portal.companyId)) {
     return json({ error: "Invalid preview path" }, 400);
   }
 
-  // 2. Load the template server-side. NEVER trust the client's templateId to
-  //    belong to the link's company.
-  const { data: tplRow } = await db
-    .from("templates")
-    .select("*, template_fields(*)")
-    .eq("id", typeof body.templateId === "string" ? body.templateId : "")
-    .eq("company_id", portal.companyId)
-    .eq("status", "published")
-    .maybeSingle();
-  if (!tplRow) return json({ error: "Template not found" }, 404);
-  const template = toTemplate(tplRow);
+  // 3. Template kind: load the template server-side (NEVER trust the
+  //    client's templateId to belong to the link's company) and re-validate
+  //    every field value. Direct kind: no template lookup at all.
+  let template: Row | null = null;
+  let values: Record<string, unknown> = {};
+  if (kind === "template") {
+    const { data: tplRow } = await db
+      .from("templates")
+      .select("*, template_fields(*)")
+      .eq("id", typeof body.templateId === "string" ? body.templateId : "")
+      .eq("company_id", portal.companyId)
+      .eq("status", "published")
+      .maybeSingle();
+    if (!tplRow) return json({ error: "Template not found" }, 404);
+    template = toTemplate(tplRow);
 
-  // 3. Re-validate every field value against the template's own guardrails.
-  const values = (body.values && typeof body.values === "object" ? body.values : {}) as Record<string, unknown>;
-  const invalid = validateValues(template, values, portal.companyId);
-  if (invalid) return json({ error: invalid }, 400);
+    values = (body.values && typeof body.values === "object" ? body.values : {}) as Record<string, unknown>;
+    const invalid = validateValues(template, values, portal.companyId);
+    if (invalid) return json({ error: invalid }, 400);
+  }
 
-  // 4. Freeze schema and brand at submit time (see D3).
+  // 4. Caption reconciliation: Q9 IS the caption. The modal has already
+  //    written the edited caption into postText; the server takes postText
+  //    as authoritative so the two can never diverge.
+  const caption = String(releaseForm.postText ?? "").slice(0, 4000);
+
+  // 5. Freeze brand at submit time (both kinds — direct submissions stay
+  //    renderable in the admin UI too).
   const { brandKit, logoUrl, brandAssets } = await loadBrandKit(db, portal.companyId);
 
-  // 5. Insert with original_* equal to the submitted values.
+  // 6. Insert with original_* equal to the submitted values.
   const { data: inserted, error: insErr } = await db
     .from("submissions")
     .insert({
       company_id: portal.companyId,
-      template_id: template.id,
+      kind,
+      template_id: template ? template.id : null,
       facility_id: facility.id,
       // Denormalized: the current legal name, stable even if the roster
       // row is later renamed or deactivated.
       facility_name: facility.name,
-      template_name: template.name,
+      template_name: template ? template.name : "",
       submitter_name: submitterName,
       submitter_email: submitterEmail,
-      values,
-      original_values: values,
+      values: kind === "template" ? values : {},
+      original_values: kind === "template" ? values : {},
       caption,
       original_caption: caption,
-      schema_snapshot: template,
+      schema_snapshot: template, // null for direct — column is nullable as of 0026
       brand_snapshot: { brandKit, logoUrl, brandAssets },
       preview_path: previewPath,
+      release_form: releaseForm,
+      asset_paths: assets,
+      platforms: releaseForm.platforms ?? [],
+      requested_post_date: releaseForm.requestedPostDate || null,
+      requested_post_time: releaseForm.requestedPostTime || null,
+      vp_approved: releaseForm.vpApproved === "Yes",
+      release_flagged: releaseFlagged,
     })
     .select("id")
     .single();
@@ -144,31 +218,38 @@ Deno.serve(async (req) => {
   }
   const submissionId = (inserted as { id: string }).id;
 
-  // 6. Submission volume shows up in Insights as facility downloads.
-  void db
-    .from("usage_events")
-    .insert({
-      company_id: portal.companyId,
-      template_id: template.id,
-      action: "download",
-      user_id: null,
-      facility_id: facility.id,
-    })
-    .then(() => {});
+  // 7. Submission volume shows up in Insights as facility downloads —
+  //    template kind only (a usage event carries a template_id).
+  if (template) {
+    void db
+      .from("usage_events")
+      .insert({
+        company_id: portal.companyId,
+        template_id: template.id,
+        action: "download",
+        user_id: null,
+        facility_id: facility.id,
+      })
+      .then(() => {});
+  }
 
-  // 7-8. Notify the social team (and confirm to the submitter). Email
-  //      failure must NOT fail the submission: a lost email is recoverable
-  //      from the queue, a lost submission is not.
+  // 8. Notify the social team (and confirm to the submitter). Email
+  //    failure must NOT fail the submission: a lost email is recoverable
+  //    from the queue, a lost submission is not.
   try {
     await sendSubmissionNotification(db, {
       companyId: portal.companyId,
       submissionId,
+      kind,
       facilityName: facility.name,
-      templateName: template.name,
+      templateName: template ? template.name : "",
       submitterName,
       submitterEmail,
       caption,
       previewPath,
+      releaseForm,
+      assetCount: assets.length,
+      releaseFlagged,
     });
   } catch (e) {
     console.error("notification failed (submission saved)", e);

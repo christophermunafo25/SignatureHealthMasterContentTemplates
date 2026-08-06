@@ -9,6 +9,7 @@
 // at the START of the notification phase, not on launch day.
 
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+import type { ReleaseForm } from "./releaseForm.ts";
 
 const BRAND_NAVY = "#003B71";
 const BRAND_CREAM = "#F1E4B2";
@@ -47,12 +48,16 @@ export async function sendNotification(
 interface SubmissionEmailParams {
   companyId: string;
   submissionId: string;
+  kind: "template" | "direct";
   facilityName: string;
   templateName: string;
   submitterName: string;
   submitterEmail: string | null;
   caption: string;
   previewPath: string | null;
+  releaseForm: ReleaseForm | null;
+  assetCount: number;
+  releaseFlagged: boolean;
 }
 
 const esc = (s: string) =>
@@ -95,6 +100,21 @@ export async function sendSubmissionNotification(
     minute: "2-digit",
   });
 
+  // v2.2: the release answers ride the team email so triage can happen from
+  // the inbox. The flag line goes FIRST — it's the one thing that changes
+  // how the reviewer treats the submission.
+  const rf = p.releaseForm;
+  const releaseRows = rf
+    ? `
+      <tr><td style="color: #777; padding-right: 14px;">Platforms</td><td>${esc((rf.platforms ?? []).join(", ") || "—")}</td></tr>
+      <tr><td style="color: #777; padding-right: 14px;">Requested post</td><td>${esc(rf.requestedPostDate || "—")}${rf.requestedPostTime ? ` at ${esc(rf.requestedPostTime)}` : ""}</td></tr>
+      <tr><td style="color: #777; padding-right: 14px;">VP approved</td><td>${esc(rf.vpApproved ?? "—")}</td></tr>
+      <tr><td style="color: #777; padding-right: 14px;">Photo release</td><td>${esc(rf.photoRelease ?? "—")}</td></tr>
+      <tr><td style="color: #777; padding-right: 14px;">Minor release</td><td>${esc(rf.minorRelease ?? "—")}</td></tr>
+      <tr><td style="color: #777; padding-right: 14px;">Off-campus release</td><td>${esc(rf.offCampusRelease ?? "—")}</td></tr>
+      <tr><td style="color: #777; padding-right: 14px;">Files</td><td>${p.assetCount}</td></tr>`
+    : "";
+
   // Plain and legible: a work notification in a busy inbox — restraint
   // beats art direction.
   const html = `
@@ -104,12 +124,13 @@ export async function sendSubmissionNotification(
     <h1 style="margin: 4px 0 0; font-size: 18px; color: #ffffff;">New content from ${esc(p.facilityName)}</h1>
   </div>
   <div style="border: 1px solid #e2e2e2; border-top: none; border-radius: 0 0 8px 8px; padding: 20px;">
+    ${p.releaseFlagged ? `<p style="font-size: 14px; font-weight: bold; color: #c62f24; margin: 0 0 14px;">Needs a look: VP of Operations did not approve this event.</p>` : ""}
     ${previewUrl ? `<img src="${previewUrl}" alt="Submitted graphic preview" style="width: 100%; max-width: 420px; display: block; margin: 0 auto 16px; border-radius: 6px; border: 1px solid #e2e2e2;" />` : ""}
     <table style="font-size: 14px; line-height: 1.7; border-collapse: collapse;">
       <tr><td style="color: #777; padding-right: 14px;">Facility</td><td>${esc(p.facilityName)}</td></tr>
-      <tr><td style="color: #777; padding-right: 14px;">Template</td><td>${esc(p.templateName)}</td></tr>
+      <tr><td style="color: #777; padding-right: 14px;">${p.kind === "direct" ? "Type" : "Template"}</td><td>${p.kind === "direct" ? "Direct upload" : esc(p.templateName)}</td></tr>
       <tr><td style="color: #777; padding-right: 14px;">Submitted by</td><td>${esc(p.submitterName)}</td></tr>
-      <tr><td style="color: #777; padding-right: 14px;">Submitted</td><td>${submittedAt} ET</td></tr>
+      <tr><td style="color: #777; padding-right: 14px;">Submitted</td><td>${submittedAt} ET</td></tr>${releaseRows}
     </table>
     ${p.caption ? `
     <p style="font-size: 12px; color: #777; margin: 16px 0 4px; text-transform: uppercase; letter-spacing: 1px;">Caption</p>
@@ -123,24 +144,35 @@ export async function sendSubmissionNotification(
 
   await sendNotification(
     recipients,
-    `New content from ${p.facilityName}: ${p.templateName}`,
+    p.kind === "direct"
+      ? `New content submission — ${p.facilityName}`
+      : `New content from ${p.facilityName}: ${p.templateName}`,
     html,
   );
 
   if (p.submitterEmail) {
+    const what =
+      p.kind === "direct" ? "submission" : `"${esc(p.templateName)}" graphic`;
+    const requestedLine =
+      rf?.requestedPostDate
+        ? `<p style="font-size: 14px; line-height: 1.6;">You asked for it to go up on <b>${esc(rf.requestedPostDate)}</b>${rf.requestedPostTime ? ` at <b>${esc(rf.requestedPostTime)}</b>` : ""}.</p>`
+        : "";
     const confirmHtml = `
 <div style="font-family: Arial, Helvetica, sans-serif; max-width: 520px; margin: 0 auto; color: #1a1a1a;">
-  <h1 style="font-size: 17px; color: ${BRAND_NAVY};">Thanks, ${esc(p.submitterName)} — your graphic is in review</h1>
+  <h1 style="font-size: 17px; color: ${BRAND_NAVY};">Thanks, ${esc(p.submitterName)} — your ${p.kind === "direct" ? "content" : "graphic"} is in review</h1>
   <p style="font-size: 14px; line-height: 1.6;">
-    Your "${esc(p.templateName)}" graphic from ${esc(p.facilityName)} was sent to the
+    Your ${what} from ${esc(p.facilityName)} was sent to the
     ${esc(companyName)} social team. They'll review it and post it on the brand's
     channels — no further action needed on your end.
   </p>
+  ${requestedLine}
   ${previewUrl ? `<img src="${previewUrl}" alt="Your submitted graphic" style="width: 100%; max-width: 380px; display: block; border-radius: 6px; border: 1px solid #e2e2e2;" />` : ""}
 </div>`;
     await sendNotification(
       [p.submitterEmail],
-      `Your ${p.templateName} graphic is in review`,
+      p.kind === "direct"
+        ? "Your content submission is in review"
+        : `Your ${p.templateName} graphic is in review`,
       confirmHtml,
     );
   }

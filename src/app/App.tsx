@@ -19,8 +19,10 @@ import { Dashboard } from "./components/admin/Dashboard";
 import { SettingsAdmin } from "./components/admin/SettingsAdmin";
 import { PublicApp } from "./components/public/PublicApp";
 import { PortalAccess } from "./components/admin/PortalAccess";
-import { SubmissionQueue } from "./components/admin/SubmissionQueue";
+import { SubmissionsScreen } from "./components/admin/SubmissionBoard";
 import { SubmissionDetail } from "./components/admin/SubmissionDetail";
+import { FormRecords } from "./components/admin/FormRecords";
+import { FormRecordDetail } from "./components/admin/FormRecordDetail";
 
 function Screen() {
   const { loading, error, retry, company, role, user, backend, refreshProfile } = useAuth();
@@ -108,8 +110,10 @@ function Screen() {
       {route.name === "people" && adminOnly(<PeopleAdmin />)}
       {route.name === "settings" && adminOnly(<SettingsAdmin />)}
       {route.name === "portalAccess" && adminOnly(<PortalAccess />)}
-      {route.name === "submissions" && adminOnly(<SubmissionQueue />)}
+      {route.name === "submissions" && adminOnly(<SubmissionsScreen />)}
       {route.name === "submissionDetail" && adminOnly(<SubmissionDetail submissionId={route.submissionId} />)}
+      {route.name === "records" && adminOnly(<FormRecords />)}
+      {route.name === "recordDetail" && adminOnly(<FormRecordDetail submissionId={route.submissionId} />)}
     </AppShell>
   );
 }
@@ -145,8 +149,12 @@ function RootSwitch() {
   // always belong to the signed-in tree, never the anonymous one.
   const isPublicRoute =
     route.name === "publicPortal" ||
+    route.name === "publicLibrary" ||
+    route.name === "publicSubmit" ||
     route.name === "publicTemplate" ||
     route.name === "publicHome" ||
+    route.name === "publicHomeLibrary" ||
+    route.name === "publicHomeSubmit" ||
     route.name === "publicHomeTemplate";
   if (isPublicRoute && !arrivedViaAuthLink) {
     return <PublicApp />;

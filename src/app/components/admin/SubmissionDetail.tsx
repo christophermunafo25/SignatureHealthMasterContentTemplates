@@ -10,12 +10,14 @@ import { type SchemaRendererHandle } from "../SchemaRenderer";
 import { TemplateFillLayout } from "../TemplateFillLayout";
 import { relativeTime } from "./SubmissionQueue";
 import { DeclineDialog } from "./DeclineDialog";
+import { DirectSubmissionReview } from "./DirectSubmissionReview";
+import { ReleaseFormPanel } from "./ReleaseFormPanel";
 import { isSupabaseConfigured, supabase } from "@/lib/stores/supabase/client";
 
-/** Review one submission: the same fill layout the facility used, prefilled
- * and fully editable — editing is the point (typos, mostly). The preview
- * renders from the FROZEN schema/brand snapshots, so later template or brand
- * edits never change what's being reviewed. */
+/** Review one submission. Template kind: the same fill layout the facility
+ * used, prefilled and fully editable against the FROZEN schema/brand
+ * snapshots. Direct kind: the uploaded-asset review layout — no template,
+ * no snapshot. */
 export function SubmissionDetail({ submissionId }: { submissionId: string }) {
   const { navigate } = useRouter();
   const subState = useAsync(() => stores.submissions.get(submissionId), [submissionId]);
@@ -35,7 +37,14 @@ export function SubmissionDetail({ submissionId }: { submissionId: string }) {
   if (!subState.data) {
     return <p className="text-center py-24" style={{ fontSize: 13, color: "var(--fg-3)" }}>Submission not found.</p>;
   }
-  return <Loaded initial={subState.data} onBack={() => navigate({ name: "submissions" })} />;
+  const sub = subState.data;
+  const onBack = () => navigate({ name: "submissions" });
+  // A direct submission has no schema snapshot; a legacy row always does.
+  return sub.kind === "direct" || !sub.schemaSnapshot ? (
+    <DirectSubmissionReview initial={sub} onBack={onBack} />
+  ) : (
+    <Loaded initial={sub} onBack={onBack} />
+  );
 }
 
 function Loaded({ initial, onBack }: { initial: Submission; onBack(): void }) {
@@ -50,7 +59,8 @@ function Loaded({ initial, onBack }: { initial: Submission; onBack(): void }) {
   const [exporting, setExporting] = useState(false);
   const rendererRef = useRef<SchemaRendererHandle>(null);
 
-  const template = sub.schemaSnapshot;
+  // Loaded only renders for the template kind (see SubmissionDetail above).
+  const template = sub.schemaSnapshot!;
   const brandKit = sub.brandSnapshot?.brandKit ?? null;
 
   /** Render-time projection of `values`: image fields hold PRIVATE storage
@@ -355,6 +365,9 @@ function Loaded({ initial, onBack }: { initial: Submission; onBack(): void }) {
           </>
         }
       />
+
+      <ReleaseFormPanel submission={sub} />
+
       {declineOpen && (
         <DeclineDialog
           submitterEmail={sub.submitterEmail}

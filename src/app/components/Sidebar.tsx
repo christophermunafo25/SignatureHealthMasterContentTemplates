@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   BarChart3,
+  ClipboardList,
   Frame,
   Inbox,
   Link2,
@@ -87,6 +88,7 @@ const NAV: NavItem[] = [
   { label: "Published Templates", route: { name: "portal" }, Icon: Paintbrush, adminOnly: false, matches: ["portal", "template"] },
   { label: "Template Builder", route: { name: "adminTemplates" }, Icon: Frame, adminOnly: true, matches: ["adminTemplates", "builder"] },
   { label: "Submissions", route: { name: "submissions" }, Icon: Inbox, adminOnly: true, matches: ["submissions", "submissionDetail"] },
+  { label: "Form Records", route: { name: "records" }, Icon: ClipboardList, adminOnly: true, matches: ["records", "recordDetail"] },
   { label: "Insights & Analytics", route: { name: "dashboard" }, Icon: BarChart3, adminOnly: true, matches: ["dashboard"] },
   { label: "Brand Studio", route: { name: "brandStudio" }, Icon: PencilRuler, adminOnly: true, matches: ["brandStudio"] },
   { label: "Portal Access", route: { name: "portalAccess" }, Icon: Link2, adminOnly: true, matches: ["portalAccess"] },

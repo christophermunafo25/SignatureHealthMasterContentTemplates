@@ -8,6 +8,15 @@ import { useRouter } from "../../router";
 import { ErrorState } from "../ErrorState";
 import { FacilityCombobox } from "../FacilityCombobox";
 import { DeclineDialog } from "./DeclineDialog";
+import { SubmissionCardMeta } from "./SubmissionCardMeta";
+import { ViewToggle } from "./SubmissionBoard";
+import {
+  readQueueFilters,
+  toStoreFilter,
+  writeQueueFilters,
+  hasActiveQueueFilters,
+  type QueueFilters,
+} from "./submissionFilters";
 import { isSupabaseConfigured, supabase } from "@/lib/stores/supabase/client";
 
 const TABS: Array<{ key: SubmissionStatus; label: string }> = [
@@ -27,50 +36,6 @@ export function relativeTime(iso: string): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-interface Filters {
-  status: SubmissionStatus;
-  facilityId: string;
-  templateId: string;
-  from: string;
-  to: string;
-  search: string;
-}
-
-const DEFAULT_FILTERS: Filters = {
-  status: "submitted",
-  facilityId: "",
-  templateId: "",
-  from: "",
-  to: "",
-  search: "",
-};
-
-/** Filters live in the URL so a reviewer can share a filtered view. */
-function readFilters(): Filters {
-  const p = new URLSearchParams(window.location.search);
-  const status = p.get("status") as SubmissionStatus | null;
-  return {
-    status: status && TABS.some((t) => t.key === status) ? status : "submitted",
-    facilityId: p.get("facility") ?? "",
-    templateId: p.get("template") ?? "",
-    from: p.get("from") ?? "",
-    to: p.get("to") ?? "",
-    search: p.get("q") ?? "",
-  };
-}
-
-function writeFilters(f: Filters): void {
-  const p = new URLSearchParams();
-  if (f.status !== "submitted") p.set("status", f.status);
-  if (f.facilityId) p.set("facility", f.facilityId);
-  if (f.templateId) p.set("template", f.templateId);
-  if (f.from) p.set("from", f.from);
-  if (f.to) p.set("to", f.to);
-  if (f.search) p.set("q", f.search);
-  const qs = p.toString();
-  window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
 }
 
 /** Signed (or dev data-URL) preview thumbnail for a submission card. */
@@ -95,7 +60,7 @@ function PreviewThumb({ submission }: { submission: Submission }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+export function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="sp-card px-4 py-3 flex-1" style={{ minWidth: 140 }}>
       <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, lineHeight: 1.1, color: "var(--ink)" }}>{value}</p>
@@ -104,38 +69,41 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-/** The social team's working queue: stat strip, status tabs, query-side
- * filters, bulk actions, and J/K/Enter/A/D keyboard flow. /insights stays
- * the analytics product — this screen is for clearing work. */
-export function SubmissionQueue() {
+/** The social team's working queue, now the LIST view behind the Board /
+ * List toggle: stat strip, status tabs, query-side filters, bulk actions,
+ * and the J/K/Enter/A/D keyboard flow the board can't replicate. */
+export function SubmissionQueue({ onSwitchView }: { onSwitchView(): void }) {
   const { company } = useAuth();
   const { navigate } = useRouter();
   const companyId = company?.id ?? "";
 
-  const [filters, setFilters] = useState<Filters>(() => readFilters());
+  const [filters, setFilters] = useState<QueueFilters>(() => ({ ...readQueueFilters(), view: "list" }));
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [focusIndex, setFocusIndex] = useState(0);
   const [declineFor, setDeclineFor] = useState<Submission | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [tick, setTick] = useState(0);
 
-  useEffect(() => writeFilters(filters), [filters]);
+  useEffect(() => writeQueueFilters(filters), [filters]);
 
   const statsState = useAsync(() => stores.submissions.stats(companyId), [companyId, tick]);
   const facilitiesState = useAsync(() => stores.facilities.list(companyId), [companyId]);
   const templatesState = useAsync(() => stores.templates.listAll(companyId), [companyId]);
 
   const listState = useAsync(
-    () =>
-      stores.submissions.list(companyId, {
-        status: filters.status,
-        facilityId: filters.facilityId || undefined,
-        templateId: filters.templateId || undefined,
-        from: filters.from ? new Date(filters.from).toISOString() : undefined,
-        to: filters.to ? new Date(`${filters.to}T23:59:59`).toISOString() : undefined,
-        search: filters.search || undefined,
-      }),
-    [companyId, filters.status, filters.facilityId, filters.templateId, filters.from, filters.to, filters.search, tick],
+    () => stores.submissions.list(companyId, { ...toStoreFilter(filters), status: filters.status }),
+    [
+      companyId,
+      filters.status,
+      filters.kind,
+      filters.flaggedOnly,
+      filters.facilityId,
+      filters.templateId,
+      filters.from,
+      filters.to,
+      filters.search,
+      tick,
+    ],
   );
   const rows = listState.status === "ready" ? listState.data : [];
 
@@ -160,10 +128,19 @@ export function SubmissionQueue() {
     setTick((t) => t + 1);
   };
 
-  const setFilter = (patch: Partial<Filters>) => {
+  const setFilter = (patch: Partial<QueueFilters>) => {
     setSelected(new Set());
     setFocusIndex(0);
     setFilters((f) => ({ ...f, ...patch }));
+  };
+
+  const switchToBoard = () => {
+    setFilters((f) => {
+      const next = { ...f, view: "board" as const };
+      writeQueueFilters(next);
+      return next;
+    });
+    onSwitchView();
   };
 
   const bulk = async (status: SubmissionStatus) => {
@@ -229,12 +206,15 @@ export function SubmissionQueue() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 space-y-5">
-      <div>
-        <h1 className="sp-page-title">Submissions</h1>
-        <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
-          Content from your facilities. Review, fix, download, and mark it
-          posted. <span style={{ color: "var(--fg-4)" }}>J/K move · Enter opens · A approves · D declines.</span>
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="sp-page-title">Submissions</h1>
+          <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
+            Content from your facilities. Review, fix, download, and mark it
+            posted. <span style={{ color: "var(--fg-4)" }}>J/K move · Enter opens · A approves · D declines.</span>
+          </p>
+        </div>
+        <ViewToggle view="list" onSwitch={switchToBoard} />
       </div>
 
       {/* Stat strip — compact, no charts; /insights is the analytics product */}
@@ -319,11 +299,32 @@ export function SubmissionQueue() {
           onChange={(e) => setFilter({ to: e.target.value })}
           aria-label="To date"
         />
-        {(filters.facilityId || filters.templateId || filters.from || filters.to || filters.search) && (
+        <select
+          className="sp-input"
+          style={{ width: "auto", fontSize: 12, padding: "6px 10px" }}
+          value={filters.kind}
+          onChange={(e) => setFilter({ kind: e.target.value as QueueFilters["kind"] })}
+          aria-label="Filter by submission kind"
+        >
+          <option value="">All submissions</option>
+          <option value="template">Templates</option>
+          <option value="direct">Direct uploads</option>
+        </select>
+        <label className="flex items-center gap-1.5" style={{ fontSize: 12, color: "var(--fg-2)" }}>
+          <input
+            type="checkbox"
+            checked={filters.flaggedOnly}
+            onChange={(e) => setFilter({ flaggedOnly: e.target.checked })}
+          />
+          Flagged only
+        </label>
+        {hasActiveQueueFilters(filters) && (
           <button
             className="flex items-center gap-1"
             style={{ fontSize: 12, color: "var(--fg-3)" }}
-            onClick={() => setFilter({ facilityId: "", templateId: "", from: "", to: "", search: "" })}
+            onClick={() =>
+              setFilter({ kind: "", facilityId: "", templateId: "", from: "", to: "", search: "", flaggedOnly: false })
+            }
           >
             <X style={{ width: 12, height: 12 }} />
             Clear filters
@@ -415,7 +416,7 @@ export function SubmissionQueue() {
                 <PreviewThumb submission={s} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate" style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>
-                    {s.templateName}
+                    {s.kind === "direct" ? "Direct upload" : s.templateName}
                     {s.editedAt && (
                       <span style={{ fontSize: 11, color: "var(--fg-3)", fontWeight: 400 }}> · edited</span>
                     )}
@@ -434,6 +435,7 @@ export function SubmissionQueue() {
                       </p>
                     )
                   )}
+                  <SubmissionCardMeta submission={s} />
                 </div>
                 <span className="flex-shrink-0" style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-3)" }}>
                   {relativeTime(s.createdAt)}
@@ -456,7 +458,7 @@ export function SubmissionQueue() {
 }
 
 /** Compact popover wrapper around FacilityCombobox for the filter row. */
-function FacilityFilter({
+export function FacilityFilter({
   value,
   options,
   onChange,

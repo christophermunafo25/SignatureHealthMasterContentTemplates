@@ -156,6 +156,58 @@ failed send never fails a submission. Review adds a reversible
 `notify-submitter` function emails the reason to the submitter, and
 `edited_by`/`edited_at`/`posted_at` stamp the audit trail.
 
+## Dual intake & the release form (v2.2)
+
+The public root is a **chooser**, not the template grid. Two intake
+paths land in the same `submissions` table, discriminated by
+`submissions.kind` (`submission_kind` enum, migration 0026):
+
+- **`template`** — the existing brand-template flow. `schema_snapshot`
+  frozen, `values` filled, preview PNG rendered client-side. The release
+  form opens as a modal at submit time (`ReleaseFormModal`), with the
+  rendered graphic and the caption pre-loaded.
+- **`direct`** — a facility uploads its own media (photos, video, PDFs,
+  Office docs; 10 files, 200 MB each) with proposed post copy. No
+  template: `template_id`/`schema_snapshot` are null (0026 dropped the
+  not-null constraint), `values` is `{}`. `brand_snapshot` is still
+  frozen so the record renders in the admin UI.
+
+Both paths collect the **Social Media Update Form**. `src/lib/releaseForm.ts`
+is the single source of truth for its shape, question copy, and
+validation; `supabase/functions/_shared/releaseForm.ts` is a
+Deno-compatible copy that MUST stay in sync (the Edge runtime can't
+import from `src/`). The client validates for UX; `submit-content`
+re-validates for truth. Answering "No" to the photo/minor/off-campus
+release questions is a hard block server-side; "No" on VP approval sets
+`release_flagged` instead.
+
+The form is stored as one **versioned jsonb document**
+(`submissions.release_form`, `version: 1`), with the high-traffic
+answers denormalized into columns (`platforms text[]`,
+`requested_post_date`, `requested_post_time`, `vp_approved`,
+`release_flagged` — migration 0027) so the Kanban board and the Form
+Records register filter in the query, never in JS. Q9 ("What would you
+like your post to say?") IS the caption: the server writes
+`releaseForm.postText` into `submissions.caption` for both kinds, so
+existing search, cards, and email keep working.
+
+Uploaded files ride `submissions.asset_paths` as
+`[{ path, name, mimeType, size }]` where `path` is a **bare storage
+path** under `{company_id}/` in the private `submissions` bucket —
+resolved to signed URLs at display time only (`assetUrls()` on the
+submission store), never persisted signed. Uploads go through
+`public-upload` (widened mime map + per-file 200 MB cap, migration
+0028; the project's global upload limit must be raised to match) via
+XHR so per-file progress is reportable.
+
+Admin surfaces: the Submissions screen is a **Kanban board**
+(`SubmissionBoard`, native HTML5 drag-and-drop, optimistic moves with
+rollback, a "Move to…" menu as the keyboard/touch path, decline-reason
+dialog gating the Declined column) with the classic list view behind a
+Board/List toggle; `DirectSubmissionReview` handles the no-template
+review layout; **Form Records** (`/records`) is the read-only register
+of every release form with CSV export.
+
 ## App shell
 
 Navigation is a persistent left sidebar (`src/app/components/Sidebar.tsx`,

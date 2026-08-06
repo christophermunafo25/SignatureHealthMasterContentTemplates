@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { ArrowRight, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import { HOME_REF } from "@/lib/publicClient";
 import { useRouter } from "../../router";
 import { TemplateThumbnailBase } from "../TemplateThumbnail";
-import { PublicError, PublicInactive, PublicLoading, PublicShell, templateRoute, usePublicPortal } from "./PublicApp";
+import { PublicError, PublicInactive, PublicLoading, PublicShell, portalRoute, templateRoute, usePublicPortal } from "./PublicApp";
 
 /** Anonymous facility library: the published template grid, open directly —
  * facility, name, and email are asked on the fill page at submission time,
@@ -36,6 +36,14 @@ export function PublicPortal({ token }: { token: string }) {
   return (
     <PublicShell data={data} adminLink={isHome}>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-8 pb-2">
+        <button
+          onClick={() => navigate(portalRoute(token))}
+          className="flex items-center gap-1.5 mb-5"
+          style={{ fontSize: 13, color: "var(--fg-2)" }}
+        >
+          <ArrowLeft style={{ width: 14, height: 14 }} />
+          Back
+        </button>
         <p className="sp-eyebrow mb-2">{data.company.name}</p>
         <h1
           style={{
@@ -49,11 +57,11 @@ export function PublicPortal({ token }: { token: string }) {
             marginBottom: 8,
           }}
         >
-          Create a graphic
+          Choose a template
         </h1>
         <p style={{ fontFamily: "var(--font-body)", color: "var(--fg-2)", fontSize: 14, maxWidth: 420, marginBottom: 18 }}>
-          Pick a template, fill in the details, and send it to the Signature
-          social team to post.
+          Pick a template and fill in the details. You&rsquo;ll answer the release
+          questions at the end, then it goes to the Signature social team to post.
         </p>
         {templates.length > 6 && (
           <div className="relative max-w-md">

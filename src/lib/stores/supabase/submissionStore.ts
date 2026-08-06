@@ -1,11 +1,12 @@
-import type { FieldValues, Submission, SubmissionStatus, TemplateSchema } from "../../types";
-import type { SubmissionStore } from "../interfaces";
+import type { FieldValues, Submission, SubmissionAsset, SubmissionKind, SubmissionStatus, TemplateSchema } from "../../types";
+import type { SubmissionFilter, SubmissionStore } from "../interfaces";
 import { supabase } from "./client";
 
 // deno-style Row typing kept loose: jsonb columns carry domain shapes verbatim.
 interface SubmissionRow {
   id: string;
   company_id: string;
+  kind: SubmissionKind | null;
   template_id: string | null;
   facility_id: string | null;
   facility_name: string;
@@ -16,7 +17,14 @@ interface SubmissionRow {
   original_values: Submission["originalValues"];
   caption: string;
   original_caption: string;
-  schema_snapshot: Submission["schemaSnapshot"];
+  release_form: Submission["releaseForm"] | null;
+  asset_paths: SubmissionAsset[] | null;
+  platforms: string[] | null;
+  requested_post_date: string | null;
+  requested_post_time: string | null;
+  vp_approved: boolean | null;
+  release_flagged: boolean | null;
+  schema_snapshot: TemplateSchema | null;
   brand_snapshot: Submission["brandSnapshot"];
   preview_path: string | null;
   status: SubmissionStatus;
@@ -34,6 +42,8 @@ interface SubmissionRow {
 const toSubmission = (r: SubmissionRow): Submission => ({
   id: r.id,
   companyId: r.company_id,
+  // Legacy pre-v2.2 rows default to the template kind.
+  kind: r.kind ?? "template",
   templateId: r.template_id ?? undefined,
   facilityId: r.facility_id ?? undefined,
   facilityName: r.facility_name,
@@ -44,6 +54,13 @@ const toSubmission = (r: SubmissionRow): Submission => ({
   originalValues: r.original_values ?? {},
   caption: r.caption,
   originalCaption: r.original_caption,
+  releaseForm: r.release_form ?? undefined,
+  assets: r.asset_paths ?? [],
+  platforms: r.platforms ?? [],
+  requestedPostDate: r.requested_post_date ?? undefined,
+  requestedPostTime: r.requested_post_time ?? undefined,
+  vpApproved: r.vp_approved ?? undefined,
+  releaseFlagged: r.release_flagged ?? false,
   schemaSnapshot: r.schema_snapshot,
   brandSnapshot: r.brand_snapshot ?? { brandKit: null, brandAssets: [] },
   previewPath: r.preview_path ?? undefined,
@@ -59,36 +76,68 @@ const toSubmission = (r: SubmissionRow): Submission => ({
   updatedAt: r.updated_at,
 });
 
+const STATUSES: SubmissionStatus[] = ["submitted", "approved", "posted", "archived", "declined"];
+
+/** Apply every SubmissionFilter field to a PostgREST query builder — the
+ * one place the filter → query translation lives (list and counts share it). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyFilter(q: any, filter?: SubmissionFilter): any {
+  if (!filter) return q;
+  if (filter.status && filter.status !== "all") q = q.eq("status", filter.status);
+  if (filter.statuses?.length) q = q.in("status", filter.statuses);
+  if (filter.kind && filter.kind !== "all") q = q.eq("kind", filter.kind);
+  if (filter.facilityId) q = q.eq("facility_id", filter.facilityId);
+  if (filter.templateId) q = q.eq("template_id", filter.templateId);
+  if (filter.from) q = q.gte("created_at", filter.from);
+  if (filter.to) q = q.lte("created_at", filter.to);
+  if (filter.postDateFrom) q = q.gte("requested_post_date", filter.postDateFrom);
+  if (filter.postDateTo) q = q.lte("requested_post_date", filter.postDateTo);
+  if (filter.platform) q = q.contains("platforms", [filter.platform]);
+  if (filter.flaggedOnly) q = q.eq("release_flagged", true);
+  if (filter.search?.trim()) {
+    const s = filter.search.trim().replace(/[%_,]/g, "");
+    q = q.or(`facility_name.ilike.%${s}%,submitter_name.ilike.%${s}%,caption.ilike.%${s}%,template_name.ilike.%${s}%`);
+  }
+  return q;
+}
+
 export class SupabaseSubmissionStore implements SubmissionStore {
-  async list(
-    companyId: string,
-    filter?: {
-      status?: SubmissionStatus | "all";
-      facilityId?: string;
-      templateId?: string;
-      from?: string;
-      to?: string;
-      search?: string;
-    },
-  ): Promise<Submission[]> {
+  async list(companyId: string, filter?: SubmissionFilter): Promise<Submission[]> {
     // Every filter is part of the QUERY — never fetch-all-then-filter.
-    let q = supabase()
-      .from("submissions")
-      .select("*")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
-    if (filter?.status && filter.status !== "all") q = q.eq("status", filter.status);
-    if (filter?.facilityId) q = q.eq("facility_id", filter.facilityId);
-    if (filter?.templateId) q = q.eq("template_id", filter.templateId);
-    if (filter?.from) q = q.gte("created_at", filter.from);
-    if (filter?.to) q = q.lte("created_at", filter.to);
-    if (filter?.search?.trim()) {
-      const s = filter.search.trim().replace(/[%_,]/g, "");
-      q = q.or(`facility_name.ilike.%${s}%,submitter_name.ilike.%${s}%,caption.ilike.%${s}%,template_name.ilike.%${s}%`);
+    const ascending = filter?.orderDir === "asc";
+    let q = supabase().from("submissions").select("*").eq("company_id", companyId);
+    q =
+      filter?.orderBy === "requestedPostDate"
+        ? q.order("requested_post_date", { ascending, nullsFirst: ascending }).order("created_at", { ascending: false })
+        : q.order("created_at", { ascending });
+    q = applyFilter(q, filter);
+    if (filter?.limit !== undefined) {
+      const offset = filter.offset ?? 0;
+      q = q.range(offset, offset + filter.limit - 1);
     }
     const { data, error } = await q;
     if (error) throw error;
     return (data as SubmissionRow[]).map(toSubmission);
+  }
+
+  async counts(
+    companyId: string,
+    filter?: Omit<SubmissionFilter, "status" | "statuses" | "limit" | "offset">,
+  ): Promise<Record<SubmissionStatus, number>> {
+    // Head + exact count per status — the board headers never list rows.
+    const one = async (status: SubmissionStatus): Promise<number> => {
+      let q = supabase()
+        .from("submissions")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId)
+        .eq("status", status);
+      q = applyFilter(q, filter);
+      const { count, error } = await q;
+      if (error) throw error;
+      return count ?? 0;
+    };
+    const values = await Promise.all(STATUSES.map(one));
+    return Object.fromEntries(STATUSES.map((s, i) => [s, values[i]])) as Record<SubmissionStatus, number>;
   }
 
   async stats(companyId: string) {
@@ -222,5 +271,24 @@ export class SupabaseSubmissionStore implements SubmissionStore {
       return null;
     }
     return data?.signedUrl ?? null;
+  }
+
+  async assetUrls(assets: SubmissionAsset[]): Promise<Record<string, string>> {
+    // One batch createSignedUrls call for the whole gallery (same pattern as
+    // signedValues). Results key by BARE path and are never persisted.
+    const paths = assets.map((a) => a.path).filter(Boolean);
+    if (paths.length === 0) return {};
+    const { data, error } = await supabase()
+      .storage.from("submissions")
+      .createSignedUrls(paths, 60 * 60);
+    if (error) {
+      console.warn("signing submission assets failed", error);
+      return {};
+    }
+    const out: Record<string, string> = {};
+    for (const row of data ?? []) {
+      if (row.path && row.signedUrl) out[row.path] = row.signedUrl;
+    }
+    return out;
   }
 }

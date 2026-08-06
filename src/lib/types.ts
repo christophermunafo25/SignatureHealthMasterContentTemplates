@@ -291,12 +291,27 @@ export interface Facility {
 
 export type SubmissionStatus = "submitted" | "approved" | "posted" | "archived" | "declined";
 
+/** v2.2: how the submission arrived. 'template' is the brand template flow
+ * (frozen schema snapshot, filled values); 'direct' is a facility uploading
+ * their own media with proposed copy — no template involved. */
+export type SubmissionKind = "template" | "direct";
+
+/** One uploaded file on a submission. `path` is a BARE storage path in the
+ * private submissions bucket. Resolve to a signed URL at display time only. */
+export interface SubmissionAsset {
+  path: string;
+  name: string;
+  mimeType: string;
+  size: number;
+}
+
 /** A facility submission: an editable document (field values + frozen
  * schema/brand snapshots). The PNG preview is a byproduct — the
  * authoritative artifact is re-rendered from values + snapshot. */
 export interface Submission {
   id: string;
   companyId: string;
+  kind: SubmissionKind;
   templateId?: string;
   facilityId?: string;
   /** Denormalized so the queue reads correctly after link/template deletion. */
@@ -309,9 +324,20 @@ export interface Submission {
   originalValues: FieldValues;
   caption: string;
   originalCaption: string;
+  /** v2.2 Social Media Update Form document. Absent on pre-v2.2 rows —
+   * every UI surface must tolerate a submission with no release form. */
+  releaseForm?: import("./releaseForm").ReleaseForm;
+  /** Facility-uploaded media (direct kind, or extra files on either kind). */
+  assets: SubmissionAsset[];
+  /** Denormalized from the release form for query-side filtering. */
+  platforms: string[];
+  requestedPostDate?: string; // YYYY-MM-DD
+  requestedPostTime?: string;
+  vpApproved?: boolean;
+  releaseFlagged: boolean;
   /** Frozen at submit time — later template/brand edits never change a
-   * queued item. */
-  schemaSnapshot: TemplateSchema;
+   * queued item. Null for direct submissions (no template). */
+  schemaSnapshot: TemplateSchema | null;
   brandSnapshot: { brandKit: BrandKit | null; logoUrl?: string | null; brandAssets: BrandAsset[] };
   previewPath?: string;
   status: SubmissionStatus;

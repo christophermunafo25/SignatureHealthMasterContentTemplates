@@ -21,6 +21,7 @@ import type {
   CompanyStore,
   DesignImportProvider,
   FacilityStore,
+  SubmissionFilter,
   SubmissionStore,
   TemplateStore,
   UsageStore,
@@ -303,26 +304,39 @@ export function randomToken(): string {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
+/** Rows written before v2.2 lack the kind/assets/release columns. */
+const withSubmissionDefaults = (s: Submission): Submission => ({
+  ...s,
+  kind: s.kind ?? "template",
+  assets: s.assets ?? [],
+  platforms: s.platforms ?? [],
+  releaseFlagged: s.releaseFlagged ?? false,
+});
+
 /** Dev-mode review queue: full implementation so the whole facility →
  * review pipeline is demoable without Supabase. */
 export class LocalSubmissionStore implements SubmissionStore {
-  async list(
-    companyId: string,
-    filter?: {
-      status?: SubmissionStatus | "all";
-      facilityId?: string;
-      templateId?: string;
-      from?: string;
-      to?: string;
-      search?: string;
-    },
-  ): Promise<Submission[]> {
-    let rows = (readDb().submissions as Submission[]).filter((s) => s.companyId === companyId);
+  /** The dev backend's equivalent of the Supabase applyFilter — same
+   * SubmissionFilter semantics against the in-memory rows. */
+  private filtered(companyId: string, filter?: SubmissionFilter): Submission[] {
+    let rows = (readDb().submissions as Submission[])
+      .filter((s) => s.companyId === companyId)
+      .map(withSubmissionDefaults);
     if (filter?.status && filter.status !== "all") rows = rows.filter((s) => s.status === filter.status);
+    if (filter?.statuses?.length) rows = rows.filter((s) => filter.statuses!.includes(s.status));
+    if (filter?.kind && filter.kind !== "all") rows = rows.filter((s) => s.kind === filter.kind);
     if (filter?.facilityId) rows = rows.filter((s) => s.facilityId === filter.facilityId);
     if (filter?.templateId) rows = rows.filter((s) => s.templateId === filter.templateId);
     if (filter?.from) rows = rows.filter((s) => s.createdAt >= filter.from!);
     if (filter?.to) rows = rows.filter((s) => s.createdAt <= filter.to!);
+    if (filter?.postDateFrom) {
+      rows = rows.filter((s) => s.requestedPostDate && s.requestedPostDate >= filter.postDateFrom!);
+    }
+    if (filter?.postDateTo) {
+      rows = rows.filter((s) => s.requestedPostDate && s.requestedPostDate <= filter.postDateTo!);
+    }
+    if (filter?.platform) rows = rows.filter((s) => s.platforms.includes(filter.platform!));
+    if (filter?.flaggedOnly) rows = rows.filter((s) => s.releaseFlagged);
     if (filter?.search?.trim()) {
       const q = filter.search.trim().toLowerCase();
       rows = rows.filter(
@@ -333,11 +347,46 @@ export class LocalSubmissionStore implements SubmissionStore {
           s.templateName.toLowerCase().includes(q),
       );
     }
-    return rows.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const dir = filter?.orderDir === "asc" ? 1 : -1;
+    if (filter?.orderBy === "requestedPostDate") {
+      return rows.slice().sort((a, b) => {
+        const av = a.requestedPostDate ?? "";
+        const bv = b.requestedPostDate ?? "";
+        if (av !== bv) return av < bv ? -dir : dir;
+        return b.createdAt.localeCompare(a.createdAt);
+      });
+    }
+    return rows.slice().sort((a, b) => dir * a.createdAt.localeCompare(b.createdAt));
+  }
+
+  async list(companyId: string, filter?: SubmissionFilter): Promise<Submission[]> {
+    let rows = this.filtered(companyId, filter);
+    if (filter?.limit !== undefined) {
+      const offset = filter.offset ?? 0;
+      rows = rows.slice(offset, offset + filter.limit);
+    }
+    return rows;
+  }
+
+  async counts(
+    companyId: string,
+    filter?: Omit<SubmissionFilter, "status" | "statuses" | "limit" | "offset">,
+  ): Promise<Record<SubmissionStatus, number>> {
+    const rows = this.filtered(companyId, filter as SubmissionFilter);
+    const out: Record<SubmissionStatus, number> = {
+      submitted: 0,
+      approved: 0,
+      posted: 0,
+      archived: 0,
+      declined: 0,
+    };
+    for (const s of rows) out[s.status] += 1;
+    return out;
   }
 
   async get(id: string): Promise<Submission | null> {
-    return (readDb().submissions as Submission[]).find((s) => s.id === id) ?? null;
+    const found = (readDb().submissions as Submission[]).find((s) => s.id === id);
+    return found ? withSubmissionDefaults(found) : null;
   }
 
   async update(
@@ -402,6 +451,10 @@ export class LocalSubmissionStore implements SubmissionStore {
   async signedValues(_schema: TemplateSchema, values: FieldValues): Promise<FieldValues> {
     // Dev backend keeps data URLs in values — nothing to sign.
     return values;
+  }
+  async assetUrls(assets: import("../../types").SubmissionAsset[]): Promise<Record<string, string>> {
+    // Dev backend stores data URLs in asset paths — each keys itself.
+    return Object.fromEntries(assets.map((a) => [a.path, a.path]));
   }
 }
 

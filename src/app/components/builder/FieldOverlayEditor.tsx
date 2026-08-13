@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Moveable from "react-moveable";
-import type { TemplateField } from "@/lib/types";
+import type { FacilitySnapshot, TemplateField } from "@/lib/types";
 import { useDataUrl } from "@/lib/render/useDataUrl";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { loadGoogleFonts } from "@/lib/render/fonts";
@@ -24,6 +24,8 @@ interface FieldOverlayEditorProps {
   onDropElement(paletteId: string, at: { x: number; y: number }): void;
   /** Right-click on a field (id) or empty canvas (null, with canvas point). */
   onContextMenu(pos: { x: number; y: number }, fieldId: string | null, canvasPoint: { x: number; y: number }): void;
+  /** Preview-as facility for facility_logo elements (null → placeholder). */
+  facility?: FacilitySnapshot | null;
 }
 
 interface DrawState {
@@ -56,6 +58,7 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
     onDraw,
     onDropElement,
     onContextMenu,
+    facility,
   } = props;
   const { kit } = useBrand();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -320,7 +323,7 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
                   pointerEvents: "none",
                 }}
               >
-                <FieldBoxContent field={f} value={undefined} brandKit={kit} />
+                <FieldBoxContent field={f} value={undefined} brandKit={kit} facility={facility} />
               </div>
             </div>
             {(isSelected || hoveredId === f.id) && (

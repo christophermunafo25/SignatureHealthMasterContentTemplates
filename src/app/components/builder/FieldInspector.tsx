@@ -27,8 +27,10 @@ import {
 } from "lucide-react";
 import type { BrandKit, CornerRadius, FieldType, TemplateField, TextGradient } from "@/lib/types";
 import { stores } from "@/lib/stores";
+import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBrand } from "@/lib/brand/BrandContext";
+import { useRouter } from "../../router";
 import { GOOGLE_FONTS } from "@/lib/render/fonts";
 import { suggestFieldKey } from "@/lib/caption";
 import { getTypeStyle, lockedProperties, ruleSentences } from "@/lib/brand/resolveStyle";
@@ -57,6 +59,7 @@ const FIELD_TYPES: Array<{ value: FieldType; label: string }> = [
   { value: "image", label: "Image" },
   { value: "select", label: "Dropdown" },
   { value: "shape", label: "Shape" },
+  { value: "facility_logo", label: "Facility logo (auto)" },
 ];
 
 const SHAPE_KINDS: Array<{ value: NonNullable<TemplateField["shape"]>; label: string }> = [
@@ -236,6 +239,7 @@ export function FieldInspector({
   const { company } = useAuth();
   const isText = field.type === "text" || field.type === "multiline" || field.type === "select";
   const isShape = field.type === "shape";
+  const isFacilityLogo = field.type === "facility_logo";
   const isStatic = Boolean(field.static);
   const boundStyle = getTypeStyle(kit, field.typeStyleKey);
   const locked = lockedProperties(boundStyle);
@@ -345,7 +349,21 @@ export function FieldInspector({
               if (t === "shape") {
                 // Shapes are always static design elements with a fill.
                 onChange({ type: t, shape: field.shape ?? "rect", static: true, colorHex: field.colorHex ?? "#d9d9d9" });
-              } else if (isShape) {
+              } else if (t === "facility_logo") {
+                // Auto-resolved: sheds member-input semantics and the static
+                // flag (excluded from the form by TYPE), never crops.
+                onChange({
+                  type: t,
+                  shape: undefined,
+                  static: undefined,
+                  staticValue: undefined,
+                  required: undefined,
+                  placeholder: undefined,
+                  maxLength: undefined,
+                  aspectRatio: undefined,
+                  objectFit: field.objectFit ?? "contain",
+                });
+              } else if (isShape || isFacilityLogo) {
                 onChange({ type: t, shape: undefined, static: undefined, staticValue: undefined });
               } else {
                 onChange({ type: t });
@@ -377,7 +395,9 @@ export function FieldInspector({
           </div>
         )}
 
-        {field.type !== "select" && !isShape && (
+        {isFacilityLogo && <FacilityLogoNote />}
+
+        {field.type !== "select" && !isShape && !isFacilityLogo && (
           <label
             className="flex items-start gap-2 cursor-pointer"
             style={{ fontSize: 13, color: "var(--ink)" }}
@@ -623,15 +643,15 @@ export function FieldInspector({
             />
           </div>
         </div>
-        {(field.type === "image" || (isShape && (field.shape ?? "rect") === "rect")) && (
+        {(field.type === "image" || isFacilityLogo || (isShape && (field.shape ?? "rect") === "rect")) && (
           <CornerRadiusControl
             value={field.cornerRadius}
             onChange={(cornerRadius) => onChange({ cornerRadius })}
           />
         )}
-        {field.type === "image" && (
+        {(field.type === "image" || isFacilityLogo) && (
           <div className="grid grid-cols-2 gap-3">
-            {!isStatic && (
+            {field.type === "image" && !isStatic && (
               <div>
                 <label className={labelClass} style={labelStyle}>Crop ratio (w/h)</label>
                 <input
@@ -650,7 +670,8 @@ export function FieldInspector({
               <select
                 className={controlClass}
                 style={controlStyle}
-                value={field.objectFit ?? "cover"}
+                // A logo defaults to contain — cropping a mark is never right.
+                value={field.objectFit ?? (isFacilityLogo ? "contain" : "cover")}
                 onChange={(e) => onChange({ objectFit: e.target.value as TemplateField["objectFit"] })}
               >
                 <option value="cover">Cover (fill box)</option>
@@ -816,8 +837,9 @@ export function FieldInspector({
         </Section>
       )}
 
-      {/* Member input — what the member sees in their form; gone on fixed elements */}
-      {!isStatic && (
+      {/* Member input — what the member sees in their form; gone on fixed
+          elements and auto-resolved facility logos */}
+      {!isStatic && !isFacilityLogo && (
         <Section id="member-input" title="Member input">
           {isText && field.type !== "select" && (
             <div>
@@ -867,6 +889,50 @@ export function FieldInspector({
             </label>
           </div>
         </Section>
+      )}
+    </div>
+  );
+}
+
+/** Inspector explainer for facility_logo elements, with a live count of
+ * active facilities still missing a logo (linked to the roster). */
+function FacilityLogoNote() {
+  const { company } = useAuth();
+  const { navigate } = useRouter();
+  const facilitiesState = useAsync(
+    () => (company ? stores.facilities.list(company.id) : Promise.resolve([])),
+    [company?.id],
+  );
+  const facilities = facilitiesState.status === "ready" ? facilitiesState.data : null;
+  const active = facilities?.filter((f) => f.active) ?? [];
+  const missing = active.filter((f) => !f.logoUrl).length;
+
+  return (
+    <div
+      className="rounded-lg px-3 py-2 space-y-1"
+      style={{ background: "var(--accent-wash)", border: "1px solid var(--accent-border)" }}
+    >
+      <p style={{ fontSize: 11, color: "var(--fg-2)" }}>
+        Resolves to the submitting facility&rsquo;s logo. Upload logos on the
+        Portal Access page.
+      </p>
+      {facilities && active.length > 0 && (
+        <p style={{ fontSize: 11, color: missing > 0 ? "var(--solar)" : "var(--fg-3)" }}>
+          {missing === 0 ? (
+            <>All {active.length} active facilities have a logo.</>
+          ) : (
+            <>
+              {missing} of {active.length} active facilities {missing === 1 ? "is" : "are"} missing a
+              logo — those render a placeholder.{" "}
+              <button
+                onClick={() => navigate({ name: "portalAccess" })}
+                style={{ textDecoration: "underline", color: "inherit" }}
+              >
+                Open the roster
+              </button>
+            </>
+          )}
+        </p>
       )}
     </div>
   );

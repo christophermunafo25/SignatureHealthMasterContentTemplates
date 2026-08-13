@@ -1,6 +1,7 @@
 import React from "react";
 import {
   AlignLeft,
+  Building2,
   ChevronDown,
   Circle,
   Image as ImageIcon,
@@ -17,6 +18,7 @@ const ICONS: Record<string, React.ComponentType<{ style?: React.CSSProperties }>
   multiline: AlignLeft,
   image: ImageIcon,
   select: ChevronDown,
+  facility_logo: Building2,
   rect: Square,
   ellipse: Circle,
   triangle: Triangle,

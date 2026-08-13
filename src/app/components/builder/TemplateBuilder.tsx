@@ -17,6 +17,8 @@ import {
 import type {
   CanvasPreset,
   DesignImportResult,
+  Facility,
+  FacilitySnapshot,
   NewTemplateInput,
   TemplateField,
   TemplateSchema,
@@ -518,6 +520,30 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   );
 
   // -------------------------------------------------------------------------
+  // Preview-as facility (facility_logo elements)
+  // -------------------------------------------------------------------------
+
+  const hasFacilityLogo = draft.fields.some((f) => f.type === "facility_logo");
+  const facilitiesState = useAsync<Facility[]>(
+    () => (company && hasFacilityLogo ? stores.facilities.list(company.id) : Promise.resolve([])),
+    [company?.id, hasFacilityLogo],
+  );
+  const facilities = facilitiesState.status === "ready" ? facilitiesState.data : [];
+  const [previewFacilityId, setPreviewFacilityId] = useState<string | null>(null);
+  /** Defaults to the first active facility WITH a logo, so dropping the
+   * element immediately shows a real logo instead of a placeholder. */
+  const previewFacility: FacilitySnapshot | null = useMemo(() => {
+    if (!hasFacilityLogo) return null;
+    const chosen =
+      (previewFacilityId && facilities.find((f) => f.id === previewFacilityId)) ||
+      facilities.find((f) => f.active && f.logoUrl) ||
+      null;
+    return chosen
+      ? { name: chosen.name, shortName: chosen.shortName, logoUrl: chosen.logoUrl ?? null }
+      : null;
+  }, [hasFacilityLogo, previewFacilityId, facilities]);
+
+  // -------------------------------------------------------------------------
   // Context menu actions
   // -------------------------------------------------------------------------
 
@@ -890,6 +916,28 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                         : "Member preview — placeholder content, locked styling."}
                     </p>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                    {hasFacilityLogo && (
+                      <label className="flex items-center gap-1.5" style={{ fontSize: 11, color: "var(--fg-3)" }}>
+                        Preview as
+                        <select
+                          className="sp-input"
+                          style={{ padding: "4px 8px", fontSize: 12, width: "auto", maxWidth: 180 }}
+                          aria-label="Preview as facility"
+                          value={previewFacilityId ?? ""}
+                          onChange={(e) => setPreviewFacilityId(e.target.value || null)}
+                        >
+                          <option value="">Auto (first with a logo)</option>
+                          {facilities
+                            .filter((f) => f.active)
+                            .map((f) => (
+                              <option key={f.id} value={f.id}>
+                                {f.shortName}
+                                {f.logoUrl ? "" : " (no logo)"}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                    )}
                     {mode === "edit" && (
                       <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--hairline-strong)" }}>
                         <button
@@ -949,6 +997,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                       onContextMenu={(pos, fieldId, canvasPoint) =>
                         setMenu({ x: pos.x, y: pos.y, fieldId, canvasPoint })
                       }
+                      facility={previewFacility}
                     />
                   ) : (
                     <SchemaRenderer
@@ -956,6 +1005,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                       values={{}}
                       brandKit={kit}
                       instrument={false}
+                      facility={previewFacility}
                     />
                   )}
                 </div>

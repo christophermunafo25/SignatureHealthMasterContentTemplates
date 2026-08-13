@@ -27,6 +27,7 @@ export const PALETTE_ITEMS: PaletteItem[] = [
   { id: "multiline", type: "multiline", label: "Multiline text", width: 520, height: 220, group: "fields" },
   { id: "image", type: "image", label: "Image", width: 420, height: 420, group: "fields" },
   { id: "select", type: "select", label: "Dropdown", width: 480, height: 90, group: "fields" },
+  { id: "facility_logo", type: "facility_logo", label: "Facility logo", width: 320, height: 160, group: "fields" },
   { id: "rect", type: "shape", shape: "rect", label: "Rectangle", width: 420, height: 300, group: "shapes" },
   { id: "ellipse", type: "shape", shape: "ellipse", label: "Ellipse", width: 320, height: 320, group: "shapes" },
   { id: "triangle", type: "shape", shape: "triangle", label: "Triangle", width: 320, height: 280, group: "shapes" },
@@ -53,7 +54,7 @@ export function fieldFromPalette(
   const height = Math.min(item.height, canvas.height);
   const x = Math.round(Math.max(0, Math.min(canvas.width - width, at.x - width / 2)));
   const y = Math.round(Math.max(0, Math.min(canvas.height - height, at.y - height / 2)));
-  const isText = item.type !== "image" && item.type !== "shape";
+  const isText = item.type !== "image" && item.type !== "shape" && item.type !== "facility_logo";
   return {
     id: newId(),
     label: item.label,
@@ -81,6 +82,8 @@ export function fieldFromPalette(
         }
       : {}),
     ...(item.type === "select" ? { options: [] } : {}),
+    // Auto-resolved from the submitting facility; a logo is never cropped.
+    ...(item.type === "facility_logo" ? { objectFit: "contain" as const } : {}),
   };
 }
 

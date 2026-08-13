@@ -923,7 +923,7 @@ function FacilityLogoNote() {
           ) : (
             <>
               {missing} of {active.length} active facilities {missing === 1 ? "is" : "are"} missing a
-              logo — those render a placeholder.{" "}
+              logo — those render the default Signature mark.{" "}
               <button
                 onClick={() => navigate({ name: "portalAccess" })}
                 style={{ textDecoration: "underline", color: "inherit" }}

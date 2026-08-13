@@ -53,7 +53,10 @@ Types:
   `static: true` — shapes never appear in the member form.
 - `facility_logo` — auto-resolved: renders the logo of the facility in
   context (`facilities.logo_storage_path`, uploaded on Portal Access), never
-  a member value. Excluded from the member form by TYPE (`isFormField` in
+  a member value. No facility in context, or a facility without its own
+  logo, falls back to the bundled default mark
+  (`src/assets/default-facility-logo.png`) — the element always shows a
+  real logo. Excluded from the member form by TYPE (`isFormField` in
   `src/lib/fields.ts`), NOT via the `static` flag, so "Fixed element" keeps
   its one meaning. Honors box geometry, `opacity`, `cornerRadius`, and
   `objectFit` (default `contain` — a logo is never cropped); no `required` /

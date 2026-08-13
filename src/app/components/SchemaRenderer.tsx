@@ -13,6 +13,7 @@ import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
 import { loadGoogleFonts, schemaFontFamilies } from "@/lib/render/fonts";
 import { exportSchemaPng, renderSchemaBlob, type ExportOutcome } from "@/lib/render/exportPng";
 import { stores } from "@/lib/stores";
+import defaultFacilityLogo from "@/assets/default-facility-logo.png";
 
 export interface SchemaRendererHandle {
   /** Renders the canvas to PNG and hands it to the user. Records a
@@ -373,7 +374,12 @@ function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {
 /** Auto-resolved facility logo. The logo travels through useDataUrl because
  * html-to-image silently drops cross-origin images from the PNG export — a
  * bare storage URL would preview correctly and export a blank box, the exact
- * failure this element type exists to prevent. */
+ * failure this element type exists to prevent.
+ *
+ * No facility in context, or a facility without its own logo, falls back to
+ * the bundled corporate mark — the element always shows a real logo, so
+ * template thumbnails and pre-pick previews never sit on a dashed box. The
+ * placeholder below survives only for a failed image load. */
 function FacilityLogoFieldBox({
   field,
   facility,
@@ -381,7 +387,7 @@ function FacilityLogoFieldBox({
   field: TemplateField;
   facility?: FacilitySnapshot | null;
 }) {
-  const logoDataUrl = useDataUrl(facility?.logoUrl ?? undefined);
+  const logoDataUrl = useDataUrl(facility?.logoUrl ?? defaultFacilityLogo);
 
   if (logoDataUrl) {
     return (

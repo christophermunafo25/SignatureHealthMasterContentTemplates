@@ -19,6 +19,8 @@ export interface PublicFacility {
   name: string;
   shortName: string;
   state?: string;
+  /** Resolved public logo URL for facility_logo elements (null when none). */
+  logoUrl: string | null;
 }
 
 export interface PublicPortalData {
@@ -101,7 +103,13 @@ async function fetchLocal(
   const facilities = (db.facilities as Facility[])
     .filter((f) => f.companyId === company.id && f.active)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.shortName.localeCompare(b.shortName))
-    .map((f) => ({ id: f.id, name: f.name, shortName: f.shortName || f.name, state: f.state }));
+    .map((f) => ({
+      id: f.id,
+      name: f.name,
+      shortName: f.shortName || f.name,
+      state: f.state,
+      logoUrl: f.logoUrl ?? null,
+    }));
 
   const kit = (db.brandKits as BrandKit[]).find((k) => k.companyId === company.id) ?? null;
   const assets = (db.brandAssets as BrandAsset[]).filter((a) => a.companyId === company.id);

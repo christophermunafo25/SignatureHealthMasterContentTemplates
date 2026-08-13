@@ -18,7 +18,7 @@ import {
   requireFacility,
   requirePortalCompany,
 } from "../_shared/publicAuth.ts";
-import { loadBrandKit, loadPublishedTemplates, toTemplate } from "../_shared/portalData.ts";
+import { facilityLogoUrl, loadBrandKit, loadPublishedTemplates, toTemplate } from "../_shared/portalData.ts";
 
 // deno-lint-ignore no-explicit-any
 type Row = Record<string, any>;
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
 
   const { data: facilityRows } = await db
     .from("facilities")
-    .select("id, name, short_name, state")
+    .select("id, name, short_name, state, logo_storage_path")
     .eq("company_id", portal.companyId)
     .eq("active", true)
     .order("sort_order", { ascending: true });
@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
     name: f.name,
     shortName: f.short_name || f.name,
     state: f.state ?? undefined,
+    logoUrl: facilityLogoUrl(f.logo_storage_path),
   }));
 
   const { brandKit, logoUrl, brandAssets } = await loadBrandKit(db, portal.companyId);

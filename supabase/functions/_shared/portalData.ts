@@ -5,7 +5,7 @@
 
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
-const BUCKETS = {
+export const BUCKETS = {
   brandAssets: "brand-assets",
   templateBackgrounds: "template-backgrounds",
 } as const;
@@ -15,8 +15,14 @@ function publicUrl(bucket: string, path: string): string {
   return `${base}/storage/v1/object/public/${bucket}/${path}`;
 }
 
-const resolveUrl = (bucket: string, path: string): string =>
+export const resolveUrl = (bucket: string, path: string): string =>
   /^https?:\/\//.test(path) ? path : publicUrl(bucket, path);
+
+/** Resolved public URL for a facility's logo (null when none uploaded).
+ * Logos live in the PUBLIC brand-assets bucket on purpose: the anonymous
+ * portal renders them and snapshots must never carry expiring signed URLs. */
+export const facilityLogoUrl = (logoStoragePath: string | null | undefined): string | null =>
+  logoStoragePath ? resolveUrl(BUCKETS.brandAssets, logoStoragePath) : null;
 
 const opt = <T>(v: T | null | undefined): T | undefined => (v === null || v === undefined ? undefined : v);
 

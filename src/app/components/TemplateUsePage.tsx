@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Download, RefreshCw } from "lucide-react";
-import type { FieldValues } from "@/lib/types";
+import type { Facility, FieldValues } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { useRouter } from "../router";
 import { ErrorState } from "./ErrorState";
+import { FacilityCombobox } from "./FacilityCombobox";
 import { type SchemaRendererHandle } from "./SchemaRenderer";
-import { TemplateFillLayout, missingRequiredFields } from "./TemplateFillLayout";
+import { TemplateFillLayout, missingRequiredFields, needsFacility } from "./TemplateFillLayout";
 
 /** Member self-service flow: fields on the left, live preview on the right,
  * suggested caption, PNG download. Members change field CONTENT only.
@@ -15,9 +17,30 @@ import { TemplateFillLayout, missingRequiredFields } from "./TemplateFillLayout"
  * the review detail page — this file owns only the download action. */
 export function TemplateUsePage({ templateId }: { templateId: string }) {
   const { kit } = useBrand();
+  const { company } = useAuth();
   const { navigate } = useRouter();
   const templateState = useAsync(() => stores.templates.get(templateId), [templateId]);
   const template = templateState.status === "ready" ? templateState.data : null;
+
+  // Facility context for facility_logo elements. Agency staff have no
+  // facility affiliation on their user row, so this is a per-session pick —
+  // shown ONLY when the template actually carries a facility_logo element.
+  const requiresFacility = Boolean(template && needsFacility(template));
+  const facilitiesState = useAsync<Facility[]>(
+    () =>
+      requiresFacility && company ? stores.facilities.list(company.id) : Promise.resolve([]),
+    [requiresFacility, company?.id],
+  );
+  const facilities = facilitiesState.status === "ready" ? facilitiesState.data : [];
+  const [facilityId, setFacilityId] = useState<string | null>(null);
+  const selectedFacility = facilityId ? facilities.find((f) => f.id === facilityId) ?? null : null;
+  const facilitySnapshot = selectedFacility
+    ? {
+        name: selectedFacility.name,
+        shortName: selectedFacility.shortName,
+        logoUrl: selectedFacility.logoUrl ?? null,
+      }
+    : null;
   const [values, setValues] = useState<FieldValues>({});
   const [caption, setCaption] = useState<string | null>(null); // null → follow suggestion
   const [exporting, setExporting] = useState(false);
@@ -115,19 +138,68 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
         caption={caption}
         onCaptionEdit={setCaption}
         rendererRef={rendererRef}
+        facility={facilitySnapshot}
+        header={
+          <div className="space-y-4">
+            <div>
+              <h1 className="sp-page-title">{template.name}</h1>
+              {template.description && (
+                <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>{template.description}</p>
+              )}
+            </div>
+            {requiresFacility && !selectedFacility && (
+              <div
+                className="p-4 space-y-2.5"
+                style={{ background: "var(--lift)", border: "1px solid var(--hairline)", borderRadius: 12 }}
+              >
+                <div>
+                  <p className="sp-eyebrow">Facility</p>
+                  <p style={{ fontSize: 13, color: "var(--fg-2)", marginTop: 2 }}>
+                    This template shows a facility&rsquo;s logo — pick which facility
+                    this graphic is for.
+                  </p>
+                </div>
+                <FacilityCombobox
+                  facilities={facilities.filter((f) => f.active)}
+                  onSelect={(f) => setFacilityId(f.id)}
+                />
+              </div>
+            )}
+            {requiresFacility && selectedFacility && (
+              <div
+                className="flex items-center justify-between gap-3 px-4 py-2.5"
+                style={{ background: "var(--lift)", border: "1px solid var(--hairline)", borderRadius: 12 }}
+              >
+                <p className="min-w-0 truncate" style={{ fontSize: 13, color: "var(--ink)" }}>
+                  Facility: <b style={{ fontWeight: 600 }}>{selectedFacility.shortName}</b>
+                </p>
+                <button
+                  onClick={() => setFacilityId(null)}
+                  style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--solar)", flexShrink: 0 }}
+                >
+                  Change
+                </button>
+              </div>
+            )}
+          </div>
+        }
         actions={
           <>
             <button
               onClick={handleDownload}
-              disabled={exporting || missingRequired.length > 0}
-              aria-describedby={missingRequired.length > 0 ? "download-blocked-reason" : undefined}
+              disabled={exporting || missingRequired.length > 0 || (requiresFacility && !selectedFacility)}
+              aria-describedby={
+                missingRequired.length > 0 || (requiresFacility && !selectedFacility)
+                  ? "download-blocked-reason"
+                  : undefined
+              }
               className="sp-btn sp-btn-primary w-full"
               style={{ padding: "11px 14px" }}
             >
               {exporting ? <RefreshCw className="animate-spin" style={{ width: 14, height: 14 }} /> : <Download style={{ width: 14, height: 14 }} />}
               {exporting ? "Generating…" : "Download graphic"}
             </button>
-            {missingRequired.length > 0 && (
+            {(missingRequired.length > 0 || (requiresFacility && !selectedFacility)) && (
               <p
                 id="download-blocked-reason"
                 role="status"
@@ -135,7 +207,14 @@ export function TemplateUsePage({ templateId }: { templateId: string }) {
                 className="text-center"
                 style={{ fontSize: 12, color: "var(--fg-3)" }}
               >
-                Fill required: {missingRequired.map((f) => f.label).join(", ")}
+                {[
+                  requiresFacility && !selectedFacility ? "Pick a facility" : null,
+                  missingRequired.length > 0
+                    ? `Fill required: ${missingRequired.map((f) => f.label).join(", ")}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
             )}
           </>

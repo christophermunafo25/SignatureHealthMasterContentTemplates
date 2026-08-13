@@ -9,8 +9,9 @@ import {
   type ReleaseForm as ReleaseFormDoc,
 } from "@/lib/releaseForm";
 import { useRouter } from "../../router";
+import { FacilityCombobox } from "../FacilityCombobox";
 import { type SchemaRendererHandle } from "../SchemaRenderer";
-import { TemplateFillLayout, missingRequiredFields } from "../TemplateFillLayout";
+import { TemplateFillLayout, missingRequiredFields, needsFacility } from "../TemplateFillLayout";
 import { HOME_REF } from "@/lib/publicClient";
 import { PublicError, PublicInactive, PublicLoading, PublicShell, libraryRoute, portalRoute, usePublicPortal, useSelectedFacility } from "./PublicApp";
 import { PublicSubmitted } from "./PublicSubmitted";
@@ -106,6 +107,15 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
   const blockers = missingRequired.map((f) => f.label);
   const canOpen = blockers.length === 0;
 
+  // A facility-logo template needs the facility DURING the fill, not at
+  // submit time — otherwise the element sits empty until after the graphic
+  // has already been rendered. The inline picker writes through the same
+  // `select` the release-form modal uses, so the two can never disagree.
+  const requiresFacility = needsFacility(template);
+  const facilitySnapshot = facility
+    ? { name: facility.name, shortName: facility.shortName, logoUrl: facility.logoUrl ?? null }
+    : null;
+
   const openModal = async () => {
     if (!canOpen || !rendererRef.current) return;
     setSubmitError(null);
@@ -132,7 +142,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
     // graphic is the media).
     setForm((f) => ({
       ...f,
-      postText: caption ?? mergeCaption(template, values),
+      postText: caption ?? mergeCaption(template, values, facilitySnapshot),
       includesMedia: f.includesMedia ?? "Yes",
     }));
     setModalOpen(true);
@@ -247,6 +257,37 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
               {template.description && (
                 <p style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 4 }}>{template.description}</p>
               )}
+              {requiresFacility && !facility && (
+                <div
+                  className="p-4 space-y-2.5 mt-4"
+                  style={{ background: "var(--lift)", border: "1px solid var(--hairline)", borderRadius: 12 }}
+                >
+                  <div>
+                    <p className="sp-eyebrow">Your facility</p>
+                    <p style={{ fontSize: 13, color: "var(--fg-2)", marginTop: 2 }}>
+                      This template shows your facility&rsquo;s logo — pick yours to see it
+                      in the preview.
+                    </p>
+                  </div>
+                  <FacilityCombobox facilities={data.facilities} onSelect={select} />
+                </div>
+              )}
+              {requiresFacility && facility && (
+                <div
+                  className="flex items-center justify-between gap-3 px-4 py-2.5 mt-4"
+                  style={{ background: "var(--lift)", border: "1px solid var(--hairline)", borderRadius: 12 }}
+                >
+                  <p className="min-w-0 truncate" style={{ fontSize: 13, color: "var(--ink)" }}>
+                    Submitting as <b style={{ fontWeight: 600 }}>{facility.shortName}</b>
+                  </p>
+                  <button
+                    onClick={clear}
+                    style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--solar)", flexShrink: 0 }}
+                  >
+                    Change
+                  </button>
+                </div>
+              )}
             </div>
           }
           template={template}
@@ -259,6 +300,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
           instrument={false}
           allowCaptionCopy={false}
           previewHint="What the social team receives"
+          facility={facilitySnapshot}
           actions={
             <>
               <button

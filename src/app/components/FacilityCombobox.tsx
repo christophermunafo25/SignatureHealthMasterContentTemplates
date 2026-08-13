@@ -2,12 +2,16 @@ import React, { useMemo, useState } from "react";
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "./ui/command";
 import type { PublicFacility } from "@/lib/publicClient";
 
+/** What the picker actually renders and searches — callers with richer rows
+ * (PublicFacility, the admin Facility) all satisfy this structurally. */
+export type FacilityOption = Pick<PublicFacility, "id" | "name" | "shortName" | "state">;
+
 /** Search: case-insensitive substring on ANY token of short_name + name
  * together — 46 of 69 names begin with "Signature HealthCARE", so leading-
  * token matching would make "Sig" match two thirds of the roster while the
  * distinguishing word sits at the end. Whitespace-separated terms are
  * ANDed, so "south lou" narrows correctly. */
-export function facilityMatches(f: PublicFacility, query: string): boolean {
+export function facilityMatches(f: FacilityOption, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
   const haystack = `${f.shortName} ${f.name} ${f.state ?? ""}`.toLowerCase();
@@ -29,9 +33,9 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-export interface FacilityComboboxProps {
-  facilities: PublicFacility[];
-  onSelect(facility: PublicFacility): void;
+export interface FacilityComboboxProps<T extends FacilityOption = FacilityOption> {
+  facilities: T[];
+  onSelect(facility: T): void;
   /** Shown when a search matches nothing — a missing facility during
    * rollout must not be a dead end. */
   emptyHint?: React.ReactNode;
@@ -42,13 +46,13 @@ export interface FacilityComboboxProps {
 /** Searchable facility picker on cmdk. NO default selection — a wrong
  * facility silently attached to every submission is worse than an extra
  * tap. Reused by the facility gate and the dashboard's facility filter. */
-export function FacilityCombobox({
+export function FacilityCombobox<T extends FacilityOption>({
   facilities,
   onSelect,
   emptyHint,
   autoFocus,
   placeholder = "Search your facility…",
-}: FacilityComboboxProps) {
+}: FacilityComboboxProps<T>) {
   const [query, setQuery] = useState("");
   const shown = useMemo(
     () => facilities.filter((f) => facilityMatches(f, query)),

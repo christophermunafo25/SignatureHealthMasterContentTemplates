@@ -127,6 +127,22 @@ are indistinguishable (uniform 404). No RLS policy grants anything to
 `anon`; all three endpoints are rate-limited per token and per IP via
 the service-role-only `rate_limits` table.
 
+**Facility logos (v2.3).** The roster row carries an optional
+`logo_storage_path` (public `brand-assets` bucket,
+`{company_id}/facilities/{facility_id}/…`, managed on Portal Access —
+single upload or a bulk filename-matched drop). A `facility_logo`
+template element renders that logo for the facility in context: the
+public fill page shows the facility combobox INLINE (above Step 01)
+whenever the template carries the element, wired to the same
+`useSelectedFacility` state the release-form modal uses; templates
+without the element keep the modal-only flow. `public-portal` resolves
+`logoUrl` into its facility payload; `submit-content` freezes
+`brandSnapshot.facility` `{name, shortName, logoUrl}` so review and the
+review-side export never re-resolve against the live roster. Every
+canvas image — facility logos included — goes through `useDataUrl`
+before export, because html-to-image silently drops cross-origin
+images.
+
 **Root-URL public portal (opt-in).** The bare site URL (`/`) mounts the
 same anonymous facility tree; the signed-in app lives at `/admin`. The
 client sends the reserved ref `~home` through the existing `token` field

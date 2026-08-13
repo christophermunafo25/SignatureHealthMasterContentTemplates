@@ -431,6 +431,13 @@ function FacilityLogoFieldBox({
 }
 
 function ImageFieldBox({ field, value }: { field: TemplateField; value: string | undefined }) {
+  // Same export rule as every canvas image: html-to-image drops cross-origin
+  // images, so a static brand-asset URL must become a data URL before toPng.
+  // Member uploads are already data URLs and pass straight through; the raw
+  // value fills in only while conversion is in flight (or failed, which
+  // renders no worse than before).
+  const dataUrl = useDataUrl(value || undefined);
+  const shown = value ? dataUrl ?? value : undefined;
   return (
     <div
       style={{
@@ -440,13 +447,13 @@ function ImageFieldBox({ field, value }: { field: TemplateField; value: string |
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: value ? undefined : "rgba(0,0,0,0.06)",
-        border: value ? undefined : "1.5px dashed rgba(0,0,0,0.25)",
+        background: shown ? undefined : "rgba(0,0,0,0.06)",
+        border: shown ? undefined : "1.5px dashed rgba(0,0,0,0.25)",
       }}
     >
-      {value ? (
+      {shown ? (
         <img
-          src={value}
+          src={shown}
           alt={field.label}
           style={{ width: "100%", height: "100%", objectFit: field.objectFit ?? "cover" }}
         />

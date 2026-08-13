@@ -51,6 +51,17 @@ Types:
   brand `colorKey` / `textGradient`); rects honor `cornerRadius`; non-rects
   render as inline SVG so gradients survive the PNG export. Always
   `static: true` — shapes never appear in the member form.
+- `facility_logo` — auto-resolved: renders the logo of the facility in
+  context (`facilities.logo_storage_path`, uploaded on Portal Access), never
+  a member value. Excluded from the member form by TYPE (`isFormField` in
+  `src/lib/fields.ts`), NOT via the `static` flag, so "Fixed element" keeps
+  its one meaning. Honors box geometry, `opacity`, `cornerRadius`, and
+  `objectFit` (default `contain` — a logo is never cropped); no `required` /
+  `placeholder` / `maxLength` / crop. Its `fieldKey` merges in captions to
+  the facility's SHORT name. A template may carry several. The facility
+  comes from: a "Preview as" picker in the builder, a conditional
+  `FacilityCombobox` on the fill pages (shown only when the template carries
+  the element), and `brandSnapshot.facility` (frozen at submit) in review.
 
 Brand binding (the rules engine — OPTIONAL, an opt-in reuse convenience;
 admins style fields freely and directly by default):

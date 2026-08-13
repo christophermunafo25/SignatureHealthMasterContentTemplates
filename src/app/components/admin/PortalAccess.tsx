@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { Check, Copy, Link2, Plus, Power, QrCode, RefreshCw, X } from "lucide-react";
+import { Check, Copy, Images, Link2, Plus, Power, QrCode, RefreshCw, Trash2, Upload, X } from "lucide-react";
+import { useDropzone } from "react-dropzone";
 import QRCode from "qrcode";
 import type { Facility } from "@/lib/types";
 import { stores } from "@/lib/stores";
@@ -38,6 +39,44 @@ export function deriveShortName(name: string): string {
     if (trimmed !== s) return trimmed;
   }
   return s;
+}
+
+/** Reduce a logo filename or facility name to a comparable key:
+ * "SHCOfficialLogo_South_Louisville_White.png" → "southlouisville". Both
+ * sides normalize the same way, so vendor prefixes/suffixes and separator
+ * choices never block a match. */
+export function normalizeLogoKey(s: string): string {
+  return s
+    .replace(/\.[a-z0-9]+$/i, "") // file extension
+    .replace(/^SHCOfficialLogo[_\- ]*/i, "")
+    .replace(/[_\- ]*White$/i, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+export interface LogoMatch {
+  file: File;
+  /** Matched facility, or null when the file needs hand assignment. */
+  facility: Facility | null;
+}
+
+/** Match dropped logo files to roster rows: short name first, then legal
+ * name. A facility already claimed by an earlier file is not claimed twice —
+ * the duplicate lands in the hand-assignment list instead of silently
+ * overwriting. Nothing is ever silently skipped. */
+export function matchLogoFiles(files: File[], facilities: Facility[]): LogoMatch[] {
+  const claimed = new Set<string>();
+  return files.map((file) => {
+    const key = normalizeLogoKey(file.name);
+    const facility =
+      (key &&
+        (facilities.find((f) => normalizeLogoKey(f.shortName) === key) ??
+          facilities.find((f) => normalizeLogoKey(f.name) === key))) ||
+      null;
+    if (!facility || claimed.has(facility.id)) return { file, facility: null };
+    claimed.add(facility.id);
+    return { file, facility };
+  });
 }
 
 function portalUrl(token: string): string {
@@ -279,6 +318,7 @@ function RosterPanel({ companyId }: { companyId: string }) {
   const [shortName, setShortName] = useState("");
   const [shortTouched, setShortTouched] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkLogosOpen, setBulkLogosOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -366,9 +406,33 @@ function RosterPanel({ companyId }: { companyId: string }) {
           Add
         </button>
       </div>
-      <button className="sp-btn sp-btn-ghost" onClick={() => setBulkOpen((o) => !o)} aria-expanded={bulkOpen}>
-        Bulk add from list
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button className="sp-btn sp-btn-ghost" onClick={() => setBulkOpen((o) => !o)} aria-expanded={bulkOpen}>
+          Bulk add from list
+        </button>
+        <button
+          className="sp-btn sp-btn-ghost"
+          onClick={() => setBulkLogosOpen((o) => !o)}
+          aria-expanded={bulkLogosOpen}
+        >
+          <Images style={{ width: 13, height: 13 }} />
+          Bulk upload logos
+        </button>
+      </div>
+      {bulkLogosOpen && (
+        <BulkLogoUploader
+          facilities={shown}
+          busy={busy}
+          onCommit={(pairs) =>
+            act(async () => {
+              for (const { facility, file } of pairs) {
+                await stores.facilities.setLogo(facility.id, file);
+              }
+              setBulkLogosOpen(false);
+            })
+          }
+        />
+      )}
       {bulkOpen && (
         <div className="space-y-2">
           <textarea
@@ -432,6 +496,16 @@ function RosterPanel({ companyId }: { companyId: string }) {
               className="flex flex-wrap items-center gap-3 px-3 py-2 rounded-lg"
               style={{ background: f.active ? "transparent" : "var(--paper)", border: "1px solid var(--hairline)" }}
             >
+              <div
+                className="flex items-center justify-center overflow-hidden flex-shrink-0"
+                style={{ width: 44, height: 44, borderRadius: "var(--radius-icon, 8px)", border: "1px solid var(--hairline)", background: "var(--paper)" }}
+              >
+                {f.logoUrl ? (
+                  <img src={f.logoUrl} alt={`${f.shortName} logo`} className="max-w-full max-h-full object-contain" />
+                ) : (
+                  <span className="sp-eyebrow" style={{ fontSize: 8 }}>No logo</span>
+                )}
+              </div>
               <div className="min-w-0 flex-1" style={{ minWidth: 200 }}>
                 {editingId === f.id ? (
                   <input
@@ -469,6 +543,31 @@ function RosterPanel({ companyId }: { companyId: string }) {
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-3)" }}>
                 {counts.get(f.id) ?? 0} submission{(counts.get(f.id) ?? 0) === 1 ? "" : "s"}
               </span>
+              <label className="cursor-pointer" title={f.logoUrl ? "Replace logo" : "Upload logo"}>
+                <Upload style={{ width: 15, height: 15, color: "var(--fg-2)" }} />
+                <span className="sr-only">{f.logoUrl ? `Replace ${f.shortName} logo` : `Upload ${f.shortName} logo`}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={busy}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void act(() => stores.facilities.setLogo(f.id, file));
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {f.logoUrl && (
+                <button
+                  title="Remove logo"
+                  aria-label={`Remove ${f.shortName} logo`}
+                  disabled={busy}
+                  onClick={() => void act(() => stores.facilities.setLogo(f.id, null))}
+                >
+                  <Trash2 style={{ width: 15, height: 15, color: "var(--danger)" }} />
+                </button>
+              )}
               <button
                 className="sp-btn sp-btn-ghost"
                 style={{ minHeight: 28, padding: "2px 10px", fontSize: 12 }}
@@ -480,6 +579,121 @@ function RosterPanel({ companyId }: { companyId: string }) {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Many-at-once logo drop for a 69-facility roster. Filenames are matched to
+ * roster rows (short name first, then legal name, both normalized); the match
+ * table is shown BEFORE anything uploads, and unmatched files get a
+ * hand-assignment dropdown — never a silent skip. */
+function BulkLogoUploader({
+  facilities,
+  busy,
+  onCommit,
+}: {
+  facilities: Facility[];
+  busy: boolean;
+  onCommit(pairs: Array<{ facility: Facility; file: File }>): void;
+}) {
+  const [matches, setMatches] = useState<LogoMatch[]>([]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: { "image/*": [".png", ".jpg", ".jpeg", ".webp", ".svg"] },
+    onDrop: (accepted) => setMatches(matchLogoFiles(accepted, facilities)),
+  });
+
+  const assign = (i: number, facilityId: string) =>
+    setMatches((m) =>
+      m.map((row, j) =>
+        j === i ? { ...row, facility: facilities.find((f) => f.id === facilityId) ?? null } : row,
+      ),
+    );
+
+  const ready = matches.filter((m): m is { file: File; facility: Facility } => Boolean(m.facility));
+  const unmatched = matches.length - ready.length;
+
+  return (
+    <div className="space-y-2">
+      <div
+        {...getRootProps({ role: "button", "aria-label": "Drop facility logo files" })}
+        className="text-center cursor-pointer py-6 px-4"
+        style={{
+          border: `1.5px dashed ${isDragActive ? "var(--solar)" : "var(--hairline-strong)"}`,
+          borderRadius: 10,
+          background: isDragActive ? "var(--accent-wash)" : "var(--lift)",
+          fontSize: 12,
+          color: "var(--fg-2)",
+        }}
+      >
+        <input {...getInputProps()} />
+        Drop logo files here (or click to pick). Files named like{" "}
+        <code style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>SHCOfficialLogo_Memphis_White.png</code>{" "}
+        match their facility automatically.
+      </div>
+
+      {matches.length > 0 && (
+        <>
+          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--hairline)" }}>
+            <table className="w-full" style={{ fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: "var(--paper)" }}>
+                  <th className="text-left px-3 py-1.5" style={{ color: "var(--fg-3)", fontWeight: 500 }}>File</th>
+                  <th className="text-left px-3 py-1.5" style={{ color: "var(--fg-3)", fontWeight: 500 }}>Facility</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matches.map((m, i) => (
+                  <tr key={`${m.file.name}-${i}`} style={{ borderTop: "1px solid var(--hairline)" }}>
+                    <td className="px-3 py-1.5" style={{ color: "var(--fg-2)", wordBreak: "break-all" }}>{m.file.name}</td>
+                    <td className="px-3 py-1.5">
+                      {m.facility ? (
+                        <span style={{ fontWeight: 600, color: "var(--ink)" }}>
+                          {m.facility.shortName}
+                          {m.facility.logoUrl && (
+                            <span style={{ fontWeight: 400, fontSize: 11, color: "var(--fg-3)" }}> · replaces current logo</span>
+                          )}
+                        </span>
+                      ) : (
+                        <select
+                          className="sp-input"
+                          style={{ padding: "4px 8px", fontSize: 12 }}
+                          value=""
+                          aria-label={`Assign a facility for ${m.file.name}`}
+                          onChange={(e) => e.target.value && assign(i, e.target.value)}
+                        >
+                          <option value="">No match — assign by hand…</option>
+                          {facilities.map((f) => (
+                            <option key={f.id} value={f.id}>{f.shortName}</option>
+                          ))}
+                        </select>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {unmatched > 0 && (
+            <p style={{ fontSize: 12, color: "var(--solar)" }}>
+              {unmatched} file{unmatched === 1 ? "" : "s"} didn&rsquo;t match a facility — assign
+              {unmatched === 1 ? " it" : " them"} above, or {unmatched === 1 ? "it" : "they"} won&rsquo;t upload.
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              className="sp-btn sp-btn-primary"
+              disabled={busy || ready.length === 0}
+              onClick={() => onCommit(ready.map((m) => ({ facility: m.facility, file: m.file })))}
+            >
+              {busy ? "Uploading…" : `Upload ${ready.length} logo${ready.length === 1 ? "" : "s"}`}
+            </button>
+            <button className="sp-btn sp-btn-ghost" disabled={busy} onClick={() => setMatches([])}>
+              Clear
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

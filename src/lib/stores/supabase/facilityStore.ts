@@ -1,6 +1,7 @@
 import type { Facility } from "../../types";
 import type { FacilityStore } from "../interfaces";
-import { supabase } from "./client";
+import { BUCKETS, supabase } from "./client";
+import { resolveUrl } from "./rows";
 
 interface FacilityRow {
   id: string;
@@ -11,6 +12,7 @@ interface FacilityRow {
   region: string | null;
   sort_order: number;
   active: boolean;
+  logo_storage_path: string | null;
   created_at: string;
 }
 
@@ -23,6 +25,7 @@ const toFacility = (r: FacilityRow): Facility => ({
   region: r.region ?? undefined,
   sortOrder: r.sort_order,
   active: r.active,
+  logoUrl: r.logo_storage_path ? resolveUrl(BUCKETS.brandAssets, r.logo_storage_path) : undefined,
   createdAt: r.created_at,
 });
 
@@ -74,5 +77,36 @@ export class SupabaseFacilityStore implements FacilityStore {
   async setActive(id: string, active: boolean): Promise<void> {
     const { error } = await supabase().from("facilities").update({ active }).eq("id", id);
     if (error) throw error;
+  }
+
+  async setLogo(id: string, file: File | null): Promise<void> {
+    const { data, error } = await supabase()
+      .from("facilities")
+      .select("company_id, logo_storage_path")
+      .eq("id", id)
+      .single();
+    if (error) throw error;
+    const row = data as { company_id: string; logo_storage_path: string | null };
+
+    // Timestamped path: a replace gets a fresh URL, so no CDN-cached stale
+    // logo ever renders.
+    let path: string | null = null;
+    if (file) {
+      path = `${row.company_id}/facilities/${id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const up = await supabase().storage.from(BUCKETS.brandAssets).upload(path, file);
+      if (up.error) throw up.error;
+    }
+
+    const { error: updErr } = await supabase()
+      .from("facilities")
+      .update({ logo_storage_path: path })
+      .eq("id", id);
+    if (updErr) throw updErr;
+
+    // Old object only after the row points elsewhere — a failed update must
+    // not leave the row referencing a deleted object.
+    if (row.logo_storage_path && !/^https?:\/\//.test(row.logo_storage_path)) {
+      await supabase().storage.from(BUCKETS.brandAssets).remove([row.logo_storage_path]);
+    }
   }
 }

@@ -294,6 +294,22 @@ export class LocalFacilityStore implements FacilityStore {
       if (f) f.active = active;
     });
   }
+
+  async setLogo(id: string, file: File | null): Promise<void> {
+    const logoUrl = file ? await fileToDataUrl(file) : undefined;
+    mutate((db) => {
+      const f = (db.facilities as Facility[]).find((x) => x.id === id);
+      if (f) f.logoUrl = logoUrl;
+    });
+    // Data URLs for a 69-facility roster can blow the ~5MB localStorage
+    // quota — warn while there is still headroom to remove some.
+    const bytes = JSON.stringify(readDb()).length;
+    if (bytes > 4_000_000) {
+      console.warn(
+        `Dev backend localStorage is at ${(bytes / 1_000_000).toFixed(1)}MB — facility logos are stored as data URLs and the quota is ~5MB. Use smaller images or the Supabase backend.`,
+      );
+    }
+  }
 }
 
 /** 24 random bytes as URL-safe base64 — the same shape the production RPC

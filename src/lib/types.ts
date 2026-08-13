@@ -286,6 +286,9 @@ export interface Facility {
   region?: string;
   sortOrder: number;
   active: boolean;
+  /** Resolved public URL of the facility's logo (facility_logo elements).
+   * Absent until an admin uploads one on Portal Access. */
+  logoUrl?: string;
   createdAt: string;
 }
 

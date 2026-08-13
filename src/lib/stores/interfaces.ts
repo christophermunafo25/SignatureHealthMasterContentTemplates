@@ -178,6 +178,9 @@ export interface FacilityStore {
   bulkCreate(companyId: string, rows: Array<{ name: string; shortName: string }>): Promise<Facility[]>;
   rename(id: string, patch: { name?: string; shortName?: string }): Promise<void>;
   setActive(id: string, active: boolean): Promise<void>;
+  /** Upload (or clear, with null) the facility's logo for facility_logo
+   * template elements. Replacing deletes the old storage object. */
+  setLogo(id: string, file: File | null): Promise<void>;
 }
 
 export interface UsageStore {

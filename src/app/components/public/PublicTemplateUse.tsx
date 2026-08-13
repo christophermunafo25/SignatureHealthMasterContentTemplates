@@ -86,6 +86,15 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
 
   const { data } = state;
 
+  // A facility-logo template needs the facility DURING the fill, not at
+  // submit time — otherwise the element sits empty until after the graphic
+  // has already been rendered. The inline picker writes through the same
+  // `select` the release-form modal uses, so the two can never disagree.
+  const requiresFacility = needsFacility(template);
+  const facilitySnapshot = facility
+    ? { name: facility.name, shortName: facility.shortName, logoUrl: facility.logoUrl ?? null }
+    : null;
+
   if (submitted) {
     return (
       <PublicShell data={data}>
@@ -94,6 +103,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
           brandKit={data.brandKit}
           values={values}
           releaseForm={submitted}
+          facility={facilitySnapshot}
           facilityName={facility?.name ?? "your facility"}
           submitterEmail={submitterEmail.trim() || undefined}
           onCreateAnother={() => navigate(portalRoute(token))}
@@ -106,15 +116,6 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
   // (facility, identity, release answers) is answered inside the modal.
   const blockers = missingRequired.map((f) => f.label);
   const canOpen = blockers.length === 0;
-
-  // A facility-logo template needs the facility DURING the fill, not at
-  // submit time — otherwise the element sits empty until after the graphic
-  // has already been rendered. The inline picker writes through the same
-  // `select` the release-form modal uses, so the two can never disagree.
-  const requiresFacility = needsFacility(template);
-  const facilitySnapshot = facility
-    ? { name: facility.name, shortName: facility.shortName, logoUrl: facility.logoUrl ?? null }
-    : null;
 
   const openModal = async () => {
     if (!canOpen || !rendererRef.current) return;

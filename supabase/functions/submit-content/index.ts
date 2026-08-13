@@ -14,7 +14,7 @@
 
 import { handleOptions, json, serviceClient } from "../_shared/figma.ts";
 import { linkNotFound, rateLimitPublic, requireFacility, requirePortalCompany } from "../_shared/publicAuth.ts";
-import { loadBrandKit, toTemplate } from "../_shared/portalData.ts";
+import { facilityLogoUrl, loadBrandKit, toTemplate } from "../_shared/portalData.ts";
 import { sendSubmissionNotification } from "../_shared/email.ts";
 import {
   ALLOWED_UPLOAD_MIME,
@@ -200,7 +200,19 @@ Deno.serve(async (req) => {
       caption,
       original_caption: caption,
       schema_snapshot: template, // null for direct — column is nullable as of 0026
-      brand_snapshot: { brandKit, logoUrl, brandAssets },
+      brand_snapshot: {
+        brandKit,
+        logoUrl,
+        brandAssets,
+        // Frozen facility identity for facility_logo elements — review and
+        // export read THIS, never the live roster, so a logo swapped after
+        // submission can't retroactively change a queued item.
+        facility: {
+          name: facility.name,
+          shortName: facility.short_name || facility.name,
+          logoUrl: facilityLogoUrl(facility.logo_storage_path),
+        },
+      },
       preview_path: previewPath,
       release_form: releaseForm,
       asset_paths: assets,

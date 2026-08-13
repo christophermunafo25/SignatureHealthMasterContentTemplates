@@ -1,6 +1,6 @@
 import React from "react";
 import { CheckCircle2, Files } from "lucide-react";
-import type { BrandKit, FieldValues, TemplateSchema } from "@/lib/types";
+import type { BrandKit, FacilitySnapshot, FieldValues, TemplateSchema } from "@/lib/types";
 import type { ReleaseForm } from "@/lib/releaseForm";
 import { SchemaRenderer } from "../SchemaRenderer";
 import type { PendingAsset } from "./ReleaseForm";
@@ -15,6 +15,7 @@ export function PublicSubmitted({
   values,
   assets = [],
   releaseForm,
+  facility = null,
   facilityName,
   submitterEmail,
   onCreateAnother,
@@ -24,6 +25,9 @@ export function PublicSubmitted({
   values: FieldValues;
   assets?: PendingAsset[];
   releaseForm?: ReleaseForm;
+  /** Facility the submission was made as — facility_logo elements in the
+   * confirmation thumbnail render from it. */
+  facility?: FacilitySnapshot | null;
   facilityName: string;
   submitterEmail?: string;
   onCreateAnother(): void;
@@ -74,7 +78,7 @@ export function PublicSubmitted({
           }}
         >
           <div className="pointer-events-none w-full h-full">
-            <SchemaRenderer schema={template} values={values} brandKit={brandKit} instrument={false} />
+            <SchemaRenderer schema={template} values={values} brandKit={brandKit} instrument={false} facility={facility} />
           </div>
         </div>
       ) : firstImage ? (

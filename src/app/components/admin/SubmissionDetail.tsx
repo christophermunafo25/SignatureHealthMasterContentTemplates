@@ -62,6 +62,9 @@ function Loaded({ initial, onBack }: { initial: Submission; onBack(): void }) {
   // Loaded only renders for the template kind (see SubmissionDetail above).
   const template = sub.schemaSnapshot!;
   const brandKit = sub.brandSnapshot?.brandKit ?? null;
+  // Frozen at submit time; absent on pre-0029 rows (placeholder renders).
+  // Never re-resolve from the live roster here.
+  const facility = sub.brandSnapshot?.facility ?? null;
 
   /** Render-time projection of `values`: image fields hold PRIVATE storage
    * paths, which render as nothing and break the export's data-URL
@@ -130,7 +133,7 @@ function Loaded({ initial, onBack }: { initial: Submission; onBack(): void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sub.id, navigate]);
 
-  const effectiveCaption = caption ?? mergeCaption(template, values);
+  const effectiveCaption = caption ?? mergeCaption(template, values, facility);
   const dirty =
     JSON.stringify(values) !== JSON.stringify(sub.values) ||
     effectiveCaption !== sub.caption ||
@@ -259,6 +262,7 @@ function Loaded({ initial, onBack }: { initial: Submission; onBack(): void }) {
         onCaptionEdit={setCaption}
         rendererRef={rendererRef}
         instrument={false}
+        facility={facility}
         header={
           <div>
             <p className="sp-eyebrow">{sub.facilityName}</p>

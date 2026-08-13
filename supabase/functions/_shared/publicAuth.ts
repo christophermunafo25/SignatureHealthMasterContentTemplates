@@ -85,6 +85,7 @@ export interface FacilityRow {
   short_name: string;
   state: string | null;
   active: boolean;
+  logo_storage_path: string | null;
 }
 
 /** Verify a facilityId belongs to the portal's company and is active. */
@@ -96,7 +97,7 @@ export async function requireFacility(
   if (typeof facilityId !== "string" || !facilityId) return null;
   const { data } = await db
     .from("facilities")
-    .select("id, company_id, name, short_name, state, active")
+    .select("id, company_id, name, short_name, state, active, logo_storage_path")
     .eq("id", facilityId)
     .eq("company_id", companyId)
     .maybeSingle();

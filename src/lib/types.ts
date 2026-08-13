@@ -350,7 +350,16 @@ export interface Submission {
   /** Frozen at submit time — later template/brand edits never change a
    * queued item. Null for direct submissions (no template). */
   schemaSnapshot: TemplateSchema | null;
-  brandSnapshot: { brandKit: BrandKit | null; logoUrl?: string | null; brandAssets: BrandAsset[] };
+  brandSnapshot: {
+    brandKit: BrandKit | null;
+    logoUrl?: string | null;
+    brandAssets: BrandAsset[];
+    /** Frozen facility identity for facility_logo elements. Absent on
+     * pre-0029 rows — every consumer must tolerate that, the same way they
+     * tolerate a missing releaseForm. A logo swapped after submission must
+     * never retroactively change a queued item. */
+    facility?: FacilitySnapshot;
+  };
   previewPath?: string;
   status: SubmissionStatus;
   declineReason?: string;

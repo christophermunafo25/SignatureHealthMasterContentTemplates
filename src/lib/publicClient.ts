@@ -327,7 +327,16 @@ async function submitLocal(
       vpApproved: payload.releaseForm.vpApproved === "Yes",
       releaseFlagged,
       schemaSnapshot: template ? JSON.parse(JSON.stringify(template)) : null,
-      brandSnapshot: { brandKit: kit ? JSON.parse(JSON.stringify(kit)) : null, brandAssets: assets },
+      brandSnapshot: {
+        brandKit: kit ? JSON.parse(JSON.stringify(kit)) : null,
+        brandAssets: assets,
+        // Same freeze the Edge Function performs — review never re-resolves.
+        facility: {
+          name: facility.name,
+          shortName: facility.shortName || facility.name,
+          logoUrl: facility.logoUrl ?? null,
+        },
+      },
       previewPath: previewDataUrl,
       status: "submitted",
       internalNote: "",

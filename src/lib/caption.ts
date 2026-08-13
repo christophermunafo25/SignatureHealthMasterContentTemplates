@@ -1,13 +1,19 @@
-import type { FieldValues, TemplateField, TemplateSchema } from "./types";
+import type { FacilitySnapshot, FieldValues, TemplateField, TemplateSchema } from "./types";
 
 /**
  * Fill a caption template's {field_key} placeholders from entered values.
  * Unfilled placeholders render as a readable blank ("____") rather than
  * leaking the raw tag.
  */
-export function mergeCaption(template: TemplateSchema, values: FieldValues): string {
+export function mergeCaption(
+  template: TemplateSchema,
+  values: FieldValues,
+  facility?: FacilitySnapshot | null,
+): string {
   return template.captionTemplate.replace(/\{([a-zA-Z0-9_]+)\}/g, (raw, key: string) => {
     const field = template.fields.find((f) => f.fieldKey === key);
+    // A facility-logo tag reads as the facility's display name.
+    if (field?.type === "facility_logo") return facility?.shortName || "____";
     // Static elements have fixed content, not member values.
     if (field?.static) return field.type === "image" ? raw : field.staticValue || "____";
     const value = values[key];

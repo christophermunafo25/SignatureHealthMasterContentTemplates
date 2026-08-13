@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { BrandKit, FieldValues, TemplateField, TemplateSchema } from "@/lib/types";
+import type { BrandKit, FacilitySnapshot, FieldValues, TemplateField, TemplateSchema } from "@/lib/types";
 import { useDataUrl } from "@/lib/render/useDataUrl";
 import { fittedFontSize, fixedWidthFontSize } from "@/lib/render/autoFit";
 import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
@@ -31,6 +31,9 @@ interface SchemaRendererProps {
   instrument?: boolean;
   /** Optional overlay painted in canvas space (Template Builder field boxes). */
   overlay?: React.ReactNode;
+  /** Facility in context for facility_logo elements. Null in the builder and
+   *  before a facility is chosen — the element then draws its placeholder. */
+  facility?: FacilitySnapshot | null;
 }
 
 /** Renders ANY TemplateSchema onto a live-scaled canvas sized from
@@ -38,7 +41,7 @@ interface SchemaRendererProps {
  * ported from the reference Signature generators. The ONLY thing member input
  * changes is field content — positions and styling are locked in the schema. */
 export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererProps>(
-  function SchemaRenderer({ schema, values, brandKit, instrument = true, overlay }, ref) {
+  function SchemaRenderer({ schema, values, brandKit, instrument = true, overlay, facility }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLDivElement>(null);
     const [scale, setScale] = useState(1);
@@ -141,6 +144,7 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
                 field={field}
                 value={values[field.fieldKey]}
                 brandKit={brandKit}
+                facility={facility}
               />
             ))}
           </div>
@@ -225,14 +229,16 @@ interface FieldBoxProps {
   field: TemplateField;
   value: string | undefined;
   brandKit: BrandKit | null;
+  /** Facility in context for facility_logo elements (absent → placeholder). */
+  facility?: FacilitySnapshot | null;
 }
 
 /** Positioning wrapper (boxStyle) around the field's visual content. The
  * single member-preview/export render path — behavior must stay identical. */
-export function FieldBox({ field, value, brandKit }: FieldBoxProps) {
+export function FieldBox({ field, value, brandKit, facility }: FieldBoxProps) {
   return (
     <div style={boxStyle(field)}>
-      <FieldBoxContent field={field} value={value} brandKit={brandKit} />
+      <FieldBoxContent field={field} value={value} brandKit={brandKit} facility={facility} />
     </div>
   );
 }
@@ -241,11 +247,14 @@ export function FieldBox({ field, value, brandKit }: FieldBoxProps) {
  * parent sized to field.width × field.height. The builder hosts this inside
  * its screen-space interaction boxes so content moves with the box during
  * drags — no second source of truth, no catch-up jump on release. */
-export function FieldBoxContent({ field, value, brandKit }: FieldBoxProps) {
+export function FieldBoxContent({ field, value, brandKit, facility }: FieldBoxProps) {
   // Static elements carry their own fixed content — member values never apply.
   const effective = field.static ? field.staticValue : value;
   if (field.type === "shape") {
     return <ShapeFieldBox field={field} brandKit={brandKit} />;
+  }
+  if (field.type === "facility_logo") {
+    return <FacilityLogoFieldBox field={field} facility={facility} />;
   }
   if (field.type === "image") {
     return <ImageFieldBox field={field} value={effective} />;
@@ -357,6 +366,66 @@ function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {
       >
         {text}
       </p>
+    </div>
+  );
+}
+
+/** Auto-resolved facility logo. The logo travels through useDataUrl because
+ * html-to-image silently drops cross-origin images from the PNG export — a
+ * bare storage URL would preview correctly and export a blank box, the exact
+ * failure this element type exists to prevent. */
+function FacilityLogoFieldBox({
+  field,
+  facility,
+}: {
+  field: TemplateField;
+  facility?: FacilitySnapshot | null;
+}) {
+  const logoDataUrl = useDataUrl(facility?.logoUrl ?? undefined);
+
+  if (logoDataUrl) {
+    return (
+      <div
+        style={{
+          ...contentBaseStyle(field),
+          overflow: "hidden",
+          borderRadius: cornerRadiusCss(field),
+        }}
+      >
+        <img
+          src={logoDataUrl}
+          alt={facility ? `${facility.shortName} logo` : field.label}
+          // A logo must never be cropped — contain unless the admin says otherwise.
+          style={{ width: "100%", height: "100%", objectFit: field.objectFit ?? "contain" }}
+        />
+      </div>
+    );
+  }
+
+  // No facility yet (builder, or pre-pick fill page) or no logo uploaded:
+  // a quiet dashed placeholder that names what will appear here.
+  return (
+    <div
+      style={{
+        ...contentBaseStyle(field),
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,0.06)",
+        border: "1.5px dashed rgba(0,0,0,0.25)",
+        borderRadius: cornerRadiusCss(field),
+      }}
+    >
+      <span
+        style={{
+          color: "rgba(0,0,0,0.35)",
+          fontSize: Math.max(14, Math.min(24, field.width / 14)),
+          textAlign: "center",
+          padding: "0 8px",
+        }}
+      >
+        {facility ? facility.shortName : field.label || "Facility logo"}
+      </span>
     </div>
   );
 }

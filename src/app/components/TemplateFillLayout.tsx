@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { Check, Copy } from "lucide-react";
-import type { BrandKit, FieldValues, TemplateField, TemplateSchema } from "@/lib/types";
+import type { BrandKit, FacilitySnapshot, FieldValues, TemplateField, TemplateSchema } from "@/lib/types";
 import { mergeCaption } from "@/lib/caption";
+import { isFormField } from "@/lib/fields";
 import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
 import { SchemaRenderer, type SchemaRendererHandle } from "./SchemaRenderer";
 import { FieldInput } from "./FieldInput";
@@ -15,7 +16,13 @@ const panel: React.CSSProperties = {
 /** Fields still empty that the template requires — shared by every action
  * panel (member download, facility submit, review edits). */
 export function missingRequiredFields(template: TemplateSchema, values: FieldValues): TemplateField[] {
-  return template.fields.filter((f) => !f.static && f.required && !values[f.fieldKey]);
+  return template.fields.filter((f) => isFormField(f) && f.required && !values[f.fieldKey]);
+}
+
+/** True when the template carries a facility_logo element — the fill
+ * surfaces show a facility picker exactly when this is true. */
+export function needsFacility(template: TemplateSchema): boolean {
+  return template.fields.some((f) => f.type === "facility_logo");
 }
 
 export interface TemplateFillLayoutProps {
@@ -42,6 +49,9 @@ export interface TemplateFillLayoutProps {
   /** Preview panel eyebrow; defaults to the canvas dimensions. The public
    * screen replaces builder language with what the panel actually is. */
   previewHint?: string;
+  /** Facility in context for facility_logo elements — forwarded to the
+   * renderer and the caption merge. */
+  facility?: FacilitySnapshot | null;
 }
 
 /** The shared body of every template-fill surface: field form + caption on
@@ -63,14 +73,16 @@ export function TemplateFillLayout({
   header,
   allowCaptionCopy = true,
   previewHint,
+  facility,
 }: TemplateFillLayoutProps) {
   const [copied, setCopied] = useState(false);
 
-  const suggestedCaption = mergeCaption(template, values);
+  const suggestedCaption = mergeCaption(template, values, facility);
   const shownCaption = caption ?? suggestedCaption;
 
-  // Static elements are baked into the graphic — they are never form fields.
-  const formFields = useMemo(() => template.fields.filter((f) => !f.static), [template]);
+  // Static elements are baked into the graphic and facility logos resolve
+  // automatically — neither is ever a form field.
+  const formFields = useMemo(() => template.fields.filter(isFormField), [template]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(shownCaption);
@@ -200,6 +212,7 @@ export function TemplateFillLayout({
               values={values}
               brandKit={brandKit}
               instrument={instrument}
+              facility={facility}
             />
           </div>
         </div>

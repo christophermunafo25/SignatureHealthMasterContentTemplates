@@ -101,7 +101,16 @@ export interface TextGradient {
   stops: Array<{ position: number; color: string }>; // position 0..1, #RRGGBB
 }
 
-export type FieldType = "text" | "multiline" | "image" | "select" | "shape";
+export type FieldType = "text" | "multiline" | "image" | "select" | "shape" | "facility_logo";
+
+/** The facility in context for facility_logo elements: threaded into every
+ * render surface, and frozen into Submission.brandSnapshot.facility at
+ * submit time so review/export never re-resolve a live logo. */
+export interface FacilitySnapshot {
+  name: string;
+  shortName: string;
+  logoUrl: string | null;
+}
 
 /** Decorative shape kinds (a "line" is a thin rect). */
 export type ShapeKind = "rect" | "ellipse" | "triangle" | "star";

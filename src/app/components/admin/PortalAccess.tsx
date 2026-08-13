@@ -498,7 +498,17 @@ function RosterPanel({ companyId }: { companyId: string }) {
             >
               <div
                 className="flex items-center justify-center overflow-hidden flex-shrink-0"
-                style={{ width: 44, height: 44, borderRadius: "var(--radius-icon, 8px)", border: "1px solid var(--hairline)", background: "var(--paper)" }}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: "var(--radius-icon, 8px)",
+                  border: "1px solid var(--hairline)",
+                  // The roster holds white-knockout marks — a navy backing is
+                  // the only way they read at all. Empty chips stay light so
+                  // the "No logo" label keeps its contrast.
+                  background: f.logoUrl ? "var(--ink)" : "var(--paper)",
+                  padding: f.logoUrl ? 5 : 0,
+                }}
               >
                 {f.logoUrl ? (
                   <img src={f.logoUrl} alt={`${f.shortName} logo`} className="max-w-full max-h-full object-contain" />

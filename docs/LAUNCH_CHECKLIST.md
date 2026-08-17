@@ -12,7 +12,7 @@ record the result before the client-facing launch.
 | Leaked password protection | **On** | ☐ |
 | Site URL | Production domain | ☑ 2026-07-29 |
 | Additional redirect URLs | `https://signaturehealthcare-graphics.vercel.app/**` + `http://localhost:5199/**` (wildcards — auth emails redirect to `/admin`, not the origin root) | ☑ 2026-07-29 |
-| Custom SMTP for auth email | **Required for launch** — the built-in sender allows 2 emails/hour (this is what makes invites fail after testing). Point it at the Resend account planned for submission notifications. | ☐ |
+| Custom SMTP for auth email | **Required for launch** — the built-in sender allows 2 emails/hour (this is what makes invites fail after testing). Point it at the SendGrid account used for submission notifications (`smtp.sendgrid.net:587`, username `apikey`, password = the API key) so invites and notifications share a sending domain. Not yet implemented — needs a decision. | ☐ |
 | JWT expiry | Confirm and record | ☐ |
 | MFA | Decision required (open question) | ☐ |
 
@@ -37,12 +37,23 @@ set-password gate. All further admins: People page → Invite.
 ## Edge Function secrets (`supabase secrets set`)
 | Secret | Purpose | Status |
 |---|---|---|
-| `RESEND_API_KEY` | Submission + decline notifications | ☐ |
+| `SENDGRID_API_KEY` | Submission + decline notifications | ☐ |
 | `NOTIFICATION_FROM_EMAIL` | Sending address, e.g. content@mail.<domain> | ☐ |
+| `NOTIFICATION_FROM_NAME` | Optional display name, e.g. Signature Content | ☐ |
 | `PUBLIC_APP_URL` | Review deep links in email (set) | ☑ |
+| Sender Authentication complete in SendGrid | Domain authentication preferred over single-sender | ☐ |
+
+**Sender Authentication is not optional.** An unverified From address
+fails at send time with a 403, not at deploy time — the functions deploy
+cleanly and then drop every notification. Verify before launch day, not
+after the first missed submission.
 
 **SPF and DKIM records** for the sending domain must be added by
-Signature IT or notifications land in spam. Raise before launch day.
+Signature IT or notifications land in spam. With SendGrid domain
+authentication these are **CNAME records that SendGrid generates** for
+you (Settings → Sender Authentication → Authenticate Your Domain); hand
+that generated set to Signature IT to add at the registrar. Raise before
+launch day.
 
 ## One-time tenant provisioning (after the Signature company exists)
 1. Sign in as the Signature admin, confirm company slug is
@@ -58,7 +69,7 @@ Signature IT or notifications land in spam. Raise before launch day.
 ## Remaining manual QA
 - Real-device pass: iOS Safari and Android Chrome on the facility flow.
 - Two-company tenant isolation pass with real admin accounts.
-- Decline email delivery once Resend + SPF/DKIM are live.
+- Decline email delivery once SendGrid + Sender Authentication are live.
 
 ## Root-URL public portal
 The bare production URL can serve the facility portal directly (Portal

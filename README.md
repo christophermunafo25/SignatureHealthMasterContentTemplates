@@ -116,6 +116,15 @@ Open the printed localhost URL and the first-run wizard walks you through creati
 
 4. In the Supabase dashboard (Authentication → URL Configuration), set the Site URL to your production domain and add your local and hosted URLs to the additional redirect URLs so confirmation, invite, and reset links land correctly.
 
+5. Point Auth at SendGrid's SMTP relay (Project Settings → Authentication →
+   SMTP Settings: `smtp.sendgrid.net:587`, username `apikey`, password =
+   the API key). Invite and recovery mail goes through GoTrue, not through
+   `_shared/email.ts`, so it is capped at 2 emails/hour on the built-in
+   sender — which is what makes invites fail after testing. Configure this
+   in the dashboard, **not** in `supabase/config.toml`; the comment at the
+   top of that file explains why. Full procedure in
+   `docs/LAUNCH_CHECKLIST.md`.
+
 ### Figma integration (optional)
 
 The manual builder always works without it. To enable Figma import, an admin connects a Figma personal access token from Settings; the token is stored server-side and used only by Edge Functions. The client never talks to the Figma API directly. OAuth is also implemented: set `FIGMA_CLIENT_ID`, `FIGMA_CLIENT_SECRET`, and `FIGMA_OAUTH_REDIRECT_URI` via `supabase secrets set` to enable it.

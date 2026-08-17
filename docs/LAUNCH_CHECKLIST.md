@@ -12,7 +12,7 @@ record the result before the client-facing launch.
 | Leaked password protection | **On** | ☐ |
 | Site URL | Production domain | ☑ 2026-07-29 |
 | Additional redirect URLs | `https://signaturehealthcare-graphics.vercel.app/**` + `http://localhost:5199/**` (wildcards — auth emails redirect to `/admin`, not the origin root) | ☑ 2026-07-29 |
-| Custom SMTP for auth email | **Required for launch** — the built-in sender allows 2 emails/hour (this is what makes invites fail after testing). Point it at the SendGrid account used for submission notifications (`smtp.sendgrid.net:587`, username `apikey`, password = the API key) so invites and notifications share a sending domain. Not yet implemented — needs a decision. | ☐ |
+| Custom SMTP for auth email | **Required for launch** — the built-in sender allows 2 emails/hour (this is what makes invites fail after testing). Point it at the SendGrid account used for submission notifications so invites and notifications share an authenticated sending domain. Full procedure below. | ☐ |
 | JWT expiry | Confirm and record | ☐ |
 | MFA | Decision required (open question) | ☐ |
 
@@ -54,6 +54,47 @@ authentication these are **CNAME records that SendGrid generates** for
 you (Settings → Sender Authentication → Authenticate Your Domain); hand
 that generated set to Signature IT to add at the registrar. Raise before
 launch day.
+
+## Custom SMTP for auth email (SendGrid relay)
+Invite, recovery, and confirmation mail does **not** go through
+`_shared/email.ts` — `invite-member` uses the GoTrue admin API, so those
+send from Supabase's built-in mailer, which is capped at **2 emails per
+hour**. That cap is what makes invites fail after a round of testing, and
+it is why the batch `mode: "link"` path exists as a workaround. Pointing
+Auth at SendGrid removes the cap and puts invites on the same
+authenticated domain as submission notifications.
+
+Do this **after** Sender Authentication is complete — the relay
+authenticates fine with an unverified sender and then rejects the mail.
+
+Dashboard → Project Settings → Authentication → SMTP Settings:
+
+| Field | Value |
+|---|---|
+| Enable Custom SMTP | On |
+| Host | `smtp.sendgrid.net` |
+| Port | `587` |
+| Username | `apikey` (the literal string — not the key, not an email) |
+| Password | the SendGrid API key |
+| Sender email | same as `NOTIFICATION_FROM_EMAIL` |
+| Sender name | e.g. Signature Content |
+
+| Step | Status |
+|---|---|
+| SMTP relay configured in dashboard | ☐ |
+| Rate limits raised (Auth → Rate Limits — the per-hour email cap stays in force until this is raised separately) | ☐ |
+| Test invite delivered end to end, confirmed in SendGrid Activity Feed | ☐ |
+| More than 2 invites sent within one hour to prove the cap is gone | ☐ |
+
+A dedicated API key for SMTP (Mail Send permission only) is worth
+creating rather than reusing the Edge Function key — it can be rotated
+without taking submission notifications down with it.
+
+**This is deliberately not in `supabase/config.toml`.** See the comment
+at the top of that file: `supabase config push` would send the file as
+the complete config, and every auth key missing from it would land as a
+CLI default — flipping `enable_signup` back on and dropping the minimum
+password length from 12 to 6.
 
 ## One-time tenant provisioning (after the Signature company exists)
 1. Sign in as the Signature admin, confirm company slug is

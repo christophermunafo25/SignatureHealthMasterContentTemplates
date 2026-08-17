@@ -9,7 +9,13 @@ import { AuthContext, LS_COMPANY, type AuthState } from "./AuthContext";
 interface MembershipRow {
   company_id: string;
   role: Role;
-  companies: { id: string; name: string; slug: string; created_at: string } | null;
+  companies: {
+    id: string;
+    name: string;
+    slug: string;
+    created_at: string;
+    notification_emails: string[] | null;
+  } | null;
 }
 
 /** Real auth: Supabase Auth session → memberships → company + role.
@@ -51,7 +57,11 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const loadMemberships = useCallback(async () => {
     const { data, error } = await supabase()
       .from("memberships")
-      .select("company_id, role, companies(id, name, slug, created_at)")
+      // Keep this column list in sync with the Company fields mapped below —
+      // anything omitted here silently arrives as undefined in the UI. That is
+      // how Settings ended up rendering "No recipients yet" over a populated
+      // notification_emails column.
+      .select("company_id, role, companies(id, name, slug, created_at, notification_emails)")
       .order("created_at", { ascending: true });
     if (error) throw error;
     const rows = (data as unknown as MembershipRow[]).filter((r) => r.companies);
@@ -60,6 +70,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       name: r.companies!.name,
       slug: r.companies!.slug,
       createdAt: r.companies!.created_at,
+      notificationEmails: r.companies!.notification_emails ?? [],
     }));
     setCompanies(list);
     setRoleByCompany(Object.fromEntries(rows.map((r) => [r.company_id, r.role])));

@@ -16,9 +16,13 @@ export function ReleaseFormPanel({ submission }: { submission: Submission }) {
   const Q = RELEASE_QUESTIONS;
   const rows: Array<[string, string]> = [
     [Q.platforms.label, rf.platforms?.length ? rf.platforms.join(", ") : "Not recorded"],
-    [Q.vpApproved.label, rf.vpApproved ?? "Not recorded"],
+    [Q.isEvent.label, rf.isEvent ?? "Not recorded"],
+    // Gated follow-ups: shown only when the gate was answered "Yes", so an
+    // omitted row means "never asked" rather than "unanswered".
+    ...(rf.vpApproved ? [[Q.vpApproved.label, rf.vpApproved] as [string, string]] : []),
     [Q.photoRelease.label, rf.photoRelease ?? "Not recorded"],
-    [Q.minorRelease.label, rf.minorRelease ?? "Not recorded"],
+    [Q.hasMinors.label, rf.hasMinors ?? "Not recorded"],
+    ...(rf.minorRelease ? [[Q.minorRelease.label, rf.minorRelease] as [string, string]] : []),
     [Q.offCampusRelease.label, rf.offCampusRelease ?? "Not recorded"],
     [Q.includesMedia.label, rf.includesMedia ?? "Not recorded"],
   ];

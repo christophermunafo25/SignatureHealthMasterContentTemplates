@@ -148,15 +148,26 @@ export async function sendSubmissionNotification(
   // the inbox. The flag line goes FIRST — it's the one thing that changes
   // how the reviewer treats the submission.
   const rf = p.releaseForm;
+  const row = (label: string, value: string) =>
+    `<tr><td style="color: #777; padding-right: 14px;">${label}</td><td>${value}</td></tr>`;
+  // v2 gates Q3/Q5 behind Q3a/Q5a, so a follow-up row is only meaningful when
+  // it was actually asked. Rendering each row only when its answer exists
+  // keeps v1 submissions readable too — they simply have no gate recorded.
   const releaseRows = rf
-    ? `
-      <tr><td style="color: #777; padding-right: 14px;">Platforms</td><td>${esc((rf.platforms ?? []).join(", ") || "—")}</td></tr>
-      <tr><td style="color: #777; padding-right: 14px;">Requested post</td><td>${esc(rf.requestedPostDate || "—")}${rf.requestedPostTime ? ` at ${esc(rf.requestedPostTime)}` : ""}</td></tr>
-      <tr><td style="color: #777; padding-right: 14px;">VP approved</td><td>${esc(rf.vpApproved ?? "—")}</td></tr>
-      <tr><td style="color: #777; padding-right: 14px;">Photo release</td><td>${esc(rf.photoRelease ?? "—")}</td></tr>
-      <tr><td style="color: #777; padding-right: 14px;">Minor release</td><td>${esc(rf.minorRelease ?? "—")}</td></tr>
-      <tr><td style="color: #777; padding-right: 14px;">Off-campus release</td><td>${esc(rf.offCampusRelease ?? "—")}</td></tr>
-      <tr><td style="color: #777; padding-right: 14px;">Files</td><td>${p.assetCount}</td></tr>`
+    ? [
+        row("Platforms", esc((rf.platforms ?? []).join(", ") || "—")),
+        row(
+          "Requested post",
+          `${esc(rf.requestedPostDate || "—")}${rf.requestedPostTime ? ` at ${esc(rf.requestedPostTime)}` : ""}`,
+        ),
+        rf.isEvent ? row("Event", esc(rf.isEvent)) : "",
+        rf.vpApproved ? row("VP approved", esc(rf.vpApproved)) : "",
+        row("Photo release", esc(rf.photoRelease ?? "—")),
+        rf.hasMinors ? row("Minors in submission", esc(rf.hasMinors)) : "",
+        rf.minorRelease ? row("Minor release", esc(rf.minorRelease)) : "",
+        row("Off-campus release", esc(rf.offCampusRelease ?? "—")),
+        row("Files", String(p.assetCount)),
+      ].join("")
     : "";
 
   // Plain and legible: a work notification in a busy inbox — restraint

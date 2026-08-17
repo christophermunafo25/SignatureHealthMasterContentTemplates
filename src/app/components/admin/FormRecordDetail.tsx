@@ -28,10 +28,23 @@ function Answer({ value }: { value: string | undefined | null }) {
   );
 }
 
-function Question({ number, label, children }: { number: number; label: string; children: React.ReactNode }) {
+function Question({
+  number,
+  suffix,
+  label,
+  children,
+}: {
+  number: number;
+  suffix?: "a" | "b";
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="p-4 space-y-1.5" style={panel}>
-      <p className="sp-eyebrow">Question {String(number).padStart(2, "0")}</p>
+      <p className="sp-eyebrow">
+        Question {String(number).padStart(2, "0")}
+        {suffix ?? ""}
+      </p>
       <p style={{ fontSize: 13.5, fontWeight: 500, color: "var(--ink)" }}>{label}</p>
       <div style={{ fontSize: 13, color: "var(--fg-1)" }}>{children}</div>
     </div>
@@ -187,15 +200,27 @@ function RecordLoaded({ sub, onBack }: { sub: Submission; onBack(): void }) {
               <NotRecorded />
             )}
           </Question>
-          <Question number={Q.vpApproved.number} label={Q.vpApproved.label}>
-            <Answer value={rf.vpApproved} />
+          <Question number={Q.isEvent.number} suffix={Q.isEvent.suffix} label={Q.isEvent.label}>
+            <Answer value={rf.isEvent} />
           </Question>
+          {/* Gated follow-ups render only when asked — a missing 3b means
+              "not an event", which the 3a answer above already states. */}
+          {rf.vpApproved && (
+            <Question number={Q.vpApproved.number} suffix={Q.vpApproved.suffix} label={Q.vpApproved.label}>
+              <Answer value={rf.vpApproved} />
+            </Question>
+          )}
           <Question number={Q.photoRelease.number} label={Q.photoRelease.label}>
             <Answer value={rf.photoRelease} />
           </Question>
-          <Question number={Q.minorRelease.number} label={Q.minorRelease.label}>
-            <Answer value={rf.minorRelease} />
+          <Question number={Q.hasMinors.number} suffix={Q.hasMinors.suffix} label={Q.hasMinors.label}>
+            <Answer value={rf.hasMinors} />
           </Question>
+          {rf.minorRelease && (
+            <Question number={Q.minorRelease.number} suffix={Q.minorRelease.suffix} label={Q.minorRelease.label}>
+              <Answer value={rf.minorRelease} />
+            </Question>
+          )}
           <Question number={Q.offCampusRelease.number} label={Q.offCampusRelease.label}>
             <Answer value={rf.offCampusRelease} />
           </Question>

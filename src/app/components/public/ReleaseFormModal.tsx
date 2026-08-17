@@ -173,6 +173,7 @@ export function ReleaseFormModal(props: ReleaseFormModalProps) {
             form={form}
             onChange={props.onChange}
             hasGeneratedGraphic
+            graphicPreviewUrl={previewUrl}
             assets={assets}
             onAssetsChange={props.onAssetsChange}
             showIssues={showIssues}

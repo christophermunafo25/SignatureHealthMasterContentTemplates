@@ -1,7 +1,8 @@
-// Transactional email. Provider (Resend) stays behind sendNotification()
-// so swapping to Postmark/SendGrid is a one-file change. Secrets:
-//   RESEND_API_KEY            — set via `supabase secrets set`
+// Transactional email. Provider (SendGrid) stays behind sendNotification()
+// so swapping to another provider is a one-file change. Secrets:
+//   SENDGRID_API_KEY          — set via `supabase secrets set`
 //   NOTIFICATION_FROM_EMAIL   — e.g. content@mail.<sending-domain>
+//   NOTIFICATION_FROM_NAME    — optional display name, e.g. Signature Content
 //   PUBLIC_APP_URL            — deployed origin, for review deep links
 //
 // NOTE FOR ROLLOUT: the sending domain needs SPF and DKIM records on the
@@ -14,6 +15,45 @@ import type { ReleaseForm } from "./releaseForm.ts";
 const BRAND_NAVY = "#003B71";
 const BRAND_CREAM = "#F1E4B2";
 
+interface SendConfig {
+  apiKey: string;
+  from: string;
+  fromName: string | undefined;
+}
+
+/** One SendGrid v3 send to a single recipient. Throws on transport failure or
+ * a non-2xx so the caller can attribute the failure to an address. */
+async function sendOne(
+  email: string,
+  subject: string,
+  html: string,
+  cfg: SendConfig,
+): Promise<void> {
+  const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${cfg.apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email }] }],
+      from: cfg.fromName ? { email: cfg.from, name: cfg.fromName } : { email: cfg.from },
+      subject,
+      content: [{ type: "text/html", value: html }],
+      // SendGrid rewrites every href through sendgrid.net by default. These
+      // emails carry a 30-day signed Storage URL and a review deep link — a
+      // redirect through a tracking domain reads as untrustworthy in a
+      // healthcare inbox and adds a failure point between the reviewer and
+      // the asset.
+      tracking_settings: {
+        click_tracking: { enable: false, enable_text: false },
+        open_tracking: { enable: false },
+      },
+    }),
+  });
+  // Success is 202 Accepted with an EMPTY body — res.ok covers it, and there
+  // is nothing to parse. Errors carry {errors:[{message,field,help}]}; log the
+  // raw text so a 403 sender-verification failure is readable in the logs.
+  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+}
+
 /** Send an email through the configured provider. Resolves false (never
  * throws) when the provider is unconfigured or rejects — callers must treat
  * email as best-effort. */
@@ -22,27 +62,31 @@ export async function sendNotification(
   subject: string,
   html: string,
 ): Promise<boolean> {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
+  const apiKey = Deno.env.get("SENDGRID_API_KEY");
+  // SendGrid requires this address to pass Single Sender Verification or
+  // Domain Authentication; an unverified sender returns 403 at SEND time, not
+  // at deploy time. It is the most likely first-deploy failure.
   const from = Deno.env.get("NOTIFICATION_FROM_EMAIL");
+  const fromName = Deno.env.get("NOTIFICATION_FROM_NAME") || undefined;
   if (!apiKey || !from || to.length === 0) {
     console.warn("email skipped: provider not configured or no recipients");
     return false;
   }
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, subject, html }),
-    });
-    if (!res.ok) {
-      console.error("email send failed", res.status, await res.text());
-      return false;
-    }
-    return true;
-  } catch (e) {
-    console.error("email send failed", e);
-    return false;
-  }
+  // One request per recipient, concurrently. SendGrid rejects the ENTIRE
+  // request with a 400 if any single address in it is malformed, and
+  // notification_emails is an admin-managed list that Settings validates only
+  // with `includes("@")` — batching would let one typo silently kill the
+  // notification for the whole team. Per-recipient sends also keep the team's
+  // addresses out of each other's To: header.
+  const results = await Promise.allSettled(
+    to.map((email) => sendOne(email, subject, html, { apiKey, from, fromName })),
+  );
+  let sent = 0;
+  results.forEach((r, i) => {
+    if (r.status === "fulfilled") sent++;
+    else console.error(`email send failed for ${to[i]}`, r.reason);
+  });
+  return sent > 0;
 }
 
 interface SubmissionEmailParams {

@@ -106,8 +106,13 @@ Open the printed localhost URL and the first-run wizard walks you through creati
    IT add SPF/DKIM on the sending domain):
 
    ```bash
-   supabase secrets set RESEND_API_KEY=... NOTIFICATION_FROM_EMAIL=... PUBLIC_APP_URL=...
+   supabase secrets set SENDGRID_API_KEY=... NOTIFICATION_FROM_EMAIL=... NOTIFICATION_FROM_NAME="Signature Content" PUBLIC_APP_URL=...
    ```
+
+   The From address must be verified in SendGrid first (Settings → Sender
+   Authentication) — an unverified sender fails at send time with a 403,
+   not at deploy time, so the functions will deploy cleanly and then drop
+   every notification. `NOTIFICATION_FROM_NAME` is optional.
 
 4. In the Supabase dashboard (Authentication → URL Configuration), set the Site URL to your production domain and add your local and hosted URLs to the additional redirect URLs so confirmation, invite, and reset links land correctly.
 

@@ -158,6 +158,12 @@ Full details:
 |---|---|
 | `npm run dev` | Start the Vite dev server (set `PORT` to pick a port) |
 | `npm run build` | Production build |
+| `npm run test` | Vitest suite for `src/` (Node) |
+| `npm run test:functions` | Deno suite for the Edge Function shared modules — requires the `deno` CLI |
+
+The two runners are separate because Edge Functions run on Deno and `src/`
+runs on Node. Function tests are named `*_test.ts` (Deno's convention) so
+vitest's `**/*.test.ts` glob doesn't try to execute them under Node.
 
 ## Origins
 

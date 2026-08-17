@@ -65,6 +65,29 @@ const BUILDER_MIN_VIEWPORT_PX = 1024;
 
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
+/** Turns a save failure into something an admin can act on.
+ *
+ *  The branch that earns this function is the first one: a check-constraint
+ *  or enum rejection means the APP is ahead of the DATABASE — a migration
+ *  hasn't run, or a deploy landed out of order. Retrying will fail again
+ *  every time, so the message has to say so rather than read as a transient
+ *  glitch. The raw Postgres text is always appended: when the cause is one
+ *  this function has never seen, that string is the only clue. */
+export function saveErrorMessage(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e);
+  const lower = raw.toLowerCase();
+  if (lower.includes("check constraint") || lower.includes("invalid input value for enum")) {
+    return `The database rejected part of this template — it may be running behind the app (a migration is probably pending). Nothing was saved. Details: ${raw}`;
+  }
+  if (lower.includes("row-level security") || lower.includes("permission denied")) {
+    return `You don't have permission to save this template. Details: ${raw}`;
+  }
+  if (lower.includes("failed to fetch") || lower.includes("networkerror")) {
+    return "Couldn't reach the server — check your connection. Your work is still here and will save when the connection returns.";
+  }
+  return `Couldn't save this template. Details: ${raw}`;
+}
+
 /** "Saved just now" → "Saved N minutes ago". nowTick only forces re-renders. */
 function savedAgo(savedAt: number, _nowTick: number): string {
   const mins = Math.floor((Date.now() - savedAt) / 60_000);
@@ -459,7 +482,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     } catch (e) {
       console.error("Save failed", e);
       if (quiet) setSaveFailed(true);
-      else setError(e instanceof Error ? e.message : "Save failed.");
+      else setError(saveErrorMessage(e));
       return null;
     } finally {
       saveInFlight.current = false;

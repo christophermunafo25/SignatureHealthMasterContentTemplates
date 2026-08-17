@@ -133,10 +133,203 @@
   --sb-active-border: transparent;
 }
 
+/* ==========================================================================
+   COMPATIBILITY SHIM — SocialPaint token vocabulary → Signature values.
+
+   The two products share a codebase ancestor but not a token vocabulary.
+   Components ported from SocialPaint-Graphic-Generator reference SP's
+   custom-property names; rather than rewrite thousands of lines of ported
+   CSS-in-JS, every SP name is aliased here to the Signature value that
+   plays the same role. Ported components then compile unmodified.
+
+   REMOVAL NOTE: this block is a migration aid, not part of the design
+   system. Once the builder port is complete, collapse it by rewriting the
+   ported components onto the Signature names above and delete this section.
+   Nothing NEW should be written against these names.
+
+   Rules honoured while mapping:
+   - SocialPaint brand hues (Voltage/Wednesdays/Fire/Aqua/Sunshine) resolve
+     to the Signature palette, so no SocialPaint colour can reach the UI.
+   - SP's light-mode rule — bright hues are FILLS, text stays ink — is the
+     same rule Signature uses, so state text maps to navy and the hue rides
+     the matching --fill-* token.
+   - Gradients-as-surface are banned here, so --brand-surface is flat navy.
+   - Montserrat takes no negative tracking, so the type ramp's --*-track
+     steps are normalised rather than carried across at SP's -0.01em.
+   ========================================================================== */
+:root {
+  /* ── Neutrals & brand hues ─────────────────────────────────────────────
+     --ink is NOT re-declared: SP means "the darkest glyph colour" by it and
+     Signature navy already holds that role above. */
+  --white: #ffffff;
+  --gray: var(--linen);
+  --voltage: var(--mint); /* SP primary brand fill → Signature orange */
+  --sunshine: var(--peach);
+  --aqua: var(--sky);
+  --wednesdays: var(--orchid);
+  --fire: var(--blush);
+  --text-on-brand: var(--ink); /* navy on orange = 5.4:1 */
+
+  /* ── Surfaces ──────────────────────────────────────────────────────────
+     --border is already declared in theme.css as var(--hairline). */
+  --bg-canvas: var(--linen);
+  --bg-surface: var(--lift);
+  --bg-raised: var(--paper);
+  --bg-hover: var(--surface-sunken);
+  --bg-plate: var(--lift);
+  --bg-surface-raised: var(--paper);
+  --bg-surface-hover: var(--surface-sunken);
+  --border-strong: var(--hairline-strong);
+  --border-on-surface: var(--hairline);
+  --border-control: var(--hairline-strong);
+
+  /* ── Foregrounds ───────────────────────────────────────────────────────
+     Four rungs, matched by contrast rather than by ordinal position:
+     SP muted measures ~4.4:1 on white, so it lands on --fg-3 (4.2:1), not
+     --fg-4 (2.4:1, below AA). --fg-4 carries disabled, which is where a
+     sub-AA value belongs. */
+  --text-primary: var(--fg-1);
+  --text-secondary: var(--fg-2);
+  --text-muted: var(--fg-3);
+  --text-disabled: var(--fg-4);
+  --text-on-surface: var(--fg-1);
+  --text-on-surface-secondary: var(--fg-2);
+  --text-on-surface-muted: var(--fg-3);
+  --text-on-accent: var(--ink);
+  --text-on-action: var(--btn-primary-fg);
+
+  /* ── Action & state ────────────────────────────────────────────────────
+     Signature and SocialPaint agree on light mode: the hue is a FILL, the
+     glyph stays ink. So every --state-* is navy except danger, which keeps
+     its red because the hue IS the signal. */
+  --fill-action: var(--btn-primary-bg);
+  --state-primary: var(--ink);
+  --state-primary-on-surface: var(--ink);
+  --fill-primary: var(--mint);
+  --state-info: var(--ink);
+  --fill-info: var(--sky);
+  --state-attention: var(--ink);
+  --state-attention-on-surface: var(--ink);
+  --fill-attention: var(--mint);
+  --state-warning: var(--ink);
+  --state-warning-on-surface: var(--ink);
+  --fill-warning: var(--amber);
+  --state-danger: var(--danger);
+  --state-danger-on-surface: var(--danger);
+  --fill-danger: var(--danger);
+  --danger-wash: color-mix(in srgb, var(--danger) 16%, transparent);
+
+  /* Brand-moment surface — flat navy, white voice (see .sp-mesh). */
+  --brand-surface: var(--mesh-warm);
+  --brand-surface-fg: var(--fg-on-dark-1);
+
+  /* Confirm-flash wash, as a bare rgb triplet so keyframes can vary its
+     alpha (see @keyframes sp-inline-edit-flash for why not color-mix). */
+  --flash-rgb: 255, 158, 24; /* Signature orange */
+
+  /* Signature's primary button holds its navy fill on hover and turns the
+     LABEL orange, so the background hover is a no-op here by design. */
+  --btn-primary-bg-hover: var(--btn-primary-bg);
+
+  /* Chart series — categorical only; no series colour encodes severity. */
+  --viz-series-1: var(--viz-downloads);
+  --viz-series-2: var(--viz-opens);
+  --viz-series-3: var(--blush);
+  --viz-series-4: var(--amber);
+
+  /* ── Typography ────────────────────────────────────────────────────────
+     --font-body / --font-ui / --font-mono already carry Signature faces. */
+  --font-head: var(--font-display);
+  --weight-head: 700; /* Montserrat Bold — see .sp-page-title */
+  --weight-ui: 500;
+
+  /* Type ramp. Sizes are structural and carried across, except the display
+     steps, which are re-anchored so h4 (page titles) meets .sp-page-title
+     at 24px instead of SP's 30px. Tracking is normalised: Montserrat needs
+     no negative tracking, and the +0.1em heading kerning is applied by
+     .sp-page-title, not by the ramp. */
+  --type-display-size: 56px;
+  --type-display-lh: 1;
+  --type-display-track: normal;
+  --type-h1-size: 40px;
+  --type-h1-lh: 1.05;
+  --type-h1-track: normal;
+  --type-h2-size: 32px;
+  --type-h2-lh: 1.1;
+  --type-h2-track: normal;
+  --type-h3-size: 28px;
+  --type-h3-lh: 1.15;
+  --type-h3-track: normal;
+  --type-h4-size: 24px;
+  --type-h4-lh: 1.2;
+  --type-h4-track: normal;
+  --type-cardtitle-size: 20px;
+  --type-cardtitle-lh: 1.3;
+  --type-cardtitle-track: normal;
+  --type-body-size: 15px;
+  --type-body-lh: 1.5;
+  --type-body-track: normal;
+  --type-label-size: 13px;
+  --type-label-lh: 1.25;
+  --type-label-track: normal;
+  --type-caption-size: 12px;
+  --type-caption-lh: 1.4;
+  --type-caption-track: normal;
+  --type-button-size: 13px; /* .sp-btn is 13px, not SP's 15px */
+  --type-button-lh: 1.1;
+  --type-button-track: 0.01em;
+  --type-data-size: 13px;
+  --type-data-lh: 1.4;
+  --type-data-track: normal;
+
+  /* ── Spacing — 4px base, nothing off the scale. ────────────────────────── */
+  --space-3xs: 4px;
+  --space-2xs: 8px;
+  --space-xs: 12px;
+  --space-sm: 16px;
+  --space-md: 24px;
+  --space-lg: 32px;
+  --space-xl: 48px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+
+  /* ── Shape & density ───────────────────────────────────────────────────
+     SP's --radius-control is 5px — the crisp-control rung, which Signature
+     spells --radius-button/--radius-input. It is NOT --radius-card-sm
+     (20px); aliasing it there would round every ported control to 20px and
+     break the soft-container / crisp-control gap both systems hold. */
+  --radius-control: var(--radius-button);
+  --control-sm: 38px; /* .sp-btn min-height */
+  --control-md: 46px;
+  --control-lg: 54px;
+  --row-h-compact: 32px; /* builder inspector rows run tighter than forms */
+  --border-width: 1px;
+  --focus-width: 2px;
+  --focus-offset: 2px;
+
+  /* ── Layering ──────────────────────────────────────────────────────────
+     A real scale, where Signature previously used ad-hoc integers. Ported
+     popovers and modals land above the existing z-index: 60 toast. */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-drawer: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-popover: 500;
+  --z-toast: 600;
+  --z-tooltip: 700;
+
+  /* ── Motion ────────────────────────────────────────────────────────────
+     --ease / --dur-state / --dur-panel already match SP exactly. */
+  --dur-reveal: 400ms;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur-state: 0ms;
     --dur-panel: 0ms;
+    --dur-reveal: 0ms;
   }
 }
 
@@ -355,4 +548,290 @@ button, input, select, textarea, optgroup {
   border-radius: 50%;
   background: #fff;
   border-color: var(--editor-accent);
+}
+
+/* ==========================================================================
+   Ported component styles — SocialPaint builder parity, Phase 0.
+   Recipes carried across with the SocialPaint components that need them.
+   They resolve through the compatibility shim above, so they read in SP's
+   token vocabulary; Signature's own rules are applied where the two systems
+   genuinely disagree (noted inline).
+   ========================================================================== */
+
+/* ── Switch ──────────────────────────────────────────────────────────────
+   Pill track, sliding knob, hidden native checkbox with switch semantics.
+   The label column usually lives outside (PropertyRow). */
+.sp-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  cursor: pointer;
+}
+.sp-switch[data-disabled] {
+  cursor: default;
+  opacity: 0.5;
+}
+.sp-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.sp-switch__track {
+  width: 40px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  background: var(--switch-background);
+  position: relative;
+  flex-shrink: 0;
+  transition: background var(--dur-state) var(--ease);
+}
+.sp-switch input:checked + .sp-switch__track {
+  background: var(--fill-attention); /* Signature orange — a fill, not a mark */
+}
+.sp-switch input:focus-visible + .sp-switch__track {
+  box-shadow: var(--focus-ring-tight);
+}
+.sp-switch__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  transition:
+    left var(--dur-state) var(--ease),
+    background var(--dur-state) var(--ease);
+}
+.sp-switch input:checked + .sp-switch__track .sp-switch__knob {
+  left: 19px;
+  background: var(--text-on-brand); /* navy on orange, 5.4:1 */
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-switch__track,
+  .sp-switch__knob {
+    transition: none;
+  }
+}
+
+/* ── Inline edit ─────────────────────────────────────────────────────────
+   Click-to-edit-in-place: the value reads as plain text with a pencil that
+   fades in on hover/focus, and the swap to an input must not reflow. */
+
+/* Stacked card of labelled rows (the group presentation). */
+.sp-inline-edit-group {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.sp-inline-edit-group .sp-inline-edit {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.sp-inline-edit-group .sp-inline-edit:last-child {
+  border-bottom: none;
+}
+
+/* Standalone it carries no chrome, so it drops into a toolbar or a card
+   title without disturbing the layout. */
+.sp-inline-edit {
+  position: relative;
+  min-width: 0;
+}
+
+.sp-inline-edit__label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+  user-select: none;
+}
+
+/* ── Display row (value + pencil) ── */
+.sp-inline-edit__row {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.sp-inline-edit__display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  text-align: left;
+  border-radius: var(--radius-control);
+  padding: 2px 4px;
+  margin: 0 -4px;
+  color: inherit;
+  font: inherit;
+  transition: background var(--dur-state) var(--ease);
+}
+
+.sp-inline-edit__display:hover,
+.sp-inline-edit__display:focus-visible {
+  background: var(--bg-hover);
+}
+
+.sp-inline-edit__display:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-tight);
+}
+
+.sp-inline-edit__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-inline-edit__icon {
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  color: var(--text-muted);
+  transition: opacity var(--dur-state) var(--ease);
+  flex-shrink: 0;
+}
+
+.sp-inline-edit__display:hover .sp-inline-edit__icon,
+.sp-inline-edit__display:focus-visible .sp-inline-edit__icon {
+  opacity: 1;
+}
+
+/* ── Edit row (input + save/cancel) ── */
+.sp-inline-edit__edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  min-width: 0;
+}
+
+/* width:0 alongside flex — an <input> otherwise reports its `size`-derived
+   width as its min-content contribution, which widens the grid track the
+   card sits in and makes the card jump the moment editing opens. */
+.sp-inline-edit__input {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  font: inherit;
+  font-family: var(--font-ui);
+  letter-spacing: normal; /* Montserrat takes no negative tracking */
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 3px 8px;
+  outline: none;
+  transition:
+    border-color var(--dur-state) var(--ease),
+    box-shadow var(--dur-state) var(--ease);
+}
+
+/* Same construction as .sp-input: the control's own 1px edge takes the ring
+   colour, never a halo on top of it. */
+.sp-inline-edit__input:focus {
+  border-color: var(--ring);
+  box-shadow: none;
+  outline: none;
+}
+
+.sp-inline-edit__save,
+.sp-inline-edit__cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition:
+    background var(--dur-state) var(--ease),
+    color var(--dur-state) var(--ease);
+}
+
+/* Save wears the primary construction. Signature's rule differs from the
+   source system here: the navy fill HOLDS on hover and the glyph turns
+   orange, exactly as .sp-btn-primary does. */
+.sp-inline-edit__save {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+}
+.sp-inline-edit__save:hover {
+  background: var(--btn-primary-bg-hover);
+  color: var(--btn-primary-fg-hover);
+}
+
+.sp-inline-edit__cancel {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+.sp-inline-edit__cancel:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sp-inline-edit__save:focus-visible,
+.sp-inline-edit__cancel:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-tight);
+}
+
+/* ── Confirm flash ──
+   Built as literal rgba() rather than color-mix: Chrome drops the alpha
+   when it interpolates a color-mix()'d color() inside a keyframe, which
+   turns the wash into a solid bar. */
+@keyframes sp-inline-edit-flash {
+  0% {
+    background-color: rgba(var(--flash-rgb), 0.18);
+  }
+  60% {
+    background-color: rgba(var(--flash-rgb), 0.12);
+  }
+  100% {
+    background-color: rgba(var(--flash-rgb), 0);
+  }
+}
+
+.sp-inline-edit[data-flash="true"] {
+  animation: sp-inline-edit-flash 0.7s ease forwards;
+}
+
+/* Visually hidden announcement region. */
+.sp-inline-edit__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-inline-edit__display,
+  .sp-inline-edit__icon,
+  .sp-inline-edit__input,
+  .sp-inline-edit__save,
+  .sp-inline-edit__cancel {
+    transition-duration: 0.001ms;
+  }
+  /* The confirm still has to register — it just holds still and clears on a
+     timer instead of animating out. */
+  .sp-inline-edit[data-flash="true"] {
+    animation: none;
+    background-color: rgba(var(--flash-rgb), 0.12);
+  }
 }

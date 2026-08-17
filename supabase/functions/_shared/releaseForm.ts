@@ -4,7 +4,9 @@
 // client validates for UX; this validates for truth.
 //
 
-export const RELEASE_FORM_VERSION = 1 as const;
+// v2: Q3 and Q5 are now gated behind Q3a/Q5a. Answers from v1 forms are still
+// readable — vpApproved/minorRelease simply have no matching gate recorded.
+export const RELEASE_FORM_VERSION = 2 as const;
 
 export type YesNo = "Yes" | "No";
 export type YesNoNa = "N/A" | "Yes" | "No";
@@ -15,12 +17,16 @@ export interface ReleaseForm {
   version: typeof RELEASE_FORM_VERSION;
   /** Q2 — at least one required. */
   platforms: ReleasePlatform[];
-  /** Q3 — "No" flags the submission but does not block it. */
-  vpApproved: YesNo;
+  /** Q3a — gates Q3b. "No" means the VP question is never asked. */
+  isEvent: YesNo;
+  /** Q3b — only asked when isEvent is "Yes". "No" flags but does not block. */
+  vpApproved?: YesNo;
   /** Q4 — "No" BLOCKS. */
   photoRelease: YesNo;
-  /** Q5 — "No" BLOCKS. */
-  minorRelease: YesNoNa;
+  /** Q5a — gates Q5b. "No" means the minor release question is never asked. */
+  hasMinors: YesNo;
+  /** Q5b — only asked when hasMinors is "Yes". "No" BLOCKS. */
+  minorRelease?: YesNoNa;
   /** Q6 — "No" BLOCKS. */
   offCampusRelease: YesNoNa;
   /** Q7 — YYYY-MM-DD, today or later. */
@@ -58,16 +64,25 @@ export const MEDIA_RELEASE_FORMS_URL =
 export interface ReleaseQuestion {
   /** Paper-form question number (2–12) — the numbering facilities know. */
   number: number;
+  /** Sub-letter for gated pairs: 3a gates 3b, 5a gates 5b. The paper numbers
+   * stay recognisable rather than every later question shifting by two. */
+  suffix?: "a" | "b";
   label: string;
   helper?: string;
 }
+
+/** "3a", "5b", "4" — for display and anchor ids. */
+export const questionNumber = (q: ReleaseQuestion): string =>
+  `${q.number}${q.suffix ?? ""}`;
 
 /** Question copy keyed by ReleaseForm field (plus the Q11 dropzone, which
  * has no form field of its own — files land in `assets`). */
 export const RELEASE_QUESTIONS: Record<
   | "platforms"
+  | "isEvent"
   | "vpApproved"
   | "photoRelease"
+  | "hasMinors"
   | "minorRelease"
   | "offCampusRelease"
   | "requestedPostDate"
@@ -84,8 +99,14 @@ export const RELEASE_QUESTIONS: Record<
     helper:
       "Not all facilities have IG. If interested, please contact the Agency at theagency@signaturehealthcarellc.com.",
   },
+  isEvent: {
+    number: 3,
+    suffix: "a",
+    label: "Is this submission for an event?",
+  },
   vpApproved: {
     number: 3,
+    suffix: "b",
     label: "Did your Vice President of Operations approve this event?",
   },
   photoRelease: {
@@ -95,8 +116,14 @@ export const RELEASE_QUESTIONS: Record<
     helper:
       "If you do not have a signed permission form, please use a different photo or get permission BEFORE uploading the images.",
   },
+  hasMinors: {
+    number: 5,
+    suffix: "a",
+    label: "Are there any minors in this submission?",
+  },
   minorRelease: {
     number: 5,
+    suffix: "b",
     label: "Do ALL minors in the pictures have proper media releases and consent forms?",
     helper:
       "If you do not have a signed consent form, please use a different photo or get permission BEFORE uploading the images.",
@@ -208,7 +235,8 @@ export function validateReleaseForm(
       "We can't post off-campus photos without a signed consent release on file. Please use a different photo or get permission first.",
     );
   }
-  if (form.vpApproved === "No") {
+  // Only an event can lack VP approval, so a non-event never carries the flag.
+  if (form.isEvent === "Yes" && form.vpApproved === "No") {
     issues.push({
       field: "vpApproved",
       message: "This will be sent for review without VP of Operations approval.",
@@ -233,22 +261,43 @@ export function validateReleaseForm(
   if (form.includesMedia === "No" && !ctx.hasGeneratedGraphic && ctx.assetCount === 0) {
     blocking("assets", "A post needs a graphic, photo, or video.");
   }
-  if (form.includesMedia !== "Yes" && form.includesMedia !== "No") {
+  // On the template path the rendered graphic IS the media, so Q10 is answered
+  // for the user and hidden — never block on it there.
+  if (
+    !ctx.hasGeneratedGraphic &&
+    form.includesMedia !== "Yes" &&
+    form.includesMedia !== "No"
+  ) {
     blocking("includesMedia", "Tell us whether you're uploading a photo or video.");
   }
   if (form.acknowledged !== true) {
     blocking("acknowledged", "Please read and acknowledge the posting guidelines.");
   }
-  // The three release questions must be answered, not merely not-"No".
+  // The release questions must be answered, not merely not-"No".
   if (form.photoRelease !== "Yes" && form.photoRelease !== "No") {
     blocking("photoRelease", "Answer the photo release question.");
   }
-  if (!form.minorRelease) blocking("minorRelease", "Answer the minor release question.");
   if (!form.offCampusRelease) {
     blocking("offCampusRelease", "Answer the off-campus release question.");
   }
-  if (form.vpApproved !== "Yes" && form.vpApproved !== "No") {
-    blocking("vpApproved", "Answer the VP of Operations approval question.");
+  // Gated pairs: the gate is always required, the follow-up only when the gate
+  // is "Yes". A "No" gate must NOT leave a stale follow-up answer behind — the
+  // form clears it, and this refuses it if anything else sends one.
+  if (form.isEvent !== "Yes" && form.isEvent !== "No") {
+    blocking("isEvent", "Tell us whether this submission is for an event.");
+  } else if (form.isEvent === "Yes") {
+    if (form.vpApproved !== "Yes" && form.vpApproved !== "No") {
+      blocking("vpApproved", "Answer the VP of Operations approval question.");
+    }
+  } else if (form.vpApproved !== undefined) {
+    blocking("vpApproved", "This isn't an event, so the VP approval answer shouldn't be set.");
+  }
+  if (form.hasMinors !== "Yes" && form.hasMinors !== "No") {
+    blocking("hasMinors", "Tell us whether there are minors in this submission.");
+  } else if (form.hasMinors === "Yes") {
+    if (!form.minorRelease) blocking("minorRelease", "Answer the minor release question.");
+  } else if (form.minorRelease !== undefined) {
+    blocking("minorRelease", "There are no minors, so the minor release answer shouldn't be set.");
   }
   return issues;
 }

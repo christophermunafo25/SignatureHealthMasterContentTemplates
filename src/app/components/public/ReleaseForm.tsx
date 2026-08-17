@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { AlertTriangle, ChevronDown, ExternalLink, FileText, Film, Presentation, X } from "lucide-react";
 import type { PublicFacility } from "@/lib/publicClient";
@@ -42,9 +42,12 @@ export interface ReleaseFormProps {
   onIdentityChange(patch: { submitterName?: string; submitterEmail?: string }): void;
   form: Partial<ReleaseFormDoc>;
   onChange(patch: Partial<ReleaseFormDoc>): void;
-  /** Template path: hides Q10/Q11's "required" framing and shows the
-   * generated graphic as the attached media. Extra uploads stay allowed. */
+  /** Template path: Q10 is answered and hidden, and Q11 shows the generated
+   * graphic as the attached media. Extra uploads stay allowed. */
   hasGeneratedGraphic: boolean;
+  /** Object URL of the rendered graphic, shown in Q11 on the template path so
+   * the user can see what is being attached. */
+  graphicPreviewUrl?: string | null;
   assets: PendingAsset[];
   onAssetsChange(next: PendingAsset[]): void;
   /** Show validation messages only after a submit attempt. */
@@ -114,6 +117,7 @@ function ReleaseBlockedPanel() {
 
 function QuestionPanel({
   number,
+  suffix,
   label,
   helper,
   issue,
@@ -121,6 +125,8 @@ function QuestionPanel({
   anchorId,
 }: {
   number?: number;
+  /** "a"/"b" for gated pairs — renders as "Question 03a". */
+  suffix?: "a" | "b";
   label: string;
   helper?: string;
   issue?: ReleaseFormIssue | null;
@@ -130,7 +136,12 @@ function QuestionPanel({
   return (
     <div id={anchorId} className="p-4 space-y-2.5" style={panel}>
       <div className="min-w-0">
-        {number !== undefined && <p className="sp-eyebrow">Question {String(number).padStart(2, "0")}</p>}
+        {number !== undefined && (
+          <p className="sp-eyebrow">
+            Question {String(number).padStart(2, "0")}
+            {suffix ?? ""}
+          </p>
+        )}
         <p className="block" style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", marginTop: 2 }}>
           {label}
         </p>
@@ -196,12 +207,20 @@ export function ReleaseForm({
   form,
   onChange,
   hasGeneratedGraphic,
+  graphicPreviewUrl,
   assets,
   onAssetsChange,
   showIssues,
   issues,
   uploading,
 }: ReleaseFormProps) {
+  // Q10 is hidden on the template path because the rendered graphic IS the
+  // media, so answer it on the user's behalf — the value still rides the
+  // saved form and Form Records. The guard stops this from re-firing.
+  useEffect(() => {
+    if (hasGeneratedGraphic && form.includesMedia !== "Yes") onChange({ includesMedia: "Yes" });
+  }, [hasGeneratedGraphic, form.includesMedia, onChange]);
+
   // Long intro: collapsed behind a disclosure on mobile, expanded at sm+.
   const [introOpen, setIntroOpen] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
@@ -406,15 +425,35 @@ export function ReleaseForm({
         </div>
       </QuestionPanel>
 
-      {/* Q3 — VP approval (flag, not block) */}
+      {/* Q3a — event gate. Answering "No" clears any VP answer already given,
+          so a user who changes their mind can't leave a stale one behind. */}
       <QuestionPanel
-        anchorId="rf-vpApproved"
-        number={Q.vpApproved.number}
-        label={Q.vpApproved.label}
-        issue={issueFor("vpApproved")}
+        anchorId="rf-isEvent"
+        number={Q.isEvent.number}
+        suffix={Q.isEvent.suffix}
+        label={Q.isEvent.label}
+        issue={issueFor("isEvent")}
       >
-        <ChoiceRow name="vpApproved" options={["Yes", "No"] as const} value={form.vpApproved} onChange={(v) => onChange({ vpApproved: v })} />
+        <ChoiceRow
+          name="isEvent"
+          options={["Yes", "No"] as const}
+          value={form.isEvent}
+          onChange={(v) => onChange(v === "Yes" ? { isEvent: v } : { isEvent: v, vpApproved: undefined })}
+        />
       </QuestionPanel>
+
+      {/* Q3b — VP approval (flag, not block). Only asked for events. */}
+      {form.isEvent === "Yes" && (
+        <QuestionPanel
+          anchorId="rf-vpApproved"
+          number={Q.vpApproved.number}
+          suffix={Q.vpApproved.suffix}
+          label={Q.vpApproved.label}
+          issue={issueFor("vpApproved")}
+        >
+          <ChoiceRow name="vpApproved" options={["Yes", "No"] as const} value={form.vpApproved} onChange={(v) => onChange({ vpApproved: v })} />
+        </QuestionPanel>
+      )}
 
       {/* Q4 — photo release (blocks on No) */}
       <QuestionPanel
@@ -428,17 +467,37 @@ export function ReleaseForm({
         {releaseNo(form.photoRelease) && <ReleaseBlockedPanel />}
       </QuestionPanel>
 
-      {/* Q5 — minor release (blocks on No) */}
+      {/* Q5a — minors gate. "No" clears any release answer already given. */}
       <QuestionPanel
-        anchorId="rf-minorRelease"
-        number={Q.minorRelease.number}
-        label={Q.minorRelease.label}
-        helper={Q.minorRelease.helper}
-        issue={releaseNo(form.minorRelease) ? null : issueFor("minorRelease")}
+        anchorId="rf-hasMinors"
+        number={Q.hasMinors.number}
+        suffix={Q.hasMinors.suffix}
+        label={Q.hasMinors.label}
+        issue={issueFor("hasMinors")}
       >
-        <ChoiceRow name="minorRelease" options={["N/A", "Yes", "No"] as const} value={form.minorRelease} onChange={(v) => onChange({ minorRelease: v })} />
-        {releaseNo(form.minorRelease) && <ReleaseBlockedPanel />}
+        <ChoiceRow
+          name="hasMinors"
+          options={["Yes", "No"] as const}
+          value={form.hasMinors}
+          onChange={(v) => onChange(v === "Yes" ? { hasMinors: v } : { hasMinors: v, minorRelease: undefined })}
+        />
       </QuestionPanel>
+
+      {/* Q5b — minor release (blocks on No). Only asked when minors present.
+          "N/A" is gone: Q5a now carries the meaning it used to. */}
+      {form.hasMinors === "Yes" && (
+        <QuestionPanel
+          anchorId="rf-minorRelease"
+          number={Q.minorRelease.number}
+          suffix={Q.minorRelease.suffix}
+          label={Q.minorRelease.label}
+          helper={Q.minorRelease.helper}
+          issue={releaseNo(form.minorRelease) ? null : issueFor("minorRelease")}
+        >
+          <ChoiceRow name="minorRelease" options={["Yes", "No"] as const} value={form.minorRelease} onChange={(v) => onChange({ minorRelease: v })} />
+          {releaseNo(form.minorRelease) && <ReleaseBlockedPanel />}
+        </QuestionPanel>
+      )}
 
       {/* Q6 — off-campus release (blocks on No) */}
       <QuestionPanel
@@ -505,29 +564,62 @@ export function ReleaseForm({
         />
       </QuestionPanel>
 
-      {/* Q10 — including media? */}
-      <QuestionPanel
-        anchorId="rf-includesMedia"
-        number={Q.includesMedia.number}
-        label={Q.includesMedia.label}
-        helper={
-          hasGeneratedGraphic
-            ? "Your generated graphic is already attached — extra photos or videos are optional."
-            : undefined
-        }
-        issue={issueFor("includesMedia")}
-      >
-        <ChoiceRow name="includesMedia" options={["Yes", "No"] as const} value={form.includesMedia} onChange={(v) => onChange({ includesMedia: v })} />
-      </QuestionPanel>
+      {/* Q10 — including media? Hidden on the template path: a graphic is
+          always attached there, so asking is confusing. Auto-answered above. */}
+      {!hasGeneratedGraphic && (
+        <QuestionPanel
+          anchorId="rf-includesMedia"
+          number={Q.includesMedia.number}
+          label={Q.includesMedia.label}
+          issue={issueFor("includesMedia")}
+        >
+          <ChoiceRow name="includesMedia" options={["Yes", "No"] as const} value={form.includesMedia} onChange={(v) => onChange({ includesMedia: v })} />
+        </QuestionPanel>
+      )}
 
-      {/* Q11 — dropzone */}
+      {/* Q11 — dropzone. On the template path the rendered graphic is already
+          attached, so lead with it and reframe uploads as optional extras. */}
       <QuestionPanel
         anchorId="rf-assets"
         number={Q.upload.number}
-        label={Q.upload.label}
-        helper={Q.upload.helper}
+        label={hasGeneratedGraphic ? "Your graphic — add anything else here" : Q.upload.label}
+        helper={hasGeneratedGraphic ? undefined : Q.upload.helper}
         issue={issueFor("assets")}
       >
+        {hasGeneratedGraphic && (
+          <div
+            className="flex items-center gap-3 p-3"
+            style={{
+              background: "var(--accent-wash)",
+              border: "1px solid var(--hairline)",
+              borderRadius: "var(--radius-input)",
+            }}
+          >
+            {graphicPreviewUrl ? (
+              <img
+                src={graphicPreviewUrl}
+                alt="The graphic being attached to your submission"
+                style={{
+                  width: 56,
+                  height: 56,
+                  objectFit: "cover",
+                  borderRadius: 6,
+                  border: "1px solid var(--hairline)",
+                  flexShrink: 0,
+                }}
+              />
+            ) : null}
+            <div className="min-w-0">
+              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
+                Your graphic is attached
+              </p>
+              <p style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 2 }}>
+                It goes with this submission automatically. Adding photos or
+                videos below is optional.
+              </p>
+            </div>
+          </div>
+        )}
         <a
           href={MEDIA_RELEASE_FORMS_URL}
           target="_blank"

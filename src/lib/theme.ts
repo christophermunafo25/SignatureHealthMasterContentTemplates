@@ -34,7 +34,7 @@ export function applyBrandTheme(kit: BrandKit | null): void {
  * Signature HealthCare brand spec (Montserrat headlines, Lora body);
  * editable without limit. */
 export const DEFAULT_TYPE_STYLES = [
-  { key: "heading", name: "Heading", font: { source: "google" as const, family: "Montserrat" }, weight: 700, uppercase: true, colorKey: "text", autoFit: true },
+  { key: "heading", name: "Heading", font: { source: "google" as const, family: "Montserrat" }, weight: 700, uppercase: true, colorKey: "text", textSizing: "shrink" as const },
   { key: "subhead", name: "Subhead", font: { source: "google" as const, family: "Montserrat" }, weight: 600, colorKey: "text" },
   { key: "body", name: "Body", font: { source: "google" as const, family: "Lora" }, weight: 400, colorKey: "text", maxLength: 200 },
 ];

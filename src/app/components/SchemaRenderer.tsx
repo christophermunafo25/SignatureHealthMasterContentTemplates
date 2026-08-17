@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import type { BrandKit, FacilitySnapshot, FieldValues, TemplateField, TemplateSchema } from "@/lib/types";
 import { useDataUrl } from "@/lib/render/useDataUrl";
-import { fittedFontSize, fixedWidthFontSize } from "@/lib/render/autoFit";
+import { fitText } from "@/lib/render/autoFit";
 import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
 import { loadGoogleFonts, schemaFontFamilies } from "@/lib/render/fonts";
 import { exportSchemaPng, renderSchemaBlob, type ExportOutcome } from "@/lib/render/exportPng";
@@ -316,14 +316,21 @@ function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {
   // placeholders a member has yet to fill.
   const text = value || (field.static ? field.label : field.placeholder || field.label);
   const atFullStrength = Boolean(value) || Boolean(field.static);
-  // Fixed width: the box edge is a hard constraint — single-line text shrinks
-  // (real glyph measurement) at exactly the point it would escape; multi-line
-  // wraps as usual. Both clip so nothing ever leaves the box.
-  const singleLine = field.type !== "multiline";
-  const fontSize =
-    field.fixedWidth && singleLine
-      ? fixedWidthFontSize({ width: field.width, ...style }, text)
-      : fittedFontSize({ width: field.width, ...style }, text);
+  // One measured fit for every surface. Shrink constrains BOTH axes now — a
+  // line that fits the width but not the height comes down too, which is what
+  // "the box stays exactly as drawn" always promised. Nothing clips: content
+  // that cannot fit even at the floor paints past the box visibly, because a
+  // member's entry silently losing its last words at review is worse than one
+  // that visibly needs fixing.
+  const fontSize = fitText(
+    {
+      ...style,
+      multiline: field.type === "multiline",
+      width: field.width,
+      height: field.height,
+    },
+    text,
+  ).fontSizePx;
   const justify =
     field.align === "center" ? "center" : field.align === "right" ? "flex-end" : "flex-start";
   const alignItems =
@@ -335,7 +342,6 @@ function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {
         display: "flex",
         alignItems,
         justifyContent: justify,
-        overflow: field.fixedWidth ? "hidden" : undefined,
       }}
     >
       <p

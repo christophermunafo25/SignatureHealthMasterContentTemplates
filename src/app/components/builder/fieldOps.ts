@@ -71,7 +71,7 @@ export function fieldFromPalette(
           fontSizePx: Math.max(18, Math.min(90, Math.round(height * 0.5))),
           colorKey: kit?.colors.find((c) => c.key === "text")?.key ?? kit?.colors[0]?.key,
           align: "left" as const,
-          autoFit: true,
+          textSizing: "shrink" as const,
         }
       : {}),
     ...(item.type === "shape"

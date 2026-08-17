@@ -289,7 +289,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       fontSizePx: Math.max(18, Math.min(90, Math.round(rect.height * 0.55))),
       colorKey: kit?.colors.find((c) => c.key === "text")?.key ?? kit?.colors[0]?.key,
       align: "left",
-      autoFit: true,
+      textSizing: "shrink" as const,
     };
     setFields([...draft.fields, field]);
     setSelectedIds([field.id]);

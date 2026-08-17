@@ -15,9 +15,22 @@ export interface ResolvedFieldStyle {
   colorHex?: string;
   textGradient?: import("../types").TextGradient;
   maxLength?: number;
-  autoFit?: boolean;
+  textSizing?: "free" | "shrink" | "fill";
   /** The style that supplied the locked properties, if any. */
   boundStyle?: BrandTypeStyle;
+}
+
+/** Legacy booleans → the explicit mode. Both flags meant "shrink"; the field
+ *  they sat on is what migration 0030 backfilled. This is the read-side
+ *  fallback for anything the backfill did not reach (a locally cached draft,
+ *  a row restored from a pre-migration backup). */
+function legacyTextSizing(v: {
+  textSizing?: "free" | "shrink" | "fill";
+  autoFit?: boolean;
+  fixedWidth?: boolean;
+}): "free" | "shrink" | "fill" | undefined {
+  if (v.textSizing) return v.textSizing;
+  return v.autoFit || v.fixedWidth ? "shrink" : undefined;
 }
 
 export function getTypeStyle(kit: BrandKit | null, key: string | undefined): BrandTypeStyle | undefined {
@@ -39,7 +52,7 @@ export function resolveFieldStyle(field: TemplateField, kit: BrandKit | null): R
     colorHex: field.colorHex,
     textGradient: field.textGradient,
     maxLength: style?.maxLength ?? field.maxLength,
-    autoFit: style?.autoFit ?? field.autoFit,
+    textSizing: (style && legacyTextSizing(style)) ?? legacyTextSizing(field),
     boundStyle: style,
   };
 }
@@ -56,7 +69,7 @@ export function lockedProperties(style: BrandTypeStyle | undefined): Set<string>
   if (style.lineHeight !== undefined) locked.add("lineHeight");
   if (style.colorKey !== undefined) locked.add("colorKey");
   if (style.maxLength !== undefined) locked.add("maxLength");
-  if (style.autoFit !== undefined) locked.add("autoFit");
+  if (legacyTextSizing(style) !== undefined) locked.add("textSizing");
   return locked;
 }
 
@@ -75,7 +88,10 @@ export function ruleSentences(style: BrandTypeStyle, kit: BrandKit | null): stri
   if (style.uppercase) rules.push(`${style.name} is always UPPERCASE.`);
   if (style.fontSizePx !== undefined) rules.push(`${style.name} is fixed at ${style.fontSizePx}px.`);
   if (style.maxLength !== undefined) rules.push(`${style.name} never exceeds ${style.maxLength} characters.`);
-  if (style.autoFit) rules.push(`${style.name} auto-shrinks to fit its box.`);
+  const sizing = legacyTextSizing(style);
+  if (sizing === "shrink") rules.push(`${style.name} shrinks to fit its box.`);
+  if (sizing === "fill") rules.push(`${style.name} is sized to fill its box.`);
+  if (sizing === "free") rules.push(`${style.name} keeps its set size — the box grows with content.`);
   return rules;
 }
 

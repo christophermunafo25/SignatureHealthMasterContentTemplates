@@ -22,7 +22,6 @@ import {
   RotateCw,
   Trash2,
   Unlink,
-  Unlock,
   Upload,
 } from "lucide-react";
 import type { BrandKit, CornerRadius, FieldType, TemplateField, TextGradient } from "@/lib/types";
@@ -219,7 +218,7 @@ function IconRow<T extends string>({
   );
 }
 
-type ResizeMode = "free" | "shrink" | "fixed";
+type TextSizingMode = "free" | "shrink" | "fill";
 
 /** Inspector for the selected field, laid out Figma-style: identity, then
  * collapsible Position / Layout / Appearance / Typography / Fill /
@@ -297,11 +296,12 @@ export function FieldInspector({
 
   // --- Layout helpers ------------------------------------------------------
 
-  const resizeMode: ResizeMode = field.fixedWidth ? "fixed" : field.autoFit ? "shrink" : "free";
-  const setResizeMode = (mode: ResizeMode) => {
-    if (mode === "free") onChange({ autoFit: undefined, fixedWidth: undefined });
-    else if (mode === "shrink") onChange({ autoFit: true, fixedWidth: undefined });
-    else onChange({ fixedWidth: true, autoFit: undefined });
+  // The legacy pair reads as a fallback for a draft saved before 0030 ran;
+  // writing always clears both, so a field only ever carries one vocabulary.
+  const textSizing: TextSizingMode =
+    field.textSizing ?? (field.autoFit || field.fixedWidth ? "shrink" : "free");
+  const setTextSizing = (mode: TextSizingMode) => {
+    onChange({ textSizing: mode === "free" ? undefined : mode, autoFit: undefined, fixedWidth: undefined });
   };
 
   return (
@@ -555,31 +555,31 @@ export function FieldInspector({
       <Section id="layout" title="Layout">
         {canLockWidth && (
           <div>
-            <label className={labelClass} style={labelStyle}>Resizing</label>
+            <label className={labelClass} style={labelStyle}>Text sizing</label>
             <div
               className="grid grid-cols-3 rounded-lg overflow-hidden"
               style={{ border: "1px solid var(--hairline-strong)" }}
               role="group"
-              aria-label="Text resizing behavior"
+              aria-label="Text sizing"
             >
               {(
                 [
-                  { key: "free", label: "Free", title: "Text renders at its set size — it may escape the box" },
-                  { key: "shrink", label: "Shrink", title: "Text shrinks to fit as it gets longer (estimate)" },
-                  { key: "fixed", label: "Fixed", title: field.type === "multiline" ? "Text wraps at the box edge and never escapes" : "Text shrinks at exactly the box edge and never escapes" },
-                ] as Array<{ key: ResizeMode; label: string; title: string }>
+                  { key: "free", label: "Free", title: "The font size is fixed and the box grows taller as lines wrap" },
+                  { key: "shrink", label: "Shrink", title: "The box stays as drawn and the font size comes down (measured) until the text fits" },
+                  { key: "fill", label: "Fill", title: "The box stays as drawn and the text is sized to fill it — growing as well as shrinking" },
+                ] as Array<{ key: TextSizingMode; label: string; title: string }>
               ).map(({ key, label, title }) => (
                 <button
                   key={key}
                   title={title}
-                  aria-pressed={resizeMode === key}
-                  onClick={() => setResizeMode(key)}
+                  aria-pressed={textSizing === key}
+                  onClick={() => setTextSizing(key)}
                   className="py-1.5"
                   style={{
                     fontSize: 12,
-                    background: resizeMode === key ? "var(--accent-wash)" : "transparent",
-                    color: resizeMode === key ? "var(--solar)" : "var(--fg-2)",
-                    fontWeight: resizeMode === key ? 500 : 400,
+                    background: textSizing === key ? "var(--accent-wash)" : "transparent",
+                    color: textSizing === key ? "var(--solar)" : "var(--fg-2)",
+                    fontWeight: textSizing === key ? 500 : 400,
                   }}
                 >
                   {label}
@@ -588,33 +588,20 @@ export function FieldInspector({
             </div>
           </div>
         )}
+        {/* The width-lock toggle that sat here edited the same property as the
+            segmented control above, in the old "Fixed" vocabulary that no
+            longer exists. Its capability — make the box a hard constraint —
+            is Shrink, and it is now named as such in one place. */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="sp-eyebrow">Dimensions</label>
-            {canLockWidth && (
-              <button
-                onClick={() => setResizeMode(field.fixedWidth ? "free" : "fixed")}
-                aria-pressed={Boolean(field.fixedWidth)}
-                title={
-                  field.fixedWidth
-                    ? "Width locked — text never escapes the box. Click to unlock."
-                    : "Lock the width — text shrinks/wraps at the box edge."
-                }
-              >
-                {field.fixedWidth ? (
-                  <Lock style={{ width: 12, height: 12, color: "var(--solar)" }} />
-                ) : (
-                  <Unlock style={{ width: 12, height: 12, color: "var(--fg-4)" }} />
-                )}
-              </button>
-            )}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <InlineNum prefix="W" value={Math.round(field.width)} onCommit={(v) => onChange({ width: v ?? field.width })} />
             <InlineNum prefix="H" value={Math.round(field.height)} onCommit={(v) => onChange({ height: v ?? field.height })} />
           </div>
         </div>
-        {isText && field.type !== "select" && resizeMode !== "free" && (
+        {isText && field.type !== "select" && textSizing !== "free" && (
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={labelClass} style={labelStyle}>Min text size</label>

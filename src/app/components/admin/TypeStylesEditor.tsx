@@ -184,10 +184,15 @@ export function TypeStylesEditor({ styles, colors, customFamilies, onChange, usa
                   <label className="flex items-center gap-2" style={{ fontSize: 13, color: "var(--ink)" }}>
                     <input
                       type="checkbox"
-                      checked={s.autoFit ?? false}
-                      onChange={(e) => update(s.key, { autoFit: e.target.checked || undefined })}
+                      checked={s.textSizing === "shrink" || (!s.textSizing && Boolean(s.autoFit))}
+                      onChange={(e) =>
+                        update(s.key, {
+                          textSizing: e.target.checked ? "shrink" : undefined,
+                          autoFit: undefined,
+                        })
+                      }
                     />
-                    Auto-shrink to fit
+                    Shrink to fit the box
                   </label>
                 </div>
 

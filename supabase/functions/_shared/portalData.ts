@@ -61,8 +61,9 @@ export function toTemplateField(r: Row): Row {
     letterSpacingPx: opt(r.letter_spacing_px) === undefined ? undefined : Number(r.letter_spacing_px),
     lineHeight: opt(r.line_height) === undefined ? undefined : Number(r.line_height),
     maxLength: opt(r.max_length),
-    fixedWidth: opt(r.fixed_width),
-    autoFit: opt(r.auto_fit),
+    // Legacy fallback for any row 0030's backfill did not reach. This mapper
+    // feeds the anonymous portal, which has no session and no second chance.
+    textSizing: opt(r.text_sizing) ?? (r.auto_fit || r.fixed_width ? "shrink" : undefined),
     objectFit: opt(r.object_fit),
     aspectRatio: opt(r.aspect_ratio) === undefined ? undefined : Number(r.aspect_ratio),
     options: opt(r.options),

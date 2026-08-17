@@ -64,7 +64,7 @@ interface SuggestedField {
   letterSpacingPx?: number;
   lineHeight?: number;
   placeholder?: string;
-  autoFit?: boolean;
+  textSizing?: "free" | "shrink" | "fill";
   objectFit?: "cover";
 }
 
@@ -124,7 +124,7 @@ function walk(
         ? node.style.lineHeightPercentFontSize / 100
         : undefined,
       placeholder: node.characters?.slice(0, 80),
-      autoFit: true,
+      textSizing: "shrink",
     });
     return;
   }

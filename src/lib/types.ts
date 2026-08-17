@@ -48,6 +48,11 @@ export interface BrandTypeStyle {
   colorKey?: string; // brand palette key
   fontSizePx?: number; // set only when the brand fixes the size globally
   maxLength?: number; // "never exceeds N characters"
+  /** Locks the field's text sizing mode (see TemplateField.textSizing). */
+  textSizing?: "free" | "shrink" | "fill";
+  /** @deprecated Superseded by `textSizing` ("shrink"). Migrated in place in
+   *  the type_styles jsonb by 0030; read only as a fallback for a style the
+   *  migration did not reach. Never written. */
   autoFit?: boolean;
 }
 
@@ -183,10 +188,24 @@ export interface TemplateField {
   lineHeight?: number;
   // Guardrails
   maxLength?: number;
+  /** How text responds to content length. "free" (or absent): the font size
+   * is fixed and the box grows taller as lines wrap — height is computed,
+   * never authored. "shrink": the box is exactly what the admin drew and the
+   * font size decreases (measured, never estimated) until the content fits —
+   * single-line text is width-constrained, multiline is height-constrained
+   * with wrapping at the box width. "fill": the box is as drawn and the text
+   * is sized to fill it, growing as well as shrinking.
+   *
+   * Replaces the `autoFit` / `fixedWidth` boolean pair, both of which mapped
+   * to "shrink" in migration 0030. */
+  textSizing?: "free" | "shrink" | "fill";
+  /** @deprecated Superseded by `textSizing: "shrink"`. Backfilled by 0030 and
+   *  read only as a fallback for rows that migration did not reach. The column
+   *  stays for rollback safety; nothing writes it. */
   autoFit?: boolean;
-  /** The box width is a hard constraint: single-line text shrinks (measured,
-   * not estimated) until it fits, multi-line text wraps at it, and nothing
-   * ever escapes the box. */
+  /** @deprecated Superseded by `textSizing: "shrink"`. Same story as
+   *  `autoFit` — the box width was a hard constraint, which is what shrink
+   *  means, except shrink now constrains the height too. */
   fixedWidth?: boolean;
   objectFit?: "cover" | "contain";
   aspectRatio?: number;

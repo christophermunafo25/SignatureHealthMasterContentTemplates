@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { LogOut, Plus, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { stores } from "@/lib/stores";
@@ -61,6 +61,19 @@ function NotificationsCard() {
   const { company, refresh } = useAuth();
   const [emails, setEmails] = useState<string[]>(company?.notificationEmails ?? []);
   const [draft, setDraft] = useState("");
+
+  // AuthContext loads `company` asynchronously, so on a page load it is null
+  // for the first render and the useState initializer above captures an empty
+  // list — permanently, since an initializer is ignored on later renders. That
+  // rendered "No recipients yet" over a populated list, and worse, made add()
+  // spread from [] and overwrite the saved recipients with just the new one.
+  // Re-sync whenever the server value changes. Joining to a string keeps the
+  // dependency stable: notificationEmails is a fresh array on every load.
+  const serverEmails = (company?.notificationEmails ?? []).join("\n");
+  useEffect(() => {
+    setEmails(serverEmails ? serverEmails.split("\n") : []);
+  }, [serverEmails]);
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);

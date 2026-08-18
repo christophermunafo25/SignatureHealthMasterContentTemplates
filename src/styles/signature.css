@@ -835,3 +835,70 @@ button, input, select, textarea, optgroup {
     background-color: rgba(var(--flash-rgb), 0.12);
   }
 }
+
+/* ── Inspector numeric field ─────────────────────────────────────────────
+   A composite control (scrub label + input + unit suffix) that focuses as
+   one box: the same ring-coloured border treatment .sp-input uses, driven
+   by the inner input's focus rather than the wrapper's. */
+.sp-numfield:focus-within {
+  border-color: var(--ring);
+}
+.sp-numfield[data-disabled] {
+  color: var(--text-disabled);
+}
+
+/* ── Segmented icon group ────────────────────────────────────────────────
+   Alignment triplets, text sizing modes, flip pairs. One shared hairline
+   container at the crisp control radius; the active segment takes the navy
+   action fill, so "filled = on" reads at a glance. */
+.sp-seg {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+.sp-seg button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 30px;
+  color: var(--text-secondary);
+  transition:
+    background var(--dur-state) var(--ease),
+    color var(--dur-state) var(--ease);
+}
+.sp-seg button + button {
+  border-left: 1px solid var(--border);
+}
+.sp-seg button:hover:not(:disabled):not([data-active="true"]) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.sp-seg button[data-active="true"] {
+  background: var(--fill-action);
+  color: var(--text-on-action);
+}
+.sp-seg button:disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+.sp-seg button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-tight);
+  position: relative;
+  z-index: 1;
+}
+/* Text segments (the sizing modes): the group fills the row and the
+   segments share the width. */
+.sp-seg[data-stretch] {
+  display: flex;
+  flex: 1;
+}
+.sp-seg[data-stretch] button {
+  flex: 1;
+  width: auto;
+  padding: 0 var(--space-2xs);
+  font-size: var(--type-caption-size);
+  letter-spacing: normal;
+}

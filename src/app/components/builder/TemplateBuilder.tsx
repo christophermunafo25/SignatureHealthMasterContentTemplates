@@ -38,6 +38,7 @@ import { SchemaRenderer, schemaBackgroundCss } from "../SchemaRenderer";
 import { GradientEditor } from "./GradientEditor";
 import { FieldOverlayEditor } from "./FieldOverlayEditor";
 import { FieldInspector } from "./FieldInspector";
+import { inspectorGestureActive } from "./InspectorControls";
 import { CaptionEditor } from "./CaptionEditor";
 import { FigmaImportDialog } from "./FigmaImportDialog";
 import { FigmaFieldPicker } from "./FigmaFieldPicker";
@@ -265,7 +266,8 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
 
   /** Patch one field; when the patch re-derives the merge tag, rewrite the
    * caption template so existing {old_key} references follow the rename. */
-  const patchField = useCallback((id: string, patch: Partial<TemplateField>) => {
+  const patchField = useCallback((id: string, patch: Partial<TemplateField>, stream = false) => {
+    const gesture = inspectorGestureActive();
     setDraft(
       (d) => {
         const prev = d.fields.find((f) => f.id === id);
@@ -276,10 +278,13 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
             : d.captionTemplate;
         return { ...d, fields, captionTemplate };
       },
-      // Same field + same properties inside the window = one undo entry, so a
-      // keystroke stream in the label input or a color scrub isn't forty
-      // steps. Distinct properties (or a pause) still push separately.
-      `patch:${id}:${Object.keys(patch).sort().join(",")}`,
+      // Coalescing is OPT-IN. A keystroke stream (`stream`) collapses by the
+      // time window, and a pointer gesture (scrub, slider) is held open for
+      // its whole duration however slowly it moves. A discrete commit — Enter
+      // in a numeric field, a segment click — passes neither, so two of them
+      // 50ms apart stay two undo steps instead of silently merging.
+      stream || gesture ? `patch:${id}:${Object.keys(patch).sort().join(",")}` : undefined,
+      gesture,
     );
   }, [setDraft]);
 
@@ -529,6 +534,10 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     if (step !== "fields" || mode !== "edit") return;
     const handler = (e: KeyboardEvent) => {
       if (isTypingTarget(e)) return; // native text undo stays native
+      // A scrub or slider drag in the inspector is a single in-flight edit.
+      // Undo, delete and paste landing in the middle of one would act on a
+      // half-applied state, so they stay inert until the pointer is released.
+      if (inspectorGestureActive()) return;
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
       if (mod && key === "z" && !e.shiftKey) {
@@ -1216,7 +1225,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                       canvasWidth={draft.canvasWidth}
                       canvasHeight={draft.canvasHeight}
                       focusLabelFieldId={focusLabelFieldId}
-                      onChange={(patch) => patchField(singleSelected.id, patch)}
+                      onChange={(patch, stream) => patchField(singleSelected.id, patch, stream)}
                       onDelete={() => deleteFields([singleSelected.id])}
                       onBringToFront={() => reorderLayer([singleSelected.id], "front")}
                       onSendToBack={() => reorderLayer([singleSelected.id], "back")}

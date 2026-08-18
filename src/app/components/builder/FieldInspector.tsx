@@ -33,6 +33,12 @@ import { useRouter } from "../../router";
 import { GOOGLE_FONTS } from "@/lib/render/fonts";
 import { suggestFieldKey } from "@/lib/caption";
 import { getTypeStyle, lockedProperties, ruleSentences } from "@/lib/brand/resolveStyle";
+import {
+  InspectorSection,
+  NumericField,
+  beginInspectorGesture,
+  endInspectorGesture,
+} from "./InspectorControls";
 import { ColorControl } from "../ColorControl";
 import { GradientEditor } from "./GradientEditor";
 
@@ -42,7 +48,9 @@ interface FieldInspectorProps {
   /** Canvas size — the alignment buttons align against these bounds. */
   canvasWidth: number;
   canvasHeight: number;
-  onChange(patch: Partial<TemplateField>): void;
+  /** `stream` marks a keystroke stream (a text input), whose successive
+   *  edits collapse into one undo entry. Discrete commits omit it. */
+  onChange(patch: Partial<TemplateField>, stream?: boolean): void;
   onDelete(): void;
   /** Canvas layer order (separate from the form order in the field list). */
   onBringToFront(): void;
@@ -77,109 +85,6 @@ const controlStyle: React.CSSProperties = {};
 // Collapsible sections — open/closed state persists per section across
 // selections and sessions, so the inspector stays the way the admin left it.
 // ---------------------------------------------------------------------------
-
-const SECTIONS_KEY = "shc-graphics-inspector-open";
-
-const readOpen = (id: string, fallback: boolean): boolean => {
-  try {
-    const m = JSON.parse(localStorage.getItem(SECTIONS_KEY) ?? "{}") as Record<string, boolean>;
-    return typeof m[id] === "boolean" ? m[id] : fallback;
-  } catch {
-    return fallback;
-  }
-};
-
-const writeOpen = (id: string, open: boolean): void => {
-  try {
-    const m = JSON.parse(localStorage.getItem(SECTIONS_KEY) ?? "{}") as Record<string, boolean>;
-    m[id] = open;
-    localStorage.setItem(SECTIONS_KEY, JSON.stringify(m));
-  } catch {
-    // persistence is best-effort
-  }
-};
-
-function Section({
-  id,
-  title,
-  defaultOpen = true,
-  headerExtra,
-  children,
-}: {
-  id: string;
-  title: string;
-  defaultOpen?: boolean;
-  headerExtra?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(() => readOpen(id, defaultOpen));
-  return (
-    <div className="pt-3" style={{ borderTop: "1px solid var(--hairline)" }}>
-      <div className="flex items-center justify-between" style={{ paddingBottom: open ? 10 : 2 }}>
-        <button
-          onClick={() => {
-            setOpen(!open);
-            writeOpen(id, !open);
-          }}
-          aria-expanded={open}
-          className="flex-1 flex items-center justify-between text-left"
-        >
-          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{title}</span>
-          <ChevronDown
-            style={{
-              width: 13,
-              height: 13,
-              color: "var(--fg-3)",
-              transform: open ? undefined : "rotate(-90deg)",
-              transition: "transform var(--dur-state) var(--ease)",
-            }}
-          />
-        </button>
-        {headerExtra}
-      </div>
-      {open && <div className="space-y-3">{children}</div>}
-    </div>
-  );
-}
-
-/** Figma-style inline-labeled number input: a small prefix ("X", "W", "°")
- * inside the control, value editable next to it. */
-function InlineNum({
-  prefix,
-  value,
-  placeholder,
-  step,
-  onCommit,
-  disabled,
-}: {
-  prefix: string;
-  value: number | "";
-  placeholder?: string;
-  step?: number;
-  onCommit(next: number | undefined): void;
-  disabled?: boolean;
-}) {
-  return (
-    <label
-      className="sp-input flex items-center gap-2"
-      style={{ padding: "7px 10px", cursor: disabled ? "default" : "text", opacity: disabled ? 0.5 : 1 }}
-    >
-      <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--fg-4)", flexShrink: 0 }}>
-        {prefix}
-      </span>
-      <input
-        type="number"
-        step={step}
-        disabled={disabled}
-        className="w-full bg-transparent outline-none border-none"
-        style={{ fontSize: 13, color: "var(--ink)", padding: 0 }}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onCommit(e.target.value === "" ? undefined : Number(e.target.value))}
-      />
-    </label>
-  );
-}
 
 /** A row of small icon buttons (alignment triplets, etc.). */
 function IconRow<T extends string>({
@@ -315,8 +220,7 @@ export function FieldInspector({
         </div>
       </div>
 
-      {/* Identity — always visible */}
-      <div className="space-y-3">
+      <InspectorSection id="field" title="Field" defaultOpen>
         <div>
           <label className={labelClass} style={labelStyle}>Label</label>
           <input
@@ -326,10 +230,13 @@ export function FieldInspector({
             value={field.label}
             onChange={(e) => {
               const label = e.target.value;
-              onChange({
-                label,
-                fieldKey: suggestFieldKey(label, allFields.filter((f) => f.id !== field.id)),
-              });
+              onChange(
+                {
+                  label,
+                  fieldKey: suggestFieldKey(label, allFields.filter((f) => f.id !== field.id)),
+                },
+                true,
+              );
             }}
           />
           {!isStatic && (
@@ -433,7 +340,7 @@ export function FieldInspector({
               style={{ ...controlStyle, resize: "vertical" }}
               value={field.staticValue ?? ""}
               placeholder="The exact text shown on the graphic"
-              onChange={(e) => onChange({ staticValue: e.target.value || undefined })}
+              onChange={(e) => onChange({ staticValue: e.target.value || undefined }, true)}
             />
           </div>
         )}
@@ -467,10 +374,10 @@ export function FieldInspector({
             </label>
           </div>
         )}
-      </div>
+      </InspectorSection>
 
       {/* Position — canvas alignment, coordinates, rotation */}
-      <Section id="position" title="Position">
+      <InspectorSection id="position" title="Position">
         <div>
           <label className={labelClass} style={labelStyle}>Align to canvas</label>
           <div className="flex items-center justify-between gap-2">
@@ -497,16 +404,30 @@ export function FieldInspector({
         <div>
           <label className={labelClass} style={labelStyle}>Position</label>
           <div className="grid grid-cols-2 gap-2">
-            <InlineNum prefix="X" value={Math.round(field.x)} onCommit={(v) => onChange({ x: v ?? 0 })} />
-            <InlineNum prefix="Y" value={Math.round(field.y)} onCommit={(v) => onChange({ y: v ?? 0 })} />
+            <NumericField
+              label="X"
+              ariaLabel="X position"
+              value={Math.round(field.x)}
+              onCommit={(v) => v !== undefined && onChange({ x: v })}
+            />
+            <NumericField
+              label="Y"
+              ariaLabel="Y position"
+              value={Math.round(field.y)}
+              onCommit={(v) => v !== undefined && onChange({ y: v })}
+            />
           </div>
         </div>
         <div>
           <label className={labelClass} style={labelStyle}>Rotation</label>
           <div className="grid grid-cols-2 gap-2 items-center">
-            <InlineNum
-              prefix="°"
+            <NumericField
+              icon={<RotateCw style={{ width: 12, height: 12 }} />}
+              suffix="°"
+              ariaLabel="Rotation"
               value={field.rotation ?? 0}
+              min={-360}
+              max={360}
               onCommit={(v) => onChange({ rotation: v || undefined })}
             />
             <div className="flex items-center gap-1">
@@ -549,10 +470,10 @@ export function FieldInspector({
             </button>
           </div>
         </div>
-      </Section>
+      </InspectorSection>
 
       {/* Layout — resizing behavior + dimensions */}
-      <Section id="layout" title="Layout">
+      <InspectorSection id="layout" title="Layout">
         {canLockWidth && (
           <div>
             <label className={labelClass} style={labelStyle}>Text sizing</label>
@@ -597,36 +518,52 @@ export function FieldInspector({
             <label className="sp-eyebrow">Dimensions</label>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <InlineNum prefix="W" value={Math.round(field.width)} onCommit={(v) => onChange({ width: v ?? field.width })} />
-            <InlineNum prefix="H" value={Math.round(field.height)} onCommit={(v) => onChange({ height: v ?? field.height })} />
+            <NumericField
+              label="W"
+              ariaLabel="Width"
+              value={Math.round(field.width)}
+              min={1}
+              onCommit={(v) => v !== undefined && onChange({ width: v })}
+            />
+            <NumericField
+              label="H"
+              ariaLabel="Height"
+              value={Math.round(field.height)}
+              min={1}
+              onCommit={(v) => v !== undefined && onChange({ height: v })}
+            />
           </div>
         </div>
         {isText && field.type !== "select" && textSizing !== "free" && (
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={labelClass} style={labelStyle}>Min text size</label>
-              <InlineNum
-                prefix="px"
-                value={field.minFontSizePx ?? ""}
+              <NumericField
+                suffix="px"
+                ariaLabel="Minimum text size"
+                value={field.minFontSizePx}
                 placeholder="18"
+                min={1}
+                allowEmpty
                 onCommit={(v) => onChange({ minFontSizePx: v })}
               />
             </div>
           </div>
         )}
-      </Section>
+      </InspectorSection>
 
       {/* Appearance — opacity for every element; image rendering extras */}
-      <Section id="appearance" title="Appearance">
+      <InspectorSection id="appearance" title="Appearance">
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className={labelClass} style={labelStyle}>Opacity</label>
-            <InlineNum
-              prefix="%"
+            <NumericField
+              suffix="%"
+              ariaLabel="Opacity"
               value={field.opacity ?? 100}
-              onCommit={(v) =>
-                onChange({ opacity: v === undefined || v >= 100 ? undefined : Math.max(0, Math.min(100, v)) })
-              }
+              min={0}
+              max={100}
+              onCommit={(v) => onChange({ opacity: v === undefined || v >= 100 ? undefined : v })}
             />
           </div>
         </div>
@@ -641,14 +578,15 @@ export function FieldInspector({
             {field.type === "image" && !isStatic && (
               <div>
                 <label className={labelClass} style={labelStyle}>Crop ratio (w/h)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className={controlClass}
-                  style={controlStyle}
-                  value={field.aspectRatio ?? ""}
+                <NumericField
+                  ariaLabel="Crop ratio, width over height"
+                  value={field.aspectRatio}
+                  precision={2}
+                  step={0.01}
+                  min={0.01}
+                  allowEmpty
                   placeholder={`box: ${(field.width / field.height).toFixed(2)}`}
-                  onChange={(e) => onChange({ aspectRatio: e.target.value ? Number(e.target.value) : undefined })}
+                  onCommit={(v) => onChange({ aspectRatio: v })}
                 />
               </div>
             )}
@@ -667,11 +605,11 @@ export function FieldInspector({
             </div>
           </div>
         )}
-      </Section>
+      </InspectorSection>
 
       {/* Typography */}
       {isText && (
-        <Section id="typography" title="Typography">
+        <InspectorSection id="typography" title="Typography">
           <div>
             <label className={labelClass} style={labelStyle}>Saved style (optional)</label>
             <select
@@ -719,20 +657,25 @@ export function FieldInspector({
                 <option key={w} value={w}>{w}</option>
               ))}
             </select>
-            <InlineNum
-              prefix="px"
+            <NumericField
+              suffix="px"
+              ariaLabel="Font size"
+              min={1}
               value={field.fontSizePx ?? 45}
               disabled={locked.has("fontSizePx")}
-              onCommit={(v) => onChange({ fontSizePx: v ?? 45 })}
+              onCommit={(v) => v !== undefined && onChange({ fontSizePx: v })}
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={labelClass} style={labelStyle}>Line height</label>
-              <InlineNum
-                prefix="↕"
+              <NumericField
+                label="↕"
+                ariaLabel="Line height"
+                precision={2}
                 step={0.05}
-                value={field.lineHeight ?? ""}
+                allowEmpty
+                value={field.lineHeight}
                 placeholder="1.1"
                 disabled={locked.has("lineHeight")}
                 onCommit={(v) => onChange({ lineHeight: v })}
@@ -740,10 +683,13 @@ export function FieldInspector({
             </div>
             <div>
               <label className={labelClass} style={labelStyle}>Letter spacing</label>
-              <InlineNum
-                prefix="|A|"
+              <NumericField
+                label="|A|"
+                ariaLabel="Letter spacing"
+                precision={2}
                 step={0.1}
-                value={field.letterSpacingPx ?? ""}
+                allowEmpty
+                value={field.letterSpacingPx}
                 placeholder="0"
                 disabled={locked.has("letterSpacingPx")}
                 onCommit={(v) => onChange({ letterSpacingPx: v })}
@@ -784,12 +730,12 @@ export function FieldInspector({
             />
             Uppercase
           </label>
-        </Section>
+        </InspectorSection>
       )}
 
       {/* Fill — text color / shape fill */}
       {(isText || isShape) && (
-        <Section id="fill" title="Fill">
+        <InspectorSection id="fill" title="Fill">
           <ColorControl
             ariaLabel="Field text color"
             value={field.colorHex ?? kit?.colors.find((c) => c.key === field.colorKey)?.hex}
@@ -821,24 +767,24 @@ export function FieldInspector({
             disabled={locked.has("colorKey")}
             onChange={(textGradient) => onChange({ textGradient })}
           />
-        </Section>
+        </InspectorSection>
       )}
 
       {/* Member input — what the member sees in their form; gone on fixed
           elements and auto-resolved facility logos */}
       {!isStatic && !isFacilityLogo && (
-        <Section id="member-input" title="Member input">
+        <InspectorSection id="member-input" title="Member input">
           {isText && field.type !== "select" && (
             <div>
               <label className={labelClass} style={labelStyle}>Max characters</label>
-              <input
-                type="number"
-                className={controlClass}
-                style={controlStyle}
+              <NumericField
+                ariaLabel="Maximum characters"
                 disabled={locked.has("maxLength")}
-                value={field.maxLength ?? ""}
+                value={field.maxLength}
+                min={1}
+                allowEmpty
                 placeholder="none"
-                onChange={(e) => onChange({ maxLength: e.target.value ? Number(e.target.value) : undefined })}
+                onCommit={(v) => onChange({ maxLength: v })}
               />
             </div>
           )}
@@ -863,7 +809,7 @@ export function FieldInspector({
                 className={controlClass}
                 style={controlStyle}
                 value={field.placeholder ?? ""}
-                onChange={(e) => onChange({ placeholder: e.target.value || undefined })}
+                onChange={(e) => onChange({ placeholder: e.target.value || undefined }, true)}
               />
             </div>
             <label className="flex items-end gap-2 pb-2 text-sm" style={{ color: "var(--foreground)" }}>
@@ -875,7 +821,7 @@ export function FieldInspector({
               Required
             </label>
           </div>
-        </Section>
+        </InspectorSection>
       )}
     </div>
   );
@@ -936,7 +882,9 @@ function FontSelect({
   kit: BrandKit | null;
   customFamilies: string[];
   locked: Set<string>;
-  onChange(patch: Partial<TemplateField>): void;
+  /** `stream` marks a keystroke stream (a text input), whose successive
+   *  edits collapse into one undo entry. Discrete commits omit it. */
+  onChange(patch: Partial<TemplateField>, stream?: boolean): void;
 }) {
   const brandFamilies = [
     ...new Set(
@@ -1019,28 +967,24 @@ function CornerRadiusControl({ value, onChange }: CornerRadiusControlProps) {
         </button>
       </div>
       {linked ? (
-        <input
-          type="number"
-          min={0}
-          className={controlClass}
+        <NumericField
+          ariaLabel="Corner radius, all corners"
           value={value?.tl ?? 0}
-          onChange={(e) => {
-            const r = Math.max(0, Number(e.target.value) || 0);
-            set({ tl: r, tr: r, br: r, bl: r });
+          min={0}
+          onCommit={(v) => {
+            if (v === undefined) return;
+            set({ tl: v, tr: v, br: v, bl: v });
           }}
         />
       ) : (
         <div className="grid grid-cols-4 gap-1.5">
           {CORNERS.map((c) => (
             <div key={c.key}>
-              <input
-                type="number"
-                min={0}
-                className={controlClass}
-                style={{ padding: "6px 6px", fontSize: 12 }}
+              <NumericField
+                ariaLabel={`Corner radius, ${c.label}`}
                 value={value?.[c.key] ?? 0}
-                title={c.label}
-                onChange={(e) => set({ [c.key]: Math.max(0, Number(e.target.value) || 0) })}
+                min={0}
+                onCommit={(v) => v !== undefined && set({ [c.key]: v })}
               />
               <p className="text-center" style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--fg-4)" }}>
                 {c.label}

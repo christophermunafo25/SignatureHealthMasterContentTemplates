@@ -27,7 +27,10 @@ interface Hist<T> {
 
 export interface History<T> {
   state: T;
-  set(updater: T | ((prev: T) => T), coalesceKey?: string): void;
+  /** `hold` keeps coalescing alive beyond the time window while a pointer
+   * gesture (scrub, slider drag) is in progress — the whole gesture lands
+   * as ONE history entry no matter how slowly the pointer moves. */
+  set(updater: T | ((prev: T) => T), coalesceKey?: string, hold?: boolean): void;
   undo(): void;
   redo(): void;
   canUndo: boolean;
@@ -38,6 +41,31 @@ export interface History<T> {
 const apply = <T,>(updater: T | ((prev: T) => T), prev: T): T =>
   typeof updater === "function" ? (updater as (prev: T) => T)(prev) : updater;
 
+/** Does this edit extend the entry before it, or start a new one?
+ *
+ * Coalescing is OPT-IN, and the three policies have to stay distinct:
+ *  - no key at all  → a discrete commit (Enter in a numeric field, a segment
+ *    click). Always its own entry, however fast it follows the last one.
+ *  - key, no hold   → a keystroke stream. Collapses while the presses keep
+ *    coming inside COALESCE_MS, then starts a fresh entry.
+ *  - key with hold  → a pointer gesture. Stays open for the whole drag no
+ *    matter how slowly the pointer moves; the caller ends it by releasing.
+ *
+ * Extracted from the hook because the failure mode is silent — a discrete
+ * edit that quietly merges into the one before it makes undo skip a step —
+ * and a pure predicate can be tested without a DOM. */
+export function shouldCoalesce(
+  last: { key: string; time: number } | null,
+  coalesceKey: string | undefined,
+  hold: boolean | undefined,
+  now: number,
+  windowMs: number = COALESCE_MS,
+): boolean {
+  if (coalesceKey === undefined || last === null) return false;
+  if (last.key !== coalesceKey) return false;
+  return hold === true || now - last.time < windowMs;
+}
+
 export function useHistory<T>(initial: T | (() => T)): History<T> {
   const [hist, setHist] = useState<Hist<T>>(() => ({
     past: [],
@@ -47,16 +75,12 @@ export function useHistory<T>(initial: T | (() => T)): History<T> {
   /** Last coalesce key + timestamp; null after discrete ops, undo, reset. */
   const lastKey = useRef<{ key: string; time: number } | null>(null);
 
-  const set = useCallback((updater: T | ((prev: T) => T), coalesceKey?: string) => {
+  const set = useCallback((updater: T | ((prev: T) => T), coalesceKey?: string, hold?: boolean) => {
     const now = Date.now();
     setHist((h) => {
       const next = apply(updater, h.present);
       if (next === h.present) return h;
-      const coalesce =
-        coalesceKey !== undefined &&
-        lastKey.current !== null &&
-        lastKey.current.key === coalesceKey &&
-        now - lastKey.current.time < COALESCE_MS;
+      const coalesce = shouldCoalesce(lastKey.current, coalesceKey, hold, now);
       lastKey.current = coalesceKey ? { key: coalesceKey, time: now } : null;
       if (coalesce) {
         // Extend the in-progress entry: the pre-stream state is already on

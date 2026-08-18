@@ -1,5 +1,6 @@
 import React from "react";
 import type { TextGradient } from "@/lib/types";
+import { NumericField } from "./InspectorControls";
 import { ColorControl } from "../ColorControl";
 
 interface GradientEditorProps {
@@ -51,23 +52,24 @@ export function GradientEditor({
                   })
                 }
               />
-              <input
-                type="number"
-                min={0}
-                max={100}
-                className="sp-input"
-                style={{ width: 62, padding: "4px 6px", fontSize: 11 }}
-                value={Math.round(stop.position * 100)}
-                title="Stop position (%)"
-                onChange={(e) =>
-                  onChange({
-                    ...gradient,
-                    stops: gradient.stops.map((st, j) =>
-                      j === i ? { ...st, position: Math.min(100, Math.max(0, Number(e.target.value))) / 100 } : st,
-                    ),
-                  })
-                }
-              />
+              <div style={{ width: 76 }}>
+                <NumericField
+                  ariaLabel={`Stop ${i + 1} position`}
+                  suffix="%"
+                  value={Math.round(stop.position * 100)}
+                  min={0}
+                  max={100}
+                  onCommit={(v) => {
+                    if (v === undefined) return; // clearing reverts, never snaps to 0
+                    onChange({
+                      ...gradient,
+                      stops: gradient.stops.map((st, j) =>
+                        j === i ? { ...st, position: v / 100 } : st,
+                      ),
+                    });
+                  }}
+                />
+              </div>
               {gradient.stops.length > 2 && (
                 <button
                   onClick={() => onChange({ ...gradient, stops: gradient.stops.filter((_, j) => j !== i) })}
@@ -89,14 +91,16 @@ export function GradientEditor({
             </button>
             <label className="flex items-center gap-1.5" style={{ fontSize: 11, color: "var(--fg-2)" }}>
               Angle
-              <input
-                type="number"
-                className="sp-input"
-                style={{ width: 62, padding: "4px 6px", fontSize: 11 }}
-                value={gradient.angle}
-                onChange={(e) => onChange({ ...gradient, angle: Number(e.target.value) })}
-              />
-              °
+              <span style={{ width: 84, display: "inline-block" }}>
+                <NumericField
+                  ariaLabel="Gradient angle"
+                  suffix="°"
+                  value={gradient.angle}
+                  min={-360}
+                  max={360}
+                  onCommit={(v) => v !== undefined && onChange({ ...gradient, angle: v })}
+                />
+              </span>
             </label>
           </div>
         </div>

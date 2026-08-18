@@ -39,6 +39,7 @@ import { GradientEditor } from "./GradientEditor";
 import { FieldOverlayEditor } from "./FieldOverlayEditor";
 import { FieldInspector } from "./FieldInspector";
 import { inspectorGestureActive } from "./InspectorControls";
+import { canvasGestureActive } from "./canvasGesture";
 import { CaptionEditor } from "./CaptionEditor";
 import { FigmaImportDialog } from "./FigmaImportDialog";
 import { FigmaFieldPicker } from "./FigmaFieldPicker";
@@ -523,6 +524,50 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     [draft.fields, setFields],
   );
 
+  /** Undo and redo re-select whatever the jump actually changed. Without
+   * this the canvas silently rearranges somewhere off-screen and the admin
+   * has to hunt for what moved. */
+  const jumpAndReselect = useCallback(
+    (jump: () => void) => {
+      const before = draftRef.current.fields;
+      jump();
+      // draftRef updates on the next render; compare there.
+      requestAnimationFrame(() => {
+        const after = draftRef.current.fields;
+        const beforeById = new Map(before.map((f) => [f.id, f]));
+        const changed = after
+          .filter((f) => {
+            const b = beforeById.get(f.id);
+            return !b || JSON.stringify(b) !== JSON.stringify(f);
+          })
+          .map((f) => f.id);
+        if (changed.length) setSelectedIds(changed);
+      });
+    },
+    [],
+  );
+  const undoAndReselect = useCallback(() => jumpAndReselect(undo), [jumpAndReselect, undo]);
+  const redoAndReselect = useCallback(() => jumpAndReselect(redo), [jumpAndReselect, redo]);
+
+  /** Arrow-key nudge: 1 canvas px, shift x10. A rapid streak of presses
+   * coalesces into one undo entry; spaced, deliberate nudges stay separate
+   * steps — the same opt-in policy the inspector's numeric fields use. */
+  const nudgeFields = useCallback(
+    (ids: string[], dx: number, dy: number) => {
+      const idSet = new Set(ids);
+      setDraft(
+        (d) => ({
+          ...d,
+          fields: d.fields.map((f) =>
+            idSet.has(f.id) ? { ...f, x: Math.round(f.x + dx), y: Math.round(f.y + dy) } : f,
+          ),
+        }),
+        `nudge:${ids.join(",")}`,
+      );
+    },
+    [setDraft],
+  );
+
   const reorderLayer = useCallback(
     (ids: string[], where: "front" | "back") => setFields(setLayerOrder(draft.fields, ids, where)),
     [draft.fields, setFields],
@@ -537,15 +582,15 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       // A scrub or slider drag in the inspector is a single in-flight edit.
       // Undo, delete and paste landing in the middle of one would act on a
       // half-applied state, so they stay inert until the pointer is released.
-      if (inspectorGestureActive()) return;
+      if (inspectorGestureActive() || canvasGestureActive()) return;
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
       if (mod && key === "z" && !e.shiftKey) {
         e.preventDefault();
-        undo();
+        undoAndReselect();
       } else if ((mod && key === "z" && e.shiftKey) || (mod && key === "y")) {
         e.preventDefault();
-        redo();
+        redoAndReselect();
       } else if (mod && key === "c" && selectedIds.length) {
         e.preventDefault();
         copyFields(selectedIds);
@@ -558,6 +603,12 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       } else if (mod && key === "d" && selectedIds.length) {
         e.preventDefault();
         duplicateSelected(selectedIds);
+      } else if (e.key.startsWith("Arrow") && selectedIds.length) {
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+        const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
+        if (dx || dy) nudgeFields(selectedIds, dx, dy);
       } else if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.length) {
         e.preventDefault();
         deleteFields(selectedIds);
@@ -567,7 +618,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [step, mode, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, deleteFields, undo, redo]);
+  }, [step, mode, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, deleteFields, nudgeFields, undoAndReselect, redoAndReselect]);
 
   // -------------------------------------------------------------------------
   // Source, save, publish
@@ -1190,6 +1241,11 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                       onChange={setFields}
                       onDraw={addDrawnField}
                       onDropElement={(id, at) => addPaletteField(id, at)}
+                      onDropFiles={(files, at) => void addImageFiles(files, at)}
+                      onRequestLabelFocus={(id) => {
+                        setSelectedIds([id]);
+                        setFocusLabelFieldId(id);
+                      }}
                       onContextMenu={(pos, fieldId, canvasPoint) =>
                         setMenu({ x: pos.x, y: pos.y, fieldId, canvasPoint })
                       }

@@ -68,6 +68,7 @@ import {
   svgIntrinsicSize,
   textFieldFromPaste,
 } from "./fieldOps";
+import { renameKeyInGroups, stripFieldsFromGroups } from "./groupOps";
 import { composeFigmaBackground } from "@/lib/figma/composeLayers";
 
 /** The builder is a desktop tool: below this width the canvas + inspector
@@ -273,11 +274,18 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       (d) => {
         const prev = d.fields.find((f) => f.id === id);
         const fields = d.fields.map((f) => (f.id === id ? { ...f, ...patch } : f));
-        const captionTemplate =
-          prev && patch.fieldKey && patch.fieldKey !== prev.fieldKey
-            ? retagCaption(d.captionTemplate, prev.fieldKey, patch.fieldKey)
-            : d.captionTemplate;
-        return { ...d, fields, captionTemplate };
+        const renamed = Boolean(prev && patch.fieldKey && patch.fieldKey !== prev.fieldKey);
+        const captionTemplate = renamed
+          ? retagCaption(d.captionTemplate, prev!.fieldKey, patch.fieldKey!)
+          : d.captionTemplate;
+        // Group children reference fields by fieldKey — the one save-stable
+        // identifier — so a rename has to follow through them exactly as it
+        // does through the caption tags. Miss this and the group silently
+        // loses the child on the next render.
+        const layoutGroups = renamed
+          ? renameKeyInGroups(d.layoutGroups, prev!.fieldKey, patch.fieldKey!)
+          : d.layoutGroups;
+        return { ...d, fields, captionTemplate, layoutGroups };
       },
       // Coalescing is OPT-IN. A keystroke stream (`stream`) collapses by the
       // time window, and a pointer gesture (scrub, slider) is held open for
@@ -464,7 +472,17 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
     (ids: string[]) => {
       if (!ids.length) return;
       const idSet = new Set(ids);
-      setDraft((d) => ({ ...d, fields: d.fields.filter((f) => !idSet.has(f.id)) }));
+      setDraft((d) => {
+        // A deleted field has to leave its group too, or the group keeps a
+        // child key that resolves to nothing. stripFieldsFromGroups also
+        // drops groups left empty by the deletion.
+        const deletedKeys = d.fields.filter((f) => idSet.has(f.id)).map((f) => f.fieldKey);
+        return {
+          ...d,
+          fields: d.fields.filter((f) => !idSet.has(f.id)),
+          layoutGroups: stripFieldsFromGroups(d.layoutGroups, deletedKeys),
+        };
+      });
       setSelectedIds((sel) => sel.filter((id) => !idSet.has(id)));
     },
     [],

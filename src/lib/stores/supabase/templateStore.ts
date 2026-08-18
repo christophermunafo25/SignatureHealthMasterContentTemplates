@@ -45,6 +45,7 @@ export class SupabaseTemplateStore implements TemplateStore {
         background_color: input.backgroundColor ?? null,
         background_gradient: input.backgroundGradient ?? null,
         caption_template: input.captionTemplate,
+        layout_groups: input.layoutGroups ?? null,
       })
       .select()
       .single();
@@ -68,6 +69,9 @@ export class SupabaseTemplateStore implements TemplateStore {
     if ("backgroundColor" in patch) row.background_color = patch.backgroundColor ?? null;
     if ("backgroundGradient" in patch) row.background_gradient = patch.backgroundGradient ?? null;
     if (patch.captionTemplate !== undefined) row.caption_template = patch.captionTemplate;
+    // Null, not undefined: ungrouping everything must CLEAR the column, and
+    // `undefined` would leave the old groups sitting in the database.
+    if (patch.layoutGroups !== undefined) row.layout_groups = patch.layoutGroups ?? null;
     const { error } = await supabase().from("templates").update(row).eq("id", id);
     if (error) throw error;
     if (patch.fields) await this.replaceFields(id, patch as Pick<NewTemplateInput, "fields">);

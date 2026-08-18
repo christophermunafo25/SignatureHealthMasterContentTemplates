@@ -1,5 +1,6 @@
 import React, {
   forwardRef,
+  useMemo,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -8,7 +9,8 @@ import React, {
 } from "react";
 import type { BrandKit, FacilitySnapshot, FieldValues, TemplateField, TemplateSchema } from "@/lib/types";
 import { useDataUrl } from "@/lib/render/useDataUrl";
-import { fitText } from "@/lib/render/autoFit";
+import { createCanvasMeasurer, fitText } from "@/lib/render/autoFit";
+import { computeLayout, type Rect } from "@/lib/render/layout";
 import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
 import { loadGoogleFonts, schemaFontFamilies } from "@/lib/render/fonts";
 import { exportSchemaPng, renderSchemaBlob, type ExportOutcome } from "@/lib/render/exportPng";
@@ -68,9 +70,9 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
       loadGoogleFonts(schemaFontFamilies(schema, brandKit));
     }, [schema, brandKit]);
 
-    // Fixed-width fitting measures real glyphs — re-render once webfonts
-    // finish loading so measurements switch from the fallback font's metrics.
-    const [, setFontsReady] = useState(0);
+    // Text fitting measures real glyphs — re-render once webfonts finish
+    // loading so measurements switch off the fallback font's metrics.
+    const [fontsTick, setFontsReady] = useState(0);
     useEffect(() => {
       let mounted = true;
       document.fonts?.ready.then(() => mounted && setFontsReady(1));
@@ -78,6 +80,16 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
         mounted = false;
       };
     }, []);
+
+    // THE layout pass: schema + values in, absolute rects out. One measurer
+    // (and its memo) per fonts generation — a webfont landing changes what
+    // the same shorthand measures, so the cache must not survive it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fontsTick deliberately busts the cache
+    const measurer = useMemo(() => createCanvasMeasurer(), [fontsTick]);
+    const layout = useMemo(
+      () => computeLayout(schema, values, brandKit, measurer),
+      [schema, values, brandKit, measurer],
+    );
 
     // One instrumentation point covers every template (Feature 3).
     useEffect(() => {
@@ -146,6 +158,8 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
                 value={values[field.fieldKey]}
                 brandKit={brandKit}
                 facility={facility}
+                rect={layout.fieldRects.get(field.id)}
+                fontSize={layout.fontSizes.get(field.id)}
               />
             ))}
           </div>
@@ -170,20 +184,25 @@ function resolveColor(
   return colorHex ?? "#111111";
 }
 
-function boxStyle(field: TemplateField): React.CSSProperties {
-  // Three positioning patterns from the reference generators: plain absolute
-  // boxes, center-anchored boxes (translate(-50%,-50%)), rotated content.
+function boxStyle(field: TemplateField, rect?: Rect): React.CSSProperties {
   // Positioning ONLY — appearance (including opacity) lives on the content,
   // so the builder can host content inside its own screen-space boxes.
+  //
+  // With a layout rect (the normal path) the box positions from the pass's
+  // top-left-space output: anchor normalization already happened there, and
+  // grouped children get their stacked, hugged rects. The legacy branch
+  // (translate(-50%,-50%) for center anchors) covers only a caller with no
+  // layout — the builder's content-only hosting — and resolves to the same
+  // painted geometry.
   const transforms: string[] = [];
-  if (field.anchor === "center") transforms.push("translate(-50%, -50%)");
+  if (!rect && field.anchor === "center") transforms.push("translate(-50%, -50%)");
   if (field.rotation) transforms.push(`rotate(${field.rotation}deg)`);
   return {
     position: "absolute",
-    left: field.x,
-    top: field.y,
-    width: field.width,
-    height: field.height,
+    left: rect ? rect.x : field.x,
+    top: rect ? rect.y : field.y,
+    width: rect ? rect.width : field.width,
+    height: rect ? rect.height : field.height,
     transform: transforms.join(" ") || undefined,
     // Canvas layer order. Fields array order is the member FORM order; paint
     // order is zIndex (ties fall back to DOM order = form order).
@@ -232,14 +251,26 @@ interface FieldBoxProps {
   brandKit: BrandKit | null;
   /** Facility in context for facility_logo elements (absent → placeholder). */
   facility?: FacilitySnapshot | null;
+  /** Computed rect from the layout pass. Absent only for the builder's
+   *  content-only hosting, which positions the box itself. */
+  rect?: Rect;
+  /** Computed font size from the layout pass — the same arithmetic the box
+   *  would do inline, plus shrinkToFit for grouped children. */
+  fontSize?: number;
 }
 
 /** Positioning wrapper (boxStyle) around the field's visual content. The
  * single member-preview/export render path — behavior must stay identical. */
-export function FieldBox({ field, value, brandKit, facility }: FieldBoxProps) {
+export function FieldBox({ field, value, brandKit, facility, rect, fontSize }: FieldBoxProps) {
   return (
-    <div style={boxStyle(field)}>
-      <FieldBoxContent field={field} value={value} brandKit={brandKit} facility={facility} />
+    <div style={boxStyle(field, rect)}>
+      <FieldBoxContent
+        field={field}
+        value={value}
+        brandKit={brandKit}
+        facility={facility}
+        fontSize={fontSize}
+      />
     </div>
   );
 }
@@ -248,7 +279,7 @@ export function FieldBox({ field, value, brandKit, facility }: FieldBoxProps) {
  * parent sized to field.width × field.height. The builder hosts this inside
  * its screen-space interaction boxes so content moves with the box during
  * drags — no second source of truth, no catch-up jump on release. */
-export function FieldBoxContent({ field, value, brandKit, facility }: FieldBoxProps) {
+export function FieldBoxContent({ field, value, brandKit, facility, fontSize }: FieldBoxProps) {
   // Static elements carry their own fixed content — member values never apply.
   const effective = field.static ? field.staticValue : value;
   if (field.type === "shape") {
@@ -260,7 +291,9 @@ export function FieldBoxContent({ field, value, brandKit, facility }: FieldBoxPr
   if (field.type === "image") {
     return <ImageFieldBox field={field} value={effective} />;
   }
-  return <TextFieldBox field={field} value={effective} brandKit={brandKit} />;
+  return (
+    <TextFieldBox field={field} value={effective} brandKit={brandKit} fontSize={fontSize} />
+  );
 }
 
 /** 5-point star, unit square. */
@@ -308,7 +341,7 @@ function ShapeFieldBox({ field, brandKit }: { field: TemplateField; brandKit: Br
   );
 }
 
-function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {
+function TextFieldBox({ field, value, brandKit, fontSize: layoutFontSize }: FieldBoxProps) {
   // Brand rules engine: properties defined by the bound type style win.
   const style = resolveFieldStyle(field, brandKit);
   // Fixed elements ARE the graphic: their content (falling back to the label)
@@ -322,15 +355,20 @@ function TextFieldBox({ field, value, brandKit }: FieldBoxProps) {
   // that cannot fit even at the floor paints past the box visibly, because a
   // member's entry silently losing its last words at review is worse than one
   // that visibly needs fixing.
-  const fontSize = fitText(
-    {
-      ...style,
-      multiline: field.type === "multiline",
-      width: field.width,
-      height: field.height,
-    },
-    text,
-  ).fontSizePx;
+  // The layout pass owns the size when it ran — identical arithmetic, plus
+  // shrinkToFit for grouped children. The inline computation stays for hosts
+  // without a pass (the builder's interaction boxes).
+  const fontSize =
+    layoutFontSize ??
+    fitText(
+      {
+        ...style,
+        multiline: field.type === "multiline",
+        width: field.width,
+        height: field.height,
+      },
+      text,
+    ).fontSizePx;
   const justify =
     field.align === "center" ? "center" : field.align === "right" ? "flex-end" : "flex-start";
   const alignItems =

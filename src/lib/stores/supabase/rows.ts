@@ -259,6 +259,7 @@ export interface TemplateRow {
   background_color: string | null;
   background_gradient: import("../../types").TextGradient | null;
   caption_template: string;
+  layout_groups: import("../../types").LayoutGroup[] | null;
   created_at: string;
   updated_at: string;
   template_fields?: TemplateFieldRow[];
@@ -285,6 +286,9 @@ export const toTemplate = (r: TemplateRow): TemplateSchema => ({
     .sort((a, b) => a.sort_order - b.sort_order)
     .map(toTemplateField),
   captionTemplate: r.caption_template,
+  // Round-tripped verbatim: groups reference children by fieldKey, never by
+  // row id, so nothing here needs re-association after a save.
+  layoutGroups: r.layout_groups ?? undefined,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });

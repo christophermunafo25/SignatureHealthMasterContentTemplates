@@ -93,6 +93,9 @@ export function toTemplate(r: Row): Row {
       .sort((a: Row, b: Row) => a.sort_order - b.sort_order)
       .map(toTemplateField),
     captionTemplate: r.caption_template,
+    // The anonymous portal positions through the same layout pass the admin
+    // builder does, so it needs the groups verbatim too.
+    layoutGroups: r.layout_groups ?? undefined,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };

@@ -47,14 +47,24 @@ import { FieldContextMenu, type MenuAction } from "./FieldContextMenu";
 import { WIZARD_STEPS, WizardStepper, type WizardStep } from "./WizardStepper";
 import { CanvasSizePicker } from "./CanvasSizePicker";
 import {
+  LOGO_PALETTE_PREFIX,
   PALETTE_ITEMS,
+  applyClipboardStyle,
+  cascadePoint,
   clipboardHasFields,
+  clipboardHasStyle,
+  copyStyle,
   copyToClipboard,
   duplicateFields,
   fieldFromPalette,
+  imageFieldFromUpload,
+  isSvgSource,
   isTypingTarget,
+  logoFieldFromAsset,
   pasteFromClipboard,
   setLayerOrder,
+  svgIntrinsicSize,
+  textFieldFromPaste,
 } from "./fieldOps";
 import { composeFigmaBackground } from "@/lib/figma/composeLayers";
 
@@ -119,7 +129,7 @@ function useViewportAtLeast(px: number): boolean {
  * progress indicator. */
 export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   const { company } = useAuth();
-  const { kit } = useBrand();
+  const { kit, assets: brandAssets } = useBrand();
   const { navigate } = useRouter();
   const viewportOk = useViewportAtLeast(BUILDER_MIN_VIEWPORT_PX);
 
@@ -300,17 +310,140 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
    * pre-sized, pre-typed; fields immediately open for naming (shapes don't
    * need a name — they're design-only). */
   const addPaletteField = (paletteId: string, at?: { x: number; y: number }) => {
+    const canvas = { width: draft.canvasWidth, height: draft.canvasHeight };
+    const centre = { x: draft.canvasWidth / 2, y: draft.canvasHeight / 2 };
+
+    // A brand logo tile carries `logo:<assetId>` rather than a palette id.
+    if (paletteId.startsWith(LOGO_PALETTE_PREFIX)) {
+      const asset = brandAssets.find((a) => a.id === paletteId.slice(LOGO_PALETTE_PREFIX.length));
+      if (!asset) return;
+      void addLogoField(asset, at ?? centre, canvas);
+      return;
+    }
+
     const item = PALETTE_ITEMS.find((p) => p.id === paletteId);
     if (!item) return;
-    const point = at ?? { x: draft.canvasWidth / 2, y: draft.canvasHeight / 2 };
-    const field = fieldFromPalette(item, point, draft.fields, kit, {
-      width: draft.canvasWidth,
-      height: draft.canvasHeight,
-    });
+    const size = { width: Math.min(item.width, canvas.width), height: Math.min(item.height, canvas.height) };
+    // Clicking a tile aims at the same centre every time; without the cascade
+    // the second click lands exactly on the first and reads as a no-op.
+    const point = cascadePoint(at ?? centre, draft.fields, canvas, size);
+    const field = fieldFromPalette(item, point, draft.fields, kit, canvas);
     setFields([...draft.fields, field]);
     setSelectedIds([field.id]);
     if (item.type !== "shape") setFocusLabelFieldId(field.id);
   };
+
+  /** A brand logo lands as a fixed, contain-fitted image at the artwork's own
+   * ratio. The natural size has to be measured first: an SVG exported without
+   * width/height reports the replaced-element fallback (300x150), which is not
+   * the artwork and yields a box "contain" cannot rescue. */
+  const addLogoField = async (
+    asset: { id: string; name: string; url: string },
+    at: { x: number; y: number },
+    canvas: { width: number; height: number },
+  ) => {
+    let natural: { width: number; height: number } | null = null;
+    try {
+      if (isSvgSource(asset.url) || isSvgSource(asset.name)) {
+        const markup = await (await fetch(asset.url)).text();
+        natural = svgIntrinsicSize(markup);
+      } else {
+        natural = await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+          img.onerror = () => resolve(null);
+          img.src = asset.url;
+        });
+      }
+    } catch {
+      natural = null; // an unreadable asset still drops, just square
+    }
+    const existing = draftRef.current.fields;
+    const point = cascadePoint(at, existing, canvas);
+    const field = logoFieldFromAsset(asset, natural, point, existing, canvas);
+    setFields([...existing, field]);
+    setSelectedIds([field.id]);
+  };
+
+  /** Fixed image elements from dropped or pasted files. Uploaded through the
+   * same public-bucket path the inspector uses, so a static image on a
+   * template resolves for the anonymous portal with no session. */
+  const addImageFiles = async (files: File[], at: { x: number; y: number }) => {
+    if (!company) return;
+    const canvas = { width: draft.canvasWidth, height: draft.canvasHeight };
+    const created: TemplateField[] = [];
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+      try {
+        const url = await stores.templates.uploadBackground(company.id, file, file.name);
+        let natural: { width: number; height: number } | null = null;
+        if (file.type === "image/svg+xml") {
+          // createImageBitmap rejects SVG in several browsers, and the Image
+          // fallback reports 300x150 for a dimensionless document — the markup
+          // itself is the only trustworthy source.
+          try {
+            natural = svgIntrinsicSize(await file.text());
+          } catch {
+            natural = null;
+          }
+        } else {
+          try {
+            const bmp = await createImageBitmap(file);
+            natural = { width: bmp.width, height: bmp.height };
+            bmp.close();
+          } catch {
+            natural = null;
+          }
+        }
+        const existing = [...draftRef.current.fields, ...created];
+        created.push(
+          imageFieldFromUpload(url, file.name, natural, cascadePoint(at, existing, canvas), existing, canvas),
+        );
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Couldn't add that image.");
+      }
+    }
+    if (!created.length) return;
+    setFields([...draftRef.current.fields, ...created]);
+    setSelectedIds(created.map((f) => f.id));
+  };
+
+  // System-clipboard paste. The internal field clipboard (copied canvas
+  // elements) owns Cmd-V when it has content — this handler covers what the
+  // OS clipboard brings in from outside.
+  useEffect(() => {
+    if (!started || mode !== "edit" || step !== "fields") return;
+    const onPaste = (e: ClipboardEvent) => {
+      if (isTypingTarget(e as unknown as KeyboardEvent)) return;
+      if (clipboardHasFields()) return;
+      const dt = e.clipboardData;
+      if (!dt) return;
+      const centre = { x: draft.canvasWidth / 2, y: draft.canvasHeight / 2 };
+      const image = Array.from(dt.items)
+        .find((i) => i.type.startsWith("image/"))
+        ?.getAsFile();
+      if (image) {
+        e.preventDefault();
+        void addImageFiles([image], centre);
+        return;
+      }
+      const text = dt.getData("text/plain").trim();
+      if (!text) return;
+      e.preventDefault();
+      const canvas = { width: draft.canvasWidth, height: draft.canvasHeight };
+      const field = textFieldFromPaste(
+        text,
+        cascadePoint(centre, draft.fields, canvas),
+        draft.fields,
+        kit,
+        canvas,
+      );
+      setFields([...draft.fields, field]);
+      setSelectedIds([field.id]);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  });
 
   // The naming focus applies only while the just-added field stays the sole
   // selection; any other selection clears it.
@@ -361,6 +494,26 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       if (!dups.length) return;
       setFields([...draft.fields, ...dups]);
       setSelectedIds(dups.map((f) => f.id));
+    },
+    [draft.fields, setFields],
+  );
+
+  /** Copy/paste properties, Figma-style. The style clipboard is separate
+   * from the element clipboard: copying a style must not clobber elements
+   * waiting to be pasted, and vice versa. */
+  const copySelectedStyle = useCallback(
+    (fieldId: string) => {
+      const field = draft.fields.find((f) => f.id === fieldId);
+      if (field) copyStyle(field);
+    },
+    [draft.fields],
+  );
+
+  const pasteStyle = useCallback(
+    (ids: string[]) => {
+      if (!clipboardHasStyle()) return;
+      const idSet = new Set(ids);
+      setFields(draft.fields.map((f) => (idSet.has(f.id) ? applyClipboardStyle(f) : f)));
     },
     [draft.fields, setFields],
   );
@@ -593,11 +746,17 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         onSelect: () => pasteFields(),
       },
       { label: "Duplicate", shortcut: "⌘D", onSelect: () => duplicateSelected(ids) },
+      { label: "Copy style", onSelect: () => copySelectedStyle(menu.fieldId!) },
+      {
+        label: "Paste style",
+        disabled: !clipboardHasStyle(),
+        onSelect: () => pasteStyle(ids),
+      },
       { label: "Bring to front", onSelect: () => reorderLayer(ids, "front") },
       { label: "Send to back", onSelect: () => reorderLayer(ids, "back") },
       { label: "Delete", shortcut: "⌫", destructive: true, onSelect: () => deleteFields(ids) },
     ];
-  }, [menu, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, reorderLayer, deleteFields]);
+  }, [menu, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, copySelectedStyle, pasteStyle, reorderLayer, deleteFields]);
 
   if (!viewportOk) {
     return (
@@ -916,7 +1075,12 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
           {step === "fields" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
               <div className="lg:col-span-3 space-y-4 w-full max-w-xl mx-auto lg:max-w-none">
-                {mode === "edit" && <ElementPalette onAdd={(id) => addPaletteField(id)} />}
+                {mode === "edit" && (
+                  <ElementPalette
+                    onAdd={(id) => addPaletteField(id)}
+                    logos={brandAssets.filter((a) => a.kind === "logo")}
+                  />
+                )}
                 <FieldListPanel
                   fields={draft.fields}
                   selectedIds={selectedIds}

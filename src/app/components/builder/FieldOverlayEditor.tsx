@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
-import type { BrandKit, FacilitySnapshot, TemplateField } from "@/lib/types";
+import type { BrandKit, FacilitySnapshot, LayoutGroup, TemplateField } from "@/lib/types";
+import { groupChildRef, isFreeGroup, parseGroupChildRef } from "@/lib/types";
 import { useDataUrl } from "@/lib/render/useDataUrl";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { loadGoogleFonts } from "@/lib/render/fonts";
@@ -9,6 +10,13 @@ import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
 import { cornerRadiusCss, FieldBoxContent } from "../SchemaRenderer";
 import { ErrorBoundary, FieldCrashFallback } from "../ErrorBoundary";
 import { PALETTE_MIME, isTypingTarget, paintOrder } from "./fieldOps";
+import {
+  groupFieldKeys,
+  outermostGroupOf,
+  parentGroupOf,
+  type LayoutResult,
+} from "@/lib/render/layout";
+import { selectedFieldIds, selectedGroupIds } from "./groupOps";
 import { cancelActiveGesture, startDrag } from "./canvasGesture";
 
 interface FieldOverlayEditorProps {
@@ -18,9 +26,29 @@ interface FieldOverlayEditorProps {
   /** Canvas base fill (schemaBackgroundCss) — under the background image. */
   backgroundCss?: string;
   fields: TemplateField[];
+  /** Groups over the fields — plain or auto-layout (may be empty). */
+  groups?: LayoutGroup[];
+  /** The builder's layout pass over the current draft: computed rects for
+   * grouped children, group frames, and shrink-adjusted font sizes. */
+  layout?: LayoutResult;
+  /** A just-created group: its frame flashes so the admin sees what the
+   * grouping actually produced. */
+  flashGroupId?: string | null;
+  /** Groups currently outgrowing the canvas — their frames flag it. */
+  overflowGroupIds?: string[];
+  /** Selection entries are field ids or "group:<id>" refs. */
   selectedIds: string[];
   onSelect(ids: string[]): void;
   onChange(fields: TemplateField[]): void;
+  /** Commit a move of the whole selection — loose fields at their new
+   * geometry, plus a delta for every selected group. ONE call, so a mixed
+   * selection is one undo entry. */
+  onMoveSelection?(move: {
+    fields: Array<{ id: string } & Partial<TemplateField>>;
+    groupIds: string[];
+    dx: number;
+    dy: number;
+  }): void;
   /** Secondary path: the admin drew a raw box (canvas-space rect). */
   onDraw(rect: { x: number; y: number; width: number; height: number }): void;
   /** Primary path: a palette element was dropped at a canvas point. */
@@ -57,6 +85,8 @@ interface GestureFrame {
   kind: "move" | "resize" | "rotate";
   overrides: Map<string, Partial<TemplateField>>;
   guides: Guide[];
+  /** Every listed group frame and member field translates live. */
+  groupDelta?: { groupIds: Set<string>; fieldIds: Set<string>; dx: number; dy: number };
 }
 
 interface Guide {
@@ -84,6 +114,11 @@ const HANDLE_CROWD_PX = 28;
 
 /** Zoom multiplies the fit scale, so 1 is always "the whole canvas". Zooming
  * out past fit would only add empty space, hence the floor at 1. */
+/** Stable empty defaults — a fresh [] per render would thrash every memo
+ * and ref that depends on them. */
+const EMPTY_GROUPS: LayoutGroup[] = [];
+const EMPTY_IDS: string[] = [];
+
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
 const ZOOM_STEP = 1.25;
@@ -312,9 +347,14 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
     backgroundUrl,
     backgroundCss,
     fields,
+    groups = EMPTY_GROUPS,
+    layout,
+    flashGroupId,
+    overflowGroupIds = EMPTY_IDS,
     selectedIds,
     onSelect,
     onChange,
+    onMoveSelection,
     onDraw,
     onDropElement,
     onDropFiles,
@@ -340,6 +380,12 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
   fieldsRef.current = fields;
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
+  const groupsRef = useRef(groups);
+  groupsRef.current = groups;
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+  const onMoveSelectionRef = useRef(onMoveSelection);
+  onMoveSelectionRef.current = onMoveSelection;
   const selectedRef = useRef(selectedIds);
   selectedRef.current = selectedIds;
   const onSelectRef = useRef(onSelect);
@@ -467,12 +513,23 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
     return { x: (e.clientX - rect.left) / s, y: (e.clientY - rect.top) / s };
   }, []);
 
-  const displayRect = (f: TemplateField) => ({
-    x: displayX(f),
-    y: displayY(f),
-    width: f.width,
-    height: f.height,
-  });
+  /** Where a field actually paints: the layout pass owns it when it ran
+   * (grouped children are placed by their stack), otherwise the authored
+   * rect normalized to top-left space. */
+  const displayRect = (f: TemplateField) =>
+    layoutRef.current?.fieldRects.get(f.id) ?? {
+      x: displayX(f),
+      y: displayY(f),
+      width: f.width,
+      height: f.height,
+    };
+
+  /** A stack owns its children's positions, so they cannot be moved freely.
+   * Plain-group children keep authored positions and move like any field. */
+  const inStack = (f: TemplateField): boolean => {
+    const g = groupsRef.current.find((x) => x.children.includes(f.fieldKey));
+    return Boolean(g && !isFreeGroup(g));
+  };
 
   const snapTargets = (excluded: Set<string>) => {
     const v = [0, canvasWidth / 2, canvasWidth];
@@ -510,22 +567,58 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
   // --- Move -----------------------------------------------------------------
 
   const beginMove = (e: React.PointerEvent, ids: string[]) => {
-    const dragSet = new Set(ids);
+    // A stack computes its children's positions, so a free move can't apply
+    // to them — they drop out of the drag set and travel with their stack.
+    const dragSet = new Set(
+      selectedFieldIds(ids).filter((id) => {
+        const f = fieldsRef.current.find((x) => x.id === id);
+        return f && !inStack(f);
+      }),
+    );
     const startRects = fieldsRef.current
       .filter((f) => dragSet.has(f.id))
       .map((f) => ({ f, tlx: displayX(f), tly: displayY(f) }));
-    if (!startRects.length) return;
 
-    // The bounding box spans everything travelling, so snapping and the
-    // stay-on-canvas clamp treat a multi-selection as one object.
+    // Only TOP-LEVEL selected groups move under their own steam — a nested
+    // group is carried by its parent, and moving both would double the delta.
+    const movingGroups = selectedGroupIds(ids)
+      .map((id) => groupsRef.current.find((g) => g.id === id))
+      .filter((g): g is LayoutGroup => Boolean(g) && !parentGroupOf(g!.id, groupsRef.current));
+    const memberIds = new Set<string>();
+    for (const g of movingGroups) {
+      for (const key of groupFieldKeys(g, groupsRef.current)) {
+        const f = fieldsRef.current.find((x) => x.fieldKey === key);
+        if (f) memberIds.add(f.id);
+      }
+    }
+    if (!startRects.length && !movingGroups.length) return;
+
+    // The bounding box spans everything travelling — loose fields and group
+    // frames alike — so snapping and the stay-on-canvas clamp treat a mixed
+    // selection as one object.
+    const spans = [
+      ...startRects.map((r) => ({
+        l: r.tlx,
+        t: r.tly,
+        r: r.tlx + r.f.width,
+        b: r.tly + r.f.height,
+      })),
+      ...movingGroups.flatMap((g) => {
+        const rect = layoutRef.current?.groupRects.get(g.id);
+        return rect
+          ? [{ l: rect.x, t: rect.y, r: rect.x + rect.width, b: rect.y + rect.height }]
+          : [];
+      }),
+    ];
     const bbox = {
-      l: Math.min(...startRects.map((r) => r.tlx)),
-      t: Math.min(...startRects.map((r) => r.tly)),
-      r: Math.max(...startRects.map((r) => r.tlx + r.f.width)),
-      b: Math.max(...startRects.map((r) => r.tly + r.f.height)),
+      l: Math.min(...spans.map((s2) => s2.l)),
+      t: Math.min(...spans.map((s2) => s2.t)),
+      r: Math.max(...spans.map((s2) => s2.r)),
+      b: Math.max(...spans.map((s2) => s2.b)),
     };
-    const targets = snapTargets(dragSet);
+    const targets = snapTargets(new Set([...dragSet, ...memberIds]));
     let latest: Map<string, Partial<TemplateField>> | null = null;
+    let latestDelta = { dx: 0, dy: 0 };
 
     startDrag(e.nativeEvent, containerRef.current!, {
       threshold: DRAG_THRESHOLD_PX,
@@ -566,11 +659,36 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
           overrides.set(r.f.id, toAnchorSpace(r.f, r.tlx + ddx, r.tly + ddy));
         }
         latest = overrides;
-        setFrame({ kind: "move", overrides, guides });
+        latestDelta = { dx: ddx, dy: ddy };
+        setFrame({
+          kind: "move",
+          overrides,
+          guides,
+          groupDelta: movingGroups.length
+            ? { groupIds: new Set(movingGroups.map((g) => g.id)), fieldIds: memberIds, dx: ddx, dy: ddy }
+            : undefined,
+        });
       },
       onEnd: () => {
         setFrame(null);
-        if (latest) commitOverrides(latest);
+        if (!latest && !movingGroups.length) return;
+        const commit = onMoveSelectionRef.current;
+        if (commit) {
+          // ONE call for the whole selection — a mixed drag has to be a
+          // single undo entry, not one per element plus one per group.
+          commit({
+            fields: [...(latest ?? new Map())].map(([id, o]) => ({
+              id,
+              x: o.x === undefined ? undefined : Math.round(o.x),
+              y: o.y === undefined ? undefined : Math.round(o.y),
+            })),
+            groupIds: movingGroups.map((g) => g.id),
+            dx: latestDelta.dx,
+            dy: latestDelta.dy,
+          });
+        } else if (latest) {
+          commitOverrides(latest);
+        }
       },
       onCancel: () => setFrame(null),
     });
@@ -806,18 +924,23 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
       const current = stack.findIndex((f) => selectedRef.current.includes(f.id));
       target = stack[(current + 1) % stack.length];
     }
+
+    // A grouped element selects its OUTERMOST group first — the group is the
+    // thing an admin manipulates. Alt reaches past it to the element itself,
+    // the same key that digs through overlaps.
+    const owning = e.altKey ? undefined : outermostGroupOf(target.fieldKey, groupsRef.current);
+    const ref = owning ? groupChildRef(owning.id) : target.id;
+
     const additive = e.shiftKey || e.metaKey || e.ctrlKey;
     let nextSelection: string[];
     if (additive) {
-      nextSelection = selectedRef.current.includes(target.id)
-        ? selectedRef.current.filter((id) => id !== target.id)
-        : [...selectedRef.current, target.id];
+      nextSelection = selectedRef.current.includes(ref)
+        ? selectedRef.current.filter((id) => id !== ref)
+        : [...selectedRef.current, ref];
       onSelectRef.current(nextSelection);
       return; // a modifier click adjusts the selection; it never starts a drag
     }
-    nextSelection = selectedRef.current.includes(target.id)
-      ? selectedRef.current
-      : [target.id];
+    nextSelection = selectedRef.current.includes(ref) ? selectedRef.current : [ref];
     if (nextSelection !== selectedRef.current) onSelectRef.current(nextSelection);
     // Select AND move in one gesture: the threshold decides which it was.
     beginMove(e, nextSelection);
@@ -843,11 +966,33 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
   /** The field as currently shown: draft state plus any live gesture frame. */
   const viewOf = (f: TemplateField): TemplateField => {
     const o = frame?.overrides.get(f.id);
-    return o ? ({ ...f, ...o } as TemplateField) : f;
+    const base = o ? ({ ...f, ...o } as TemplateField) : f;
+    // A field placed by the layout pass renders at its COMPUTED rect, not
+    // its authored one — that is the whole point of a stack.
+    const rect = o ? undefined : layout?.fieldRects.get(f.id);
+    const placed = rect
+      ? ({
+          ...base,
+          anchor: "topLeft" as const,
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+        })
+      : base;
+    // Members of a travelling group follow it live.
+    const d = frame?.groupDelta;
+    if (d && d.fieldIds.has(f.id)) {
+      return { ...placed, x: placed.x + d.dx, y: placed.y + d.dy };
+    }
+    return placed;
   };
 
-  const selected = fields.filter((f) => selectedIds.includes(f.id));
-  const single = selected.length === 1 ? viewOf(selected[0]) : null;
+  const selectedFields = fields.filter((f) => selectedIds.includes(f.id));
+  const single =
+    selectedFields.length === 1 && selectedGroupIds(selectedIds).length === 0
+      ? viewOf(selectedFields[0])
+      : null;
   const editing = editingId ? fields.find((f) => f.id === editingId) : undefined;
 
   const dims =
@@ -896,8 +1041,10 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
           e.preventDefault();
           const p = toCanvas(e);
           const hit = hitsAt(p)[0];
-          if (hit && !selectedIds.includes(hit.id)) onSelect([hit.id]);
-          onContextMenu({ x: e.clientX, y: e.clientY }, hit?.id ?? null, p);
+          const owning = hit ? outermostGroupOf(hit.fieldKey, groups) : undefined;
+          const ref = hit ? (owning ? groupChildRef(owning.id) : hit.id) : null;
+          if (ref && !selectedIds.includes(ref)) onSelect([ref]);
+          onContextMenu({ x: e.clientX, y: e.clientY }, ref, p);
         }}
         onPointerDown={onSurfacePointerDown}
         onPointerMove={(e) => {
@@ -1060,6 +1207,65 @@ export function FieldOverlayEditor(props: FieldOverlayEditorProps) {
             onRotate={beginRotate}
           />
         )}
+
+        {/* Group frames. Builder chrome only — never rendered in the member
+            preview or the export. A stack's frame is computed, so it carries
+            no resize handles; it is moved, not resized. */}
+        {groups.map((g) => {
+          const rect = layout?.groupRects.get(g.id);
+          if (!rect) return null;
+          const d = frame?.groupDelta;
+          const dx = d?.groupIds.has(g.id) ? d.dx : 0;
+          const dy = d?.groupIds.has(g.id) ? d.dy : 0;
+          const isSelected = selectedIds.includes(groupChildRef(g.id));
+          const overflows = overflowGroupIds.includes(g.id);
+          const flashing = flashGroupId === g.id;
+          return (
+            <div
+              key={g.id}
+              title={
+                overflows
+                  ? `${g.name} extends past the canvas`
+                  : `${g.name}${isFreeGroup(g) ? "" : " — auto layout"}`
+              }
+              style={{
+                position: "absolute",
+                left: (rect.x + dx) * scale,
+                top: (rect.y + dy) * scale,
+                width: rect.width * scale,
+                height: rect.height * scale,
+                // Under the field boxes; the surface hit-tests real geometry
+                // so the frame never intercepts a pointer.
+                zIndex: 0,
+                pointerEvents: "none",
+                border: `var(--editor-line) ${isSelected ? "solid" : "dashed"} ${
+                  overflows ? "var(--state-danger)" : "var(--editor-accent)"
+                }`,
+                background: flashing
+                  ? "color-mix(in srgb, var(--editor-accent) 14%, transparent)"
+                  : "transparent",
+                transition: flashing ? undefined : "background var(--dur-panel) var(--ease)",
+              }}
+            >
+              {(isSelected || hoveredId === `group:${g.id}` || overflows) && (
+                <span
+                  className="absolute -top-4 left-0 rounded whitespace-nowrap"
+                  style={{
+                    background: overflows ? "var(--state-danger)" : "var(--editor-accent)",
+                    color: "#fff",
+                    fontSize: 9,
+                    fontWeight: 500,
+                    padding: "1px 4px",
+                  }}
+                >
+                  {g.name}
+                  {isFreeGroup(g) ? "" : " · auto"}
+                  {overflows ? " · overflows canvas" : ""}
+                </span>
+              )}
+            </div>
+          );
+        })}
 
         {/* Smart guides */}
         {frame?.guides.map((g, i) => (

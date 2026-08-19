@@ -44,3 +44,42 @@ Open a template in the builder, Fields step, and work down.
 The full §5 gate still applies on top of this — in particular item 12: open a
 published template, change nothing, save, reopen. If a no-op save-and-reopen
 moves a single pixel, this phase has a rounding regression and must not merge.
+
+---
+
+# Layout groups — verification walk
+
+Added with the groups phase. Same status: **NOT YET WALKED.** The rendering
+side is covered by tests (including the eight real published templates), but
+every scenario below needs an admin session and a real pointer.
+
+## The gate order that matters
+
+The port plan is explicit that these run in this order, and that a regression
+in 2–4 stops the phase. That path is the product for 69 facilities.
+
+| # | Scenario | What must happen | ✓ |
+|---|---|---|---|
+| 1 | Open each pre-existing published template | Renders identically — no groups means the old path. Automated tests cover the arithmetic; this confirms it on screen. | ☐ |
+| 2 | **Public portal fill page**, anonymous, private window | Renders and exports correctly. No session, no second chance. | ☐ |
+| 3 | **Release form Q11** | The graphic preview renders. | ☐ |
+| 4 | **Submission board** | Thumbnails load; open a submission; export the PNG. | ☐ |
+| 5 | Only then: build a stack and fill it past the canvas | The overflow warning shows and `shrinkToFit` behaves. | ☐ |
+
+## Authoring
+
+| Scenario | What must happen | ✓ |
+|---|---|---|
+| Select two elements, ⌘G | A plain group forms and **nothing moves** — grouping is lossless by construction. The new frame flashes. | ☐ |
+| Click a grouped element | Selects the whole GROUP, not the element. | ☐ |
+| Alt-click a grouped element | Reaches past the group to the element itself. | ☐ |
+| Drag a group | The frame and every member travel together, as ONE undo entry. | ☐ |
+| Group inspector → auto layout | Converting to a stack does not move anything: direction, order, gap and anchor derive from where the children already sit. | ☐ |
+| Stack → plain group | Children freeze at their computed rects; the arrangement survives. | ☐ |
+| Anchor point | With anchor at top, growing content pushes downward; at bottom, upward; at centre, both ways. | ☐ |
+| ⌘⇧G / Ungroup | Children keep exactly where they were, and are re-selected. | ☐ |
+| Delete a group | Removes the group AND its members — distinct from ungrouping. | ☐ |
+| Rename a field's key while grouped | The group keeps the child. (Groups reference children by fieldKey; a missed rename loses the child silently.) | ☐ |
+| Delete a grouped field | It leaves the group, and a group left empty disappears. | ☐ |
+| Field list | Grouped children read as indented rows badged "grp"; the list is still the member FORM order. | ☐ |
+| Save, reload | Groups round-trip exactly. Then ungroup everything and save — `layout_groups` must CLEAR, not keep stale groups. | ☐ |

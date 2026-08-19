@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type {
   CanvasPreset,
+  LayoutGroup,
   DesignImportResult,
   Facility,
   FacilitySnapshot,
@@ -35,6 +36,8 @@ import { useUnsavedChangesWarning } from "@/lib/useUnsavedChangesWarning";
 import { useRouter } from "../../router";
 import { ColorControl } from "../ColorControl";
 import { SchemaRenderer, schemaBackgroundCss } from "../SchemaRenderer";
+import { createCanvasMeasurer } from "@/lib/render/autoFit";
+import { computeLayout, outermostGroupOf } from "@/lib/render/layout";
 import { GradientEditor } from "./GradientEditor";
 import { FieldOverlayEditor } from "./FieldOverlayEditor";
 import { FieldInspector } from "./FieldInspector";
@@ -68,7 +71,20 @@ import {
   svgIntrinsicSize,
   textFieldFromPaste,
 } from "./fieldOps";
-import { renameKeyInGroups, stripFieldsFromGroups } from "./groupOps";
+import {
+  deriveFreeGroup,
+  deriveGroup,
+  groupIdsWithin,
+  isGroupSelection,
+  renameKeyInGroups,
+  selectedFieldIds,
+  selectedGroupIds,
+  stripFieldsFromGroups,
+  toFreeGroup,
+  toStackGroup,
+  ungroup,
+} from "./groupOps";
+import { GroupInspector } from "./GroupInspector";
 import { composeFigmaBackground } from "@/lib/figma/composeLayers";
 
 /** The builder is a desktop tool: below this width the canvas + inspector
@@ -265,6 +281,12 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
 
   const selectedFields = draft.fields.filter((f) => selectedIds.includes(f.id));
   const singleSelected = selectedFields.length === 1 ? selectedFields[0] : null;
+  /** A lone selected group gets the group inspector instead of the field one. */
+  const singleGroup = useMemo(() => {
+    const ids = selectedGroupIds(selectedIds);
+    if (ids.length !== 1 || selectedFields.length) return null;
+    return (draft.layoutGroups ?? []).find((g) => g.id === ids[0]) ?? null;
+  }, [selectedIds, selectedFields.length, draft.layoutGroups]);
 
   /** Patch one field; when the patch re-derives the merge tag, rewrite the
    * caption template so existing {old_key} references follow the rename. */
@@ -567,6 +589,177 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
   const undoAndReselect = useCallback(() => jumpAndReselect(undo), [jumpAndReselect, undo]);
   const redoAndReselect = useCallback(() => jumpAndReselect(redo), [jumpAndReselect, redo]);
 
+  // The builder runs the SAME layout pass the renderer does, so the canvas
+  // shows grouped children exactly where they will paint. One measurer for
+  // the component's life — the canvas re-measures on every keystroke and
+  // identical (font, text) pairs dominate.
+  const builderMeasurer = useMemo(() => createCanvasMeasurer(), []);
+  const builderLayout = useMemo(
+    () =>
+      computeLayout(
+        { ...draft, id: savedId ?? "preview" } as unknown as TemplateSchema,
+        {},
+        kit,
+        builderMeasurer,
+      ),
+    [draft, savedId, kit, builderMeasurer],
+  );
+  const overflowGroupIds = useMemo(
+    () =>
+      [...builderLayout.groupRects.entries()]
+        .filter(([, r]) => r.overflows)
+        .map(([id]) => id),
+    [builderLayout],
+  );
+  /** A just-created group flashes so the admin sees what grouping produced. */
+  const [flashGroupId, setFlashGroupId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!flashGroupId) return;
+    const t = window.setTimeout(() => setFlashGroupId(null), 900);
+    return () => window.clearTimeout(t);
+  }, [flashGroupId]);
+
+  // -------------------------------------------------------------------------
+  // Groups
+  // -------------------------------------------------------------------------
+
+  /** Group the current selection. Plain by default (lossless — nothing moves
+   * and nothing about the children changes); a stack is one toggle away in
+   * the group inspector. */
+  const groupSelection = useCallback(() => {
+    const d = draftRef.current;
+    const input = {
+      fields: d.fields,
+      groups: d.layoutGroups ?? [],
+      fieldIds: selectedFieldIds(selectedIds),
+      groupIds: selectedGroupIds(selectedIds),
+      layout: builderLayout,
+      kit,
+      measure: builderMeasurer,
+    };
+    const group = deriveFreeGroup(input);
+    if (!group) return; // fewer than two eligible members, or already grouped
+    setDraft((prev) => ({ ...prev, layoutGroups: [...(prev.layoutGroups ?? []), group] }));
+    setSelectedIds([`group:${group.id}`]);
+    setFlashGroupId(group.id);
+  }, [selectedIds, builderLayout, kit, builderMeasurer, setDraft]);
+
+  /** Ungroup: children keep exactly where they are, frozen at their computed
+   * rects, so a stack's arrangement survives the ungrouping. */
+  const ungroupSelection = useCallback(() => {
+    const ids = selectedGroupIds(selectedIds);
+    if (!ids.length) return;
+    setDraft((prev) => {
+      let fields = prev.fields;
+      let groups = prev.layoutGroups ?? [];
+      const freedKeys: string[] = [];
+      for (const id of ids) {
+        const g = groups.find((x) => x.id === id);
+        if (!g) continue;
+        freedKeys.push(...g.children.filter((c) => !isGroupSelection(c)));
+        const r = ungroup(g, fields, groups, builderLayout);
+        fields = r.fields;
+        groups = r.groups;
+      }
+      return { ...prev, fields, layoutGroups: groups.length ? groups : undefined };
+    });
+    // Re-select the freed fields so the admin can see what came out.
+    setSelectedIds((sel) => {
+      const d = draftRef.current;
+      const keys = new Set(
+        ids.flatMap((id) => (d.layoutGroups ?? []).find((g) => g.id === id)?.children ?? []),
+      );
+      const freed = d.fields.filter((f) => keys.has(f.fieldKey)).map((f) => f.id);
+      return freed.length ? freed : sel.filter((x) => !isGroupSelection(x));
+    });
+  }, [selectedIds, builderLayout, setDraft]);
+
+  /** Delete a group AND its member fields — distinct from ungrouping, which
+   * keeps the elements. */
+  const deleteGroups = useCallback(
+    (ids: string[]) => {
+      if (!ids.length) return;
+      setDraft((prev) => {
+        const groups = prev.layoutGroups ?? [];
+        const all = new Set(groupIdsWithin(ids, groups));
+        const doomedKeys = new Set(
+          groups
+            .filter((g) => all.has(g.id))
+            .flatMap((g) => g.children.filter((c) => !isGroupSelection(c))),
+        );
+        return {
+          ...prev,
+          fields: prev.fields.filter((f) => !doomedKeys.has(f.fieldKey)),
+          layoutGroups: groups.filter((g) => !all.has(g.id)).length
+            ? groups.filter((g) => !all.has(g.id))
+            : undefined,
+        };
+      });
+      setSelectedIds([]);
+    },
+    [setDraft],
+  );
+
+  /** ONE commit for a whole move, however mixed the selection: loose fields
+   * at their new geometry plus a delta for every travelling group. A mixed
+   * drag has to be a single undo entry. */
+  const moveSelection = useCallback(
+    (move: {
+      fields: Array<{ id: string } & Partial<TemplateField>>;
+      groupIds: string[];
+      dx: number;
+      dy: number;
+    }, coalesceKey?: string) => {
+      setDraft(
+        (prev) => {
+          const byId = new Map(move.fields.map((f) => [f.id, f]));
+          const fields = prev.fields.map((f) =>
+            byId.has(f.id) ? { ...f, ...byId.get(f.id)! } : f,
+          );
+          // A moved group carries its anchor; a plain group's frame is its
+          // children's bounding box, so translating the children is enough.
+          const moved = new Set(move.groupIds);
+          const layoutGroups = (prev.layoutGroups ?? []).map((g) =>
+            moved.has(g.id)
+              ? { ...g, x: Math.round(g.x + move.dx), y: Math.round(g.y + move.dy) }
+              : g,
+          );
+          return { ...prev, fields, layoutGroups: layoutGroups.length ? layoutGroups : undefined };
+        },
+        coalesceKey,
+      );
+    },
+    [setDraft],
+  );
+
+  /** A child dragged to a new position in its stack. */
+  const reorderChildren = useCallback(
+    (groupId: string, children: string[]) => {
+      setDraft((prev) => ({
+        ...prev,
+        layoutGroups: (prev.layoutGroups ?? []).map((g) =>
+          g.id === groupId ? { ...g, children } : g,
+        ),
+      }));
+    },
+    [setDraft],
+  );
+
+  const patchGroup = useCallback(
+    (id: string, patch: Partial<LayoutGroup>) => {
+      setDraft(
+        (prev) => ({
+          ...prev,
+          layoutGroups: (prev.layoutGroups ?? []).map((g) =>
+            g.id === id ? { ...g, ...patch } : g,
+          ),
+        }),
+        `group:${id}:${Object.keys(patch).sort().join(",")}`,
+      );
+    },
+    [setDraft],
+  );
+
   /** Arrow-key nudge: 1 canvas px, shift x10. A rapid streak of presses
    * coalesces into one undo entry; spaced, deliberate nudges stay separate
    * steps — the same opt-in policy the inspector's numeric fields use. */
@@ -621,6 +814,10 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       } else if (mod && key === "d" && selectedIds.length) {
         e.preventDefault();
         duplicateSelected(selectedIds);
+      } else if (mod && key === "g") {
+        e.preventDefault();
+        if (e.shiftKey) ungroupSelection();
+        else groupSelection();
       } else if (e.key.startsWith("Arrow") && selectedIds.length) {
         e.preventDefault();
         const step = e.shiftKey ? 10 : 1;
@@ -629,14 +826,16 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         if (dx || dy) nudgeFields(selectedIds, dx, dy);
       } else if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.length) {
         e.preventDefault();
-        deleteFields(selectedIds);
+        const gids = selectedGroupIds(selectedIds);
+        if (gids.length) deleteGroups(gids);
+        else deleteFields(selectedIds);
       } else if (e.key === "Escape") {
         setSelectedIds([]);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [step, mode, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, deleteFields, nudgeFields, undoAndReselect, redoAndReselect]);
+  }, [step, mode, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, deleteFields, nudgeFields, undoAndReselect, redoAndReselect, groupSelection, ungroupSelection]);
 
   // -------------------------------------------------------------------------
   // Source, save, publish
@@ -814,6 +1013,20 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
       ];
     }
     const ids = selectedIds.includes(menu.fieldId) ? selectedIds : [menu.fieldId];
+    const groupIds = selectedGroupIds(ids);
+    if (groupIds.length) {
+      // A group selection has its own verbs — ungrouping keeps the elements,
+      // deleting takes them with it.
+      return [
+        { label: "Ungroup", shortcut: `${isMac ? "⌘" : "Ctrl"}⇧G`, onSelect: ungroupSelection },
+        {
+          label: groupIds.length > 1 ? "Delete groups" : "Delete group",
+          shortcut: "⌫",
+          destructive: true,
+          onSelect: () => deleteGroups(groupIds),
+        },
+      ];
+    }
     return [
       { label: "Copy", shortcut: "⌘C", onSelect: () => copyFields(ids) },
       { label: "Cut", shortcut: "⌘X", onSelect: () => cutFields(ids) },
@@ -830,11 +1043,17 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         disabled: !clipboardHasStyle(),
         onSelect: () => pasteStyle(ids),
       },
+      {
+        label: "Group selection",
+        shortcut: `${isMac ? "⌘" : "Ctrl"}G`,
+        disabled: selectedFieldIds(ids).length < 2,
+        onSelect: groupSelection,
+      },
       { label: "Bring to front", onSelect: () => reorderLayer(ids, "front") },
       { label: "Send to back", onSelect: () => reorderLayer(ids, "back") },
       { label: "Delete", shortcut: "⌫", destructive: true, onSelect: () => deleteFields(ids) },
     ];
-  }, [menu, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, copySelectedStyle, pasteStyle, reorderLayer, deleteFields]);
+  }, [menu, selectedIds, copyFields, cutFields, pasteFields, duplicateSelected, copySelectedStyle, pasteStyle, reorderLayer, deleteFields, groupSelection, ungroupSelection, deleteGroups]);
 
   if (!viewportOk) {
     return (
@@ -1161,6 +1380,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                 )}
                 <FieldListPanel
                   fields={draft.fields}
+                  groups={draft.layoutGroups}
                   selectedIds={selectedIds}
                   onSelect={setSelectedIds}
                   onReorder={setFields}
@@ -1254,9 +1474,14 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                       backgroundUrl={draft.backgroundUrl}
                       backgroundCss={schemaBackgroundCss(draft)}
                       fields={draft.fields}
+                      groups={draft.layoutGroups}
+                      layout={builderLayout}
+                      flashGroupId={flashGroupId}
+                      overflowGroupIds={overflowGroupIds}
                       selectedIds={selectedIds}
                       onSelect={setSelectedIds}
                       onChange={setFields}
+                      onMoveSelection={(m) => moveSelection(m)}
                       onDraw={addDrawnField}
                       onDropElement={(id, at) => addPaletteField(id, at)}
                       onDropFiles={(files, at) => void addImageFiles(files, at)}
@@ -1291,7 +1516,42 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
               </div>
 
               <div className="lg:col-span-4 space-y-4 w-full max-w-xl mx-auto lg:max-w-none">
-                {singleSelected ? (
+                {singleGroup ? (
+                  <div className="sp-card p-4">
+                    <GroupInspector
+                      group={singleGroup}
+                      computedRect={builderLayout.groupRects.get(singleGroup.id)}
+                      onChange={(patch) => patchGroup(singleGroup.id, patch)}
+                      onModeChange={(mode) => {
+                        // Converting must not move anything: to a stack, the
+                        // properties are re-derived from where the children
+                        // already sit; to a plain group, the children freeze
+                        // at their computed rects.
+                        setDraft((prev) => {
+                          const groups = prev.layoutGroups ?? [];
+                          if (mode === "stack") {
+                            const next = toStackGroup(
+                              singleGroup,
+                              prev.fields,
+                              groups,
+                              builderLayout,
+                              kit,
+                              builderMeasurer,
+                            );
+                            return {
+                              ...prev,
+                              layoutGroups: groups.map((g) => (g.id === next.id ? next : g)),
+                            };
+                          }
+                          const r = toFreeGroup(singleGroup, prev.fields, groups, builderLayout);
+                          return { ...prev, fields: r.fields, layoutGroups: r.groups };
+                        });
+                      }}
+                      onUngroup={ungroupSelection}
+                      onDelete={() => deleteGroups([singleGroup.id])}
+                    />
+                  </div>
+                ) : singleSelected ? (
                   <div className="sp-card p-4">
                     <FieldInspector
                       field={singleSelected}

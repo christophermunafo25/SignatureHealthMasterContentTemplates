@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { AlignLeft, Building2, ChevronDown, GripVertical, Image as ImageIcon, Pin, Shapes, Type as TypeIcon } from "lucide-react";
-import type { FieldType, TemplateField } from "@/lib/types";
+import type { FieldType, LayoutGroup, TemplateField } from "@/lib/types";
+import { groupOfField } from "@/lib/render/layout";
 
 const ICONS: Record<FieldType, React.ComponentType<{ style?: React.CSSProperties }>> = {
   text: TypeIcon,
@@ -13,6 +14,8 @@ const ICONS: Record<FieldType, React.ComponentType<{ style?: React.CSSProperties
 
 interface FieldListPanelProps {
   fields: TemplateField[];
+  /** Groups over the fields, so grouped children read as nested rows. */
+  groups?: LayoutGroup[];
   selectedIds: string[];
   onSelect(ids: string[]): void;
   /** Reorder = the member FORM order (canvas z-order is separate). */
@@ -23,7 +26,14 @@ interface FieldListPanelProps {
 /** The Fields step's field list: every field, in member-form order. Click to
  * select/edit (syncs with the canvas), ⌘/Ctrl-click for multi-select, drag
  * the grip to reorder the end-user form. */
-export function FieldListPanel({ fields, selectedIds, onSelect, onReorder, onContextMenu }: FieldListPanelProps) {
+export function FieldListPanel({
+  fields,
+  groups = [],
+  selectedIds,
+  onSelect,
+  onReorder,
+  onContextMenu,
+}: FieldListPanelProps) {
   const dragIndex = useRef<number | null>(null);
   const overIndexRef = useRef<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null); // highlight only
@@ -61,6 +71,10 @@ export function FieldListPanel({ fields, selectedIds, onSelect, onReorder, onCon
             const Icon = ICONS[f.type];
             const isSelected = selectedIds.includes(f.id);
             const stepNo = f.static ? null : ++formStep;
+            // A grouped child is indented and badged. The list stays the
+            // member FORM order — grouping provably cannot change that — so
+            // this is a visual affordance, not a second tree.
+            const owning = groupOfField(f.fieldKey, groups);
             return (
               <div
                 key={f.id}
@@ -94,6 +108,7 @@ export function FieldListPanel({ fields, selectedIds, onSelect, onReorder, onCon
                 onContextMenu={(e) => onContextMenu(e, f.id)}
                 className="flex items-center gap-2 px-2 py-2 cursor-pointer"
                 style={{
+                  marginLeft: owning ? 14 : 0,
                   borderRadius: 8,
                   border: `1px solid ${isSelected ? "var(--solar)" : "var(--hairline)"}`,
                   background: isSelected
@@ -106,6 +121,21 @@ export function FieldListPanel({ fields, selectedIds, onSelect, onReorder, onCon
                 <GripVertical
                   style={{ width: 13, height: 13, color: "var(--fg-4)", flexShrink: 0, cursor: "grab" }}
                 />
+                {owning && (
+                  <span
+                    title={`In ${owning.name}`}
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 8,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      color: "var(--fg-4)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    grp
+                  </span>
+                )}
                 <span
                   className="flex items-center"
                   style={{

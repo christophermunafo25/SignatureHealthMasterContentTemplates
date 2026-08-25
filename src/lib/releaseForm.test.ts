@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  isBlocked,
-  validateReleaseForm,
   RELEASE_FORM_VERSION,
+  isBlocked,
+  platformsForChoice,
+  questionNumberForField,
+  validateReleaseForm,
   type ReleaseForm,
   type ReleaseFormContext,
 } from "./releaseForm";
@@ -16,18 +18,13 @@ function futureDate(): string {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-/** A form that passes validation: no event, no minors, nothing gated open. */
+/** A v3 form that passes: standard scheduling, one uploaded file. */
 const valid = (over: Partial<ReleaseForm> = {}): Partial<ReleaseForm> => ({
   version: RELEASE_FORM_VERSION,
+  platformChoice: "Facebook",
   platforms: ["Facebook"],
-  isEvent: "No",
-  photoRelease: "Yes",
-  hasMinors: "No",
-  offCampusRelease: "Yes",
-  requestedPostDate: futureDate(),
-  requestedPostTime: "2:30 PM CST",
   postText: "Our team celebrated a milestone this week and we are proud of them.",
-  includesMedia: "Yes",
+  needsSpecificSchedule: "No",
   acknowledged: true,
   submittedAt: new Date().toISOString(),
   ...over,
@@ -35,6 +32,7 @@ const valid = (over: Partial<ReleaseForm> = {}): Partial<ReleaseForm> => ({
 
 const UPLOAD: ReleaseFormContext = { hasGeneratedGraphic: false, assetCount: 1 };
 const TEMPLATE: ReleaseFormContext = { hasGeneratedGraphic: true, assetCount: 0 };
+const NO_MEDIA: ReleaseFormContext = { hasGeneratedGraphic: false, assetCount: 0 };
 
 const fieldsBlocking = (form: Partial<ReleaseForm>, ctx = UPLOAD) =>
   validateReleaseForm(form, ctx)
@@ -42,102 +40,179 @@ const fieldsBlocking = (form: Partial<ReleaseForm>, ctx = UPLOAD) =>
     .map((i) => i.field);
 
 describe("baseline", () => {
-  it("accepts a complete non-event, no-minors form", () => {
-    expect(fieldsBlocking(valid())).toEqual([]);
+  it("accepts a complete standard-scheduling form", () => {
+    expect(validateReleaseForm(valid(), UPLOAD)).toEqual([]);
+  });
+
+  it("raises no flag issues at all — v3 has no flag path", () => {
+    // release_flagged loses its only source with the VP question gone. The
+    // severity stays in the type for legacy rows; nothing produces it now.
+    const everyWrongAnswer = validateReleaseForm({ version: 3 }, NO_MEDIA);
+    expect(everyWrongAnswer.filter((i) => i.severity === "flag")).toEqual([]);
   });
 });
 
-describe("Q3a/Q3b — event gate", () => {
-  it("requires the gate to be answered", () => {
-    expect(fieldsBlocking(valid({ isEvent: undefined }))).toContain("isEvent");
+describe("Q2 — platforms", () => {
+  it("requires at least one platform", () => {
+    expect(fieldsBlocking(valid({ platforms: [] }))).toContain("platforms");
   });
 
-  it("requires the VP answer once it IS an event", () => {
-    expect(fieldsBlocking(valid({ isEvent: "Yes" }))).toContain("vpApproved");
+  it("expands Both into the two-element storage array", () => {
+    // The storage shape stays text[] so submissions.platforms, its index,
+    // and the board's platform filter are untouched by the new affordance.
+    expect(platformsForChoice("Both")).toEqual(["Facebook", "Instagram"]);
+    expect(platformsForChoice("Facebook")).toEqual(["Facebook"]);
+    expect(platformsForChoice("Instagram")).toEqual(["Instagram"]);
   });
 
-  it("accepts an event with VP approval", () => {
-    expect(fieldsBlocking(valid({ isEvent: "Yes", vpApproved: "Yes" }))).toEqual([]);
-  });
-
-  it("flags — but does not block — an event without VP approval", () => {
-    const issues = validateReleaseForm(valid({ isEvent: "Yes", vpApproved: "No" }), UPLOAD);
-    expect(isBlocked(issues)).toBe(false);
-    expect(issues.filter((i) => i.severity === "flag").map((i) => i.field)).toEqual([
-      "vpApproved",
-    ]);
-  });
-
-  it("does not require or flag the VP answer when it is not an event", () => {
-    const issues = validateReleaseForm(valid({ isEvent: "No" }), UPLOAD);
-    expect(isBlocked(issues)).toBe(false);
-    expect(issues).toEqual([]);
-  });
-
-  it("refuses a stale VP answer left behind by a gate flipped to No", () => {
-    // The form clears this on change; validation is the backstop, so a
-    // non-event can never carry a VP answer into the record.
-    expect(fieldsBlocking(valid({ isEvent: "No", vpApproved: "No" }))).toContain("vpApproved");
+  it("accepts a Both submission", () => {
+    const form = valid({ platformChoice: "Both", platforms: platformsForChoice("Both") });
+    expect(validateReleaseForm(form, UPLOAD)).toEqual([]);
   });
 });
 
-describe("Q5a/Q5b — minors gate", () => {
-  it("requires the gate to be answered", () => {
-    expect(fieldsBlocking(valid({ hasMinors: undefined }))).toContain("hasMinors");
+describe("Q3 — postText", () => {
+  it("requires at least a sentence", () => {
+    expect(fieldsBlocking(valid({ postText: "Nice" }))).toContain("postText");
   });
 
-  it("requires the release answer once minors are present", () => {
-    expect(fieldsBlocking(valid({ hasMinors: "Yes" }))).toContain("minorRelease");
+  it("blocks all caps", () => {
+    expect(
+      fieldsBlocking(valid({ postText: "OUR TEAM CELEBRATED A BIG MILESTONE THIS WEEK" })),
+    ).toContain("postText");
   });
 
-  it("accepts minors WITH releases on file", () => {
-    expect(fieldsBlocking(valid({ hasMinors: "Yes", minorRelease: "Yes" }))).toEqual([]);
-  });
-
-  it("BLOCKS minors without releases on file", () => {
-    // The safeguarding rule: gating Q5 must not create a path around it.
-    const issues = validateReleaseForm(valid({ hasMinors: "Yes", minorRelease: "No" }), UPLOAD);
-    expect(isBlocked(issues)).toBe(true);
-    expect(issues.some((i) => i.field === "minorRelease" && i.severity === "blocking")).toBe(true);
-  });
-
-  it("does not require the release answer when there are no minors", () => {
-    expect(validateReleaseForm(valid({ hasMinors: "No" }), UPLOAD)).toEqual([]);
-  });
-
-  it("refuses a stale release answer left behind by a gate flipped to No", () => {
-    expect(fieldsBlocking(valid({ hasMinors: "No", minorRelease: "No" }))).toContain(
-      "minorRelease",
+  it("does not mistake a short acronym-heavy sentence for shouting", () => {
+    expect(fieldsBlocking(valid({ postText: "Our CEO and CNO visited the SNF today." }))).toEqual(
+      [],
     );
   });
 });
 
-describe("Q10 — includesMedia", () => {
-  it("is required on the upload path", () => {
-    expect(fieldsBlocking(valid({ includesMedia: undefined }))).toContain("includesMedia");
+describe("Q4 — upload", () => {
+  it("is required on the direct path", () => {
+    expect(fieldsBlocking(valid(), NO_MEDIA)).toContain("assets");
   });
 
   it("is NOT required on the template path, where the graphic is the media", () => {
-    // Q10 is auto-answered and hidden there, so blocking on it would strand
-    // the user on a question they cannot see.
-    expect(fieldsBlocking(valid({ includesMedia: undefined }), TEMPLATE)).not.toContain(
-      "includesMedia",
-    );
+    expect(fieldsBlocking(valid(), TEMPLATE)).not.toContain("assets");
   });
 
-  it("still blocks an upload-path submission with no media at all", () => {
-    expect(
-      fieldsBlocking(valid({ includesMedia: "Yes" }), { hasGeneratedGraphic: false, assetCount: 0 }),
-    ).toContain("assets");
+  it("accepts the template path with no extra upload at all", () => {
+    expect(validateReleaseForm(valid(), TEMPLATE)).toEqual([]);
   });
 });
 
-describe("ungated rules still apply", () => {
-  it("blocks a missing photo release regardless of the gates", () => {
-    expect(fieldsBlocking(valid({ photoRelease: "No" }))).toContain("photoRelease");
+describe("Q5/Q5a/Q5b — the scheduling gate", () => {
+  it("requires the gate to be answered", () => {
+    expect(fieldsBlocking(valid({ needsSpecificSchedule: undefined }))).toContain(
+      "needsSpecificSchedule",
+    );
   });
 
-  it("blocks an unacknowledged form", () => {
-    expect(fieldsBlocking(valid({ acknowledged: false }))).toContain("acknowledged");
+  it("requires a date once a specific slot IS requested", () => {
+    expect(fieldsBlocking(valid({ needsSpecificSchedule: "Yes" }))).toContain("requestedPostDate");
+  });
+
+  it("refuses a date in the past", () => {
+    expect(
+      fieldsBlocking(valid({ needsSpecificSchedule: "Yes", requestedPostDate: "2020-01-01" })),
+    ).toContain("requestedPostDate");
+  });
+
+  it("accepts a requested date with NO time — Q5b is optional", () => {
+    const form = valid({ needsSpecificSchedule: "Yes", requestedPostDate: futureDate() });
+    expect(validateReleaseForm(form, UPLOAD)).toEqual([]);
+  });
+
+  it("accepts a requested date with a time", () => {
+    const form = valid({
+      needsSpecificSchedule: "Yes",
+      requestedPostDate: futureDate(),
+      requestedPostTime: "2:00 PM",
+    });
+    expect(validateReleaseForm(form, UPLOAD)).toEqual([]);
+  });
+
+  it("does not require a date under standard scheduling", () => {
+    expect(validateReleaseForm(valid({ needsSpecificSchedule: "No" }), UPLOAD)).toEqual([]);
+  });
+
+  it("refuses a stale date left behind by a gate flipped back to No", () => {
+    // The form clears both on change; validation is the backstop, so a
+    // standard-scheduling record can never carry a requested slot.
+    expect(
+      fieldsBlocking(valid({ needsSpecificSchedule: "No", requestedPostDate: futureDate() })),
+    ).toContain("requestedPostDate");
+  });
+
+  it("refuses a stale time left behind by a gate flipped back to No", () => {
+    expect(
+      fieldsBlocking(valid({ needsSpecificSchedule: "No", requestedPostTime: "2:00 PM" })),
+    ).toContain("requestedPostTime");
+  });
+});
+
+describe("Q6 — the submission agreement", () => {
+  it("blocks an unconfirmed agreement", () => {
+    const issues = validateReleaseForm(valid({ acknowledged: false }), UPLOAD);
+    expect(isBlocked(issues)).toBe(true);
+    expect(issues.map((i) => i.field)).toContain("acknowledged");
+  });
+});
+
+describe("questionNumberForField", () => {
+  it("matches the numbering the form renders", () => {
+    // The modal's "Still needed" line reads from this, so a drift here is a
+    // user-visible lie about which question is unanswered.
+    expect(questionNumberForField("platforms")).toBe("2");
+    expect(questionNumberForField("postText")).toBe("3");
+    expect(questionNumberForField("assets")).toBe("4");
+    expect(questionNumberForField("needsSpecificSchedule")).toBe("5");
+    expect(questionNumberForField("requestedPostDate")).toBe("5a");
+    expect(questionNumberForField("requestedPostTime")).toBe("5b");
+    expect(questionNumberForField("acknowledged")).toBe("6");
+  });
+
+  it("returns null for a field with no numbered question", () => {
+    expect(questionNumberForField("submittedAt")).toBeNull();
+    expect(questionNumberForField("vpApproved")).toBeNull();
+  });
+});
+
+describe("legacy documents", () => {
+  /** A real v2 record, exactly as it sits in submissions.release_form. It
+   * must keep type-checking and reading through the superset interface —
+   * every admin surface renders these unchanged. */
+  const legacy: ReleaseForm = {
+    version: 2,
+    platforms: ["Facebook", "Instagram"],
+    isEvent: "Yes",
+    vpApproved: "No",
+    photoRelease: "Yes",
+    hasMinors: "Yes",
+    minorRelease: "Yes",
+    offCampusRelease: "N/A",
+    requestedPostDate: "2025-06-02",
+    requestedPostTime: "2:30 PM CST",
+    postText: "The team celebrated a resident's hundredth birthday.",
+    includesMedia: "Yes",
+    acknowledged: true,
+    submittedAt: "2025-06-01T14:02:00.000Z",
+  };
+
+  it("reads every v2 answer back off the superset type", () => {
+    expect(legacy.version).toBe(2);
+    expect(legacy.vpApproved).toBe("No");
+    expect(legacy.minorRelease).toBe("Yes");
+    expect(legacy.offCampusRelease).toBe("N/A");
+    expect(legacy.includesMedia).toBe("Yes");
+    expect(legacy.platforms).toEqual(["Facebook", "Instagram"]);
+  });
+
+  it("is distinguishable from v3 by version alone", () => {
+    // Every read surface branches on this, so it has to be the whole test.
+    expect(legacy.version >= 3).toBe(false);
+    expect((valid().version ?? 0) >= 3).toBe(true);
   });
 });

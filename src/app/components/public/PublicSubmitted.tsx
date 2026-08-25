@@ -33,11 +33,13 @@ export function PublicSubmitted({
   onCreateAnother(): void;
 }) {
   const firstImage = assets.find((a) => a.mimeType.startsWith("image/") && a.previewUrl);
+  // v3 makes a requested slot the exception, not the norm (Q5 defaults to
+  // "No"), so the common path is no line at all rather than a placeholder.
   const requested = releaseForm?.requestedPostDate
     ? `You asked for it to go up on ${formatDate(releaseForm.requestedPostDate)}${
         releaseForm.requestedPostTime ? ` at ${releaseForm.requestedPostTime}` : ""
       }.`
-    : "";
+    : null;
 
   return (
     // Light-on-navy: the confirmation sits on the brand wash like every
@@ -59,8 +61,7 @@ export function PublicSubmitted({
         </h1>
         <p style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.85)" }}>
           The Signature social team has your {template ? "graphic" : "content"} from {facilityName}.
-          {" "}
-          {requested && <b style={{ color: "#ffffff", fontWeight: 600 }}>{requested}</b>}
+          {requested ? <> <b style={{ color: "#ffffff", fontWeight: 600 }}>{requested}</b></> : null}
           {" "}They&rsquo;ll review it and post it on the brand&rsquo;s channels — no
           further action needed on your end.
           {submitterEmail ? ` A confirmation copy is on its way to ${submitterEmail}.` : ""}

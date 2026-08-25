@@ -4,80 +4,192 @@
 // client validates for UX; this validates for truth.
 //
 
-// v2: Q3 and Q5 are now gated behind Q3a/Q5a. Answers from v1 forms are still
-// readable — vpApproved/minorRelease simply have no matching gate recorded.
-export const RELEASE_FORM_VERSION = 2 as const;
+// v3: the client's six-question Social Media Submission Form. The six v2
+// consent questions collapse into one agreement (Q6), and the posting
+// date/time pair is now gated behind Q5. v1/v2 documents stay readable —
+// their fields live on as optional, deprecated members of ReleaseForm.
+export const RELEASE_FORM_VERSION = 3 as const;
 
 export type YesNo = "Yes" | "No";
 export type YesNoNa = "N/A" | "Yes" | "No";
 
 export type ReleasePlatform = "Facebook" | "Instagram";
 
+/** Q2 — what the user actually picked. "Both" expands into `platforms`. */
+export type PlatformChoice = "Facebook" | "Instagram" | "Both";
+
+/** One document type for every version — a superset, not a discriminated
+ * union, so every read surface reads one type and `tsc` can still find each
+ * caller of a field v3 stopped writing. `version` selects the branch. */
 export interface ReleaseForm {
-  version: typeof RELEASE_FORM_VERSION;
-  /** Q2 — at least one required. */
+  /** 1 | 2 = legacy, 3 = current. */
+  version: number;
+
+  // ── v3 ──────────────────────────────────────────────────────────────────
+  /** Q2 — the literal choice the user made, preserved for the record. */
+  platformChoice?: PlatformChoice;
+  /** Q2 derived — "Both" expands to both. Drives submissions.platforms. */
   platforms: ReleasePlatform[];
-  /** Q3a — gates Q3b. "No" means the VP question is never asked. */
-  isEvent: YesNo;
-  /** Q3b — only asked when isEvent is "Yes". "No" flags but does not block. */
-  vpApproved?: YesNo;
-  /** Q4 — "No" BLOCKS. */
-  photoRelease: YesNo;
-  /** Q5a — gates Q5b. "No" means the minor release question is never asked. */
-  hasMinors: YesNo;
-  /** Q5b — only asked when hasMinors is "Yes". "No" BLOCKS. */
-  minorRelease?: YesNoNa;
-  /** Q6 — "No" BLOCKS. */
-  offCampusRelease: YesNoNa;
-  /** Q7 — YYYY-MM-DD, today or later. */
-  requestedPostDate: string;
-  /** Q8 — free text, e.g. "2:30 PM CST". */
-  requestedPostTime: string;
-  /** Q9 — the post copy. Mirrored into submissions.caption. */
+  /** Q3 — the post copy. Mirrored into submissions.caption. */
   postText: string;
-  /** Q10 */
-  includesMedia: YesNo;
-  /** Q12 — must be true. */
+  /** Q5 — gates Q5a/Q5b. Defaults to "No". */
+  needsSpecificSchedule?: YesNo;
+  /** Q5a — YYYY-MM-DD, today or later. Only when needsSpecificSchedule = Yes. */
+  requestedPostDate?: string;
+  /** Q5b — OPTIONAL free text even when a date is requested. */
+  requestedPostTime?: string;
+  /** Q6 — must be true. */
   acknowledged: boolean;
   submittedAt: string;
+
+  // ── v1/v2 legacy — read-only, never written by v3 ────────────────────────
+  /** @deprecated v2 only — Q3a. */ isEvent?: YesNo;
+  /** @deprecated v2 only — Q3b. Sourced release_flagged. */ vpApproved?: YesNo;
+  /** @deprecated v2 only — Q4. */ photoRelease?: YesNo;
+  /** @deprecated v2 only — Q5a. */ hasMinors?: YesNo;
+  /** @deprecated v2 only — Q5b. */ minorRelease?: YesNoNa;
+  /** @deprecated v2 only — Q6. */ offCampusRelease?: YesNoNa;
+  /** @deprecated v2 only — Q10. */ includesMedia?: YesNo;
 }
 
 // ── Question copy (from the client's live Microsoft form) ─────────────────
 
-/** Intro block shown above the form on both intake paths. */
-export const RELEASE_INTRO: { lead: string; rules: string[] } = {
+/** The three-paragraph intro shown above the form on both intake paths. */
+export const SUBMISSION_INTRO: { lead: string; beforeSubmitting: string; timing: string } = {
   lead:
-    "Please stagger your posts to be scheduled throughout the week if you have more than one you want published.",
-  rules: [
-    "Please do not submit multiple photos that look exactly the same. Choose the best photos.",
-    "Quality is better than quantity.",
-    "All desks must be clean with documents turned over, and computer screens must be turned off or on sleep mode. If your desk pictures do not follow our guidelines, they will not be posted. We want to protect everyone's privacy.",
-    "We are no longer allowed to post stakeholders or residents with toy guns. Including, but not limited to: things like NERF guns, Super Soakers, etc.",
-    "If your photos are blurry, if residents are not properly clothed, if the resident's Simply Me chart is visible in the photos, then we will not be able to post the photos. If your photos do not meet our guidelines, we will be unable to post them.",
-    "Please do not write in all caps.",
+    "Have something great happening at your facility? Send us your photos, videos, and story details, and our team will help share them on social media.",
+  // Rendered with "Before submitting:" bold and inline.
+  beforeSubmitting:
+    "Please select your best photos rather than uploading multiple similar images. Photos and videos should be clear, appropriate for social media, and follow the submission requirements outlined in this form.",
+  timing:
+    "Requests are typically reviewed and posted the day they are submitted or within 24 hours. If your content is time-sensitive, you can request a specific posting date below.",
+};
+
+/** Q4 — the tinted reminders panel above the dropzone. */
+export const PHOTO_REMINDERS: string[] = [
+  "Choose your best photos rather than uploading several similar images.",
+  "Images should be clear and appropriate for social media.",
+  "Residents should be appropriately dressed.",
+  "Do not submit images containing visible resident charts, Simply Me charts, private information, or other confidential information.",
+  "Do not submit photos of residents or stakeholders with guns or gun-like items, including toy guns, NERF guns, Super Soakers, etc.",
+  "Make sure everyone pictured has the appropriate consent/release on file before uploading.",
+];
+
+export const PHOTO_REMINDERS_CLOSING =
+  "Content that does not meet posting guidelines may not be published.";
+
+/** The unnumbered section above Q6. v3 collapses every v2 consent question
+ * into this one attestation — there is no "No" to answer any more. */
+export const SUBMISSION_AGREEMENT: { lead: string; preamble: string; items: string[] } = {
+  lead: "Before submitting, please review the following requirements.",
+  preamble: "By submitting this content, I confirm that:",
+  items: [
+    "All residents, stakeholders, minors, and other individuals pictured have the appropriate photo/media releases or consent forms on file, as applicable.",
+    "Any required off-campus consent/release is on file.",
+    "I have reviewed the photos and videos and confirmed that they do not contain private, confidential, protected, or inappropriate information or imagery.",
+    "The submitted content follows Signature HealthCARE's social media and photo submission guidelines.",
+    "All events/activities have been approved by our facility CEO.",
+    "I understand that content may be edited for grammar, clarity, length, formatting, or social media style.",
+    "I understand that submission does not guarantee publication and that content may be delayed or declined if it does not meet posting guidelines.",
   ],
 };
+
+/** Shown under the Q5a/Q5b pair. */
+export const SCHEDULE_NOTE =
+  "Requested dates and times are not guaranteed. The social media team will make every effort to accommodate time-sensitive requests.";
+
+/** Q3 — the callout below the textarea. */
+export const POST_TEXT_REMINDER =
+  "Helpful reminder: Please use complete sentences and normal capitalization. Our team may make minor edits for grammar, clarity, length, formatting, and social media style.";
+
+export const AGENCY_EMAIL = "theagency@SignaturehealthcareLLC.com";
+
+/** Q2 footnote, split so the address renders as a mailto: link. */
+export const PLATFORM_FOOTNOTE: { before: string; after: string } = {
+  before: "If your facility is interested in an Instagram account, please contact ",
+  after: ".",
+};
+
+/** Q4 — the size affordance beside the dropzone. */
+export const MAX_UPLOAD_LABEL = "250MB";
 
 export const MEDIA_RELEASE_FORMS_URL =
   "https://signaturehealthcarellc.sharepoint.com/sites/THEAgency/Media%20Release%20Forms/Forms/AllItems.aspx";
 
 export interface ReleaseQuestion {
-  /** Paper-form question number (2–12) — the numbering facilities know. */
+  /** The question number facilities see on the form (1–6). */
   number: number;
-  /** Sub-letter for gated pairs: 3a gates 3b, 5a gates 5b. The paper numbers
-   * stay recognisable rather than every later question shifting by two. */
+  /** Sub-letter for the gated schedule pair: 5 gates 5a and 5b. */
   suffix?: "a" | "b";
   label: string;
   helper?: string;
 }
 
-/** "3a", "5b", "4" — for display and anchor ids. */
+/** "5a", "5b", "4" — for display and anchor ids. */
 export const questionNumber = (q: ReleaseQuestion): string =>
   `${q.number}${q.suffix ?? ""}`;
 
-/** Question copy keyed by ReleaseForm field (plus the Q11 dropzone, which
- * has no form field of its own — files land in `assets`). */
+/** Question copy keyed by ReleaseForm field, plus the two questions that
+ * have no field of their own: Q1 (facility lives on the submission, not the
+ * form document) and Q4 (files land in `assets`). */
 export const RELEASE_QUESTIONS: Record<
+  | "facility"
+  | "platforms"
+  | "postText"
+  | "upload"
+  | "needsSpecificSchedule"
+  | "requestedPostDate"
+  | "requestedPostTime"
+  | "acknowledged",
+  ReleaseQuestion
+> = {
+  facility: {
+    number: 1,
+    label: "Facility Name",
+  },
+  platforms: {
+    number: 2,
+    label: "Where would you like this posted?",
+    helper: "Select all that apply.",
+  },
+  postText: {
+    number: 3,
+    label: "What would you like your post to say?",
+    helper: "Please provide the caption you would like us to use for your post.",
+  },
+  upload: {
+    number: 4,
+    label: "Upload your photos or videos.",
+    helper: "Upload the best photos or videos from your event or activity.",
+  },
+  needsSpecificSchedule: {
+    number: 5,
+    label: "Does this need to be posted on a specific date or at a specific time?",
+  },
+  requestedPostDate: {
+    number: 5,
+    suffix: "a",
+    label: "Requested posting date",
+  },
+  requestedPostTime: {
+    number: 5,
+    suffix: "b",
+    label: "Requested posting time",
+    helper: "Include AM or PM.",
+  },
+  acknowledged: {
+    number: 6,
+    label: "Submission Agreement",
+    helper:
+      "I have reviewed the Social Media Submission Agreement above and confirm that this submission meets these requirements.",
+  },
+};
+
+/** v1/v2 question copy, FROZEN. v3 asks none of these, but the review
+ * panel, Form Records, and the CSV export must render a historical document
+ * exactly as it read the day it was submitted. Treat this as audit copy:
+ * never reword it, never renumber it, never delete a key. */
+export const LEGACY_RELEASE_QUESTIONS: Record<
   | "platforms"
   | "isEvent"
   | "vpApproved"
@@ -168,17 +280,46 @@ export const RELEASE_QUESTIONS: Record<
   },
 };
 
+/** True when a stored document uses the v3 questionnaire. Every admin read
+ * surface branches on this — legacy rows must never be re-rendered as v3. */
+export const isV3Form = (form: { version?: number } | null | undefined): boolean =>
+  (form?.version ?? 0) >= 3;
+
+/** The single confirm control on Q6. */
+export const AGREEMENT_CONFIRM_LABEL = "Yes, I confirm.";
+
+/** Q5's two radio labels, in the order the client's form shows them. */
+export const SCHEDULE_CHOICES: ReadonlyArray<{ value: YesNo; label: string }> = [
+  { value: "No", label: "No — standard scheduling is fine." },
+  { value: "Yes", label: "Yes — I have a specific date/time request." },
+];
+
+/** Storage vocabulary — what lands in submissions.platforms. */
 export const RELEASE_PLATFORMS: ReleasePlatform[] = ["Facebook", "Instagram"];
 
-/** A fresh, unanswered form. */
+/** Q2's three options. "Both" is a UI affordance: storage stays an array so
+ * submissions.platforms, its index, and the board filters are untouched. */
+export const PLATFORM_CHOICES: PlatformChoice[] = ["Facebook", "Instagram", "Both"];
+
+export const platformsForChoice = (choice: PlatformChoice): ReleasePlatform[] =>
+  choice === "Both" ? ["Facebook", "Instagram"] : [choice];
+
+/** A fresh, unanswered form. Q5 is pre-selected in the client's form, so
+ * match it — "No" is the overwhelmingly common answer. */
 export function emptyReleaseForm(): Partial<ReleaseForm> {
-  return { version: RELEASE_FORM_VERSION, platforms: [], postText: "", acknowledged: false };
+  return {
+    version: RELEASE_FORM_VERSION,
+    platforms: [],
+    postText: "",
+    needsSpecificSchedule: "No",
+    acknowledged: false,
+  };
 }
 
 // ── Validation ────────────────────────────────────────────────────────────
 
 export interface ReleaseFormContext {
-  /** Template path: the rendered graphic satisfies Q10/Q11. */
+  /** Template path: the rendered graphic satisfies Q4. */
   hasGeneratedGraphic: boolean;
   assetCount: number;
 }
@@ -186,8 +327,34 @@ export interface ReleaseFormContext {
 export interface ReleaseFormIssue {
   field: keyof ReleaseForm | "assets";
   message: string;
-  /** blocking = the submission is refused; flag = saved and marked for review. */
+  /** blocking = the submission is refused; flag = saved and marked for
+   * review. v3 raises no flags — the severity and flagsOf() stay for
+   * legacy rows and for whatever The Agency wants to triage on next. */
   severity: "blocking" | "flag";
+}
+
+/** The question number a validation issue points at, or null when the field
+ * has no numbered question. Shared so the modal's "Still needed" line can
+ * never drift from the real numbering. */
+export function questionNumberForField(field: ReleaseFormIssue["field"]): string | null {
+  switch (field) {
+    case "platforms":
+      return questionNumber(RELEASE_QUESTIONS.platforms);
+    case "postText":
+      return questionNumber(RELEASE_QUESTIONS.postText);
+    case "assets":
+      return questionNumber(RELEASE_QUESTIONS.upload);
+    case "needsSpecificSchedule":
+      return questionNumber(RELEASE_QUESTIONS.needsSpecificSchedule);
+    case "requestedPostDate":
+      return questionNumber(RELEASE_QUESTIONS.requestedPostDate);
+    case "requestedPostTime":
+      return questionNumber(RELEASE_QUESTIONS.requestedPostTime);
+    case "acknowledged":
+      return questionNumber(RELEASE_QUESTIONS.acknowledged);
+    default:
+      return null;
+  }
 }
 
 /** Local YYYY-MM-DD for "today or later" checks. */
@@ -206,6 +373,8 @@ function isAllCaps(text: string): boolean {
   return (letters?.length ?? 0) >= 15;
 }
 
+/** v3 rules. Nothing re-validates a stored legacy document — v1/v2 forms are
+ * read, never re-submitted — so there is deliberately no v2 branch here. */
 export function validateReleaseForm(
   form: Partial<ReleaseForm>,
   ctx: ReleaseFormContext,
@@ -214,91 +383,59 @@ export function validateReleaseForm(
   const blocking = (field: ReleaseFormIssue["field"], message: string) =>
     issues.push({ field, message, severity: "blocking" });
 
+  // Q2
   if (!form.platforms || form.platforms.length === 0) {
-    blocking("platforms", "Choose at least one platform.");
+    blocking("platforms", "Tell us where you'd like this posted.");
   }
-  if (form.photoRelease === "No") {
-    blocking(
-      "photoRelease",
-      "We can't post photos without a signed release on file. Please use a different photo or get permission first.",
-    );
-  }
-  if (form.minorRelease === "No") {
-    blocking(
-      "minorRelease",
-      "We can't post photos of minors without a signed consent form on file. Please use a different photo or get permission first.",
-    );
-  }
-  if (form.offCampusRelease === "No") {
-    blocking(
-      "offCampusRelease",
-      "We can't post off-campus photos without a signed consent release on file. Please use a different photo or get permission first.",
-    );
-  }
-  // Only an event can lack VP approval, so a non-event never carries the flag.
-  if (form.isEvent === "Yes" && form.vpApproved === "No") {
-    issues.push({
-      field: "vpApproved",
-      message: "This will be sent for review without VP of Operations approval.",
-      severity: "flag",
-    });
-  }
-  if (!form.requestedPostDate || form.requestedPostDate < todayLocal()) {
-    blocking("requestedPostDate", "Pick today or a future date.");
-  }
-  if (!form.requestedPostTime?.trim()) {
-    blocking("requestedPostTime", "Tell us what time you'd like this posted.");
-  }
+
+  // Q3 — the all-caps rule stays blocking: v3 has no flag path, and Q3's
+  // reminder still asks for normal capitalization.
   const postText = form.postText ?? "";
   if (postText.trim().length < 10) {
     blocking("postText", "Write out what you'd like the post to say (at least a sentence).");
   } else if (isAllCaps(postText)) {
     blocking("postText", "Please don't submit your request in all caps.");
   }
-  if (form.includesMedia === "Yes" && ctx.assetCount === 0 && !ctx.hasGeneratedGraphic) {
-    blocking("assets", "Add the photo or video you want included.");
+
+  // Q4 — now required. On the template path the rendered graphic IS the
+  // media, so an upload is never demanded there.
+  if (ctx.assetCount === 0 && !ctx.hasGeneratedGraphic) {
+    blocking("assets", "Add the photos or videos you'd like us to post.");
   }
-  if (form.includesMedia === "No" && !ctx.hasGeneratedGraphic && ctx.assetCount === 0) {
-    blocking("assets", "A post needs a graphic, photo, or video.");
-  }
-  // On the template path the rendered graphic IS the media, so Q10 is answered
-  // for the user and hidden — never block on it there.
-  if (
-    !ctx.hasGeneratedGraphic &&
-    form.includesMedia !== "Yes" &&
-    form.includesMedia !== "No"
-  ) {
-    blocking("includesMedia", "Tell us whether you're uploading a photo or video.");
-  }
-  if (form.acknowledged !== true) {
-    blocking("acknowledged", "Please read and acknowledge the posting guidelines.");
-  }
-  // The release questions must be answered, not merely not-"No".
-  if (form.photoRelease !== "Yes" && form.photoRelease !== "No") {
-    blocking("photoRelease", "Answer the photo release question.");
-  }
-  if (!form.offCampusRelease) {
-    blocking("offCampusRelease", "Answer the off-campus release question.");
-  }
-  // Gated pairs: the gate is always required, the follow-up only when the gate
-  // is "Yes". A "No" gate must NOT leave a stale follow-up answer behind — the
-  // form clears it, and this refuses it if anything else sends one.
-  if (form.isEvent !== "Yes" && form.isEvent !== "No") {
-    blocking("isEvent", "Tell us whether this submission is for an event.");
-  } else if (form.isEvent === "Yes") {
-    if (form.vpApproved !== "Yes" && form.vpApproved !== "No") {
-      blocking("vpApproved", "Answer the VP of Operations approval question.");
+
+  // Q5 gates Q5a/Q5b. The gate is always required; the date only when the
+  // gate is "Yes"; the time never. A "No" gate must NOT leave a stale
+  // answer behind — the form clears both, and this refuses anything else
+  // that sends one.
+  if (form.needsSpecificSchedule !== "Yes" && form.needsSpecificSchedule !== "No") {
+    blocking(
+      "needsSpecificSchedule",
+      "Tell us whether this needs to go up on a specific date or time.",
+    );
+  } else if (form.needsSpecificSchedule === "Yes") {
+    if (!form.requestedPostDate || form.requestedPostDate < todayLocal()) {
+      blocking("requestedPostDate", "Pick today or a future date.");
     }
-  } else if (form.vpApproved !== undefined) {
-    blocking("vpApproved", "This isn't an event, so the VP approval answer shouldn't be set.");
+  } else {
+    if (form.requestedPostDate) {
+      blocking(
+        "requestedPostDate",
+        "Standard scheduling is fine, so the requested date shouldn't be set.",
+      );
+    }
+    if (form.requestedPostTime) {
+      blocking(
+        "requestedPostTime",
+        "Standard scheduling is fine, so the requested time shouldn't be set.",
+      );
+    }
   }
-  if (form.hasMinors !== "Yes" && form.hasMinors !== "No") {
-    blocking("hasMinors", "Tell us whether there are minors in this submission.");
-  } else if (form.hasMinors === "Yes") {
-    if (!form.minorRelease) blocking("minorRelease", "Answer the minor release question.");
-  } else if (form.minorRelease !== undefined) {
-    blocking("minorRelease", "There are no minors, so the minor release answer shouldn't be set.");
+
+  // Q6
+  if (form.acknowledged !== true) {
+    blocking("acknowledged", "Please confirm the Social Media Submission Agreement.");
   }
+
   return issues;
 }
 
@@ -310,10 +447,10 @@ export const flagsOf = (issues: ReleaseFormIssue[]): ReleaseFormIssue[] =>
 
 // ── Shared file constants ─────────────────────────────────────────────────
 // MUST exactly match the bucket's allowed_mime_types in migration 0028 and
-// the map inside supabase/functions/public-upload.
+// the bucket's file_size_limit as raised by migration 0033.
 
 export const MAX_UPLOAD_FILES = 10;
-export const MAX_UPLOAD_BYTES = 200 * 1024 * 1024; // 200 MB
+export const MAX_UPLOAD_BYTES = 250 * 1024 * 1024; // 250 MB
 
 /** mime → extension. */
 export const ALLOWED_UPLOAD_MIME: Record<string, string> = {
@@ -339,7 +476,7 @@ export function uploadRejectReason(file: File): string | null {
     return `"${file.name}" isn't a supported file type. Use a photo, video, PDF, Word, or PowerPoint file.`;
   }
   if (file.size > MAX_UPLOAD_BYTES) {
-    return `"${file.name}" is over 200 MB. Compress it or trim the video and try again.`;
+    return `"${file.name}" is over 250 MB. Compress it or trim the video and try again.`;
   }
   return null;
 }

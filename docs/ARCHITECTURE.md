@@ -172,49 +172,107 @@ failed send never fails a submission. Review adds a reversible
 `notify-submitter` function emails the reason to the submitter, and
 `edited_by`/`edited_at`/`posted_at` stamp the audit trail.
 
-## Dual intake & the release form (v2.2)
+## Dual intake & the submission form (v2.2, form v3)
 
 The public root is a **chooser**, not the template grid. Two intake
 paths land in the same `submissions` table, discriminated by
 `submissions.kind` (`submission_kind` enum, migration 0026):
 
 - **`template`** — the existing brand-template flow. `schema_snapshot`
-  frozen, `values` filled, preview PNG rendered client-side. The release
-  form opens as a modal at submit time (`ReleaseFormModal`), with the
+  frozen, `values` filled, preview PNG rendered client-side. The form
+  opens as a modal at submit time (`ReleaseFormModal`), with the
   rendered graphic and the caption pre-loaded.
 - **`direct`** — a facility uploads its own media (photos, video, PDFs,
-  Office docs; 10 files, 200 MB each) with proposed post copy. No
+  Office docs; 10 files, 250 MB each) with proposed post copy. No
   template: `template_id`/`schema_snapshot` are null (0026 dropped the
   not-null constraint), `values` is `{}`. `brand_snapshot` is still
   frozen so the record renders in the admin UI.
 
-Both paths collect the **Social Media Update Form**. `src/lib/releaseForm.ts`
-is the single source of truth for its shape, question copy, and
-validation; `supabase/functions/_shared/releaseForm.ts` is a
-Deno-compatible copy that MUST stay in sync (the Edge runtime can't
-import from `src/`). The client validates for UX; `submit-content`
-re-validates for truth. Answering "No" to the photo/minor/off-campus
-release questions is a hard block server-side; "No" on VP approval sets
-`release_flagged` instead.
+Both paths collect the **Social Media Submission Form**.
+`src/lib/releaseForm.ts` is the single source of truth for its shape,
+question copy, and validation; `supabase/functions/_shared/releaseForm.ts`
+is a Deno-compatible copy that MUST stay in sync below the header comment
+(the Edge runtime can't import from `src/`). The client validates for UX;
+`submit-content` re-validates for truth.
+
+The identifiers are historical and deliberately unchanged — `release_form`,
+`releaseForm.ts`, `ReleaseFormPanel`, `RELEASE_QUESTIONS`. The client
+renamed the form; the column and module names did not follow.
+
+### Form v3 (current)
+
+Six questions, `RELEASE_FORM_VERSION = 3`:
+
+| Q | Field | Rule |
+| --- | --- | --- |
+| 1 | *(facility, on the submission)* | required |
+| 2 | `platformChoice` → `platforms` | required; Facebook / Instagram / **Both** |
+| 3 | `postText` | required, ≥10 chars, not all-caps |
+| 4 | *(files → `assets`)* | required **unless** the template path supplied the graphic |
+| 5 | `needsSpecificSchedule` | required, defaults to `"No"` |
+| 5a | `requestedPostDate` | required, today-or-later, **only** when Q5 = Yes |
+| 5b | `requestedPostTime` | optional, even with a date |
+| 6 | `acknowledged` | must be `true` |
+
+Q2's `Both` is a **UI affordance only**: storage stays
+`platforms text[]`, so the GIN index, `contains("platforms", …)`, and the
+platform chips are untouched. `platformChoice` records the literal pick.
+
+Q6 replaces six separate v2 consent questions (photo release, minors,
+minor release, off-campus release, VP approval, "are you uploading
+media") with one attestation listing the same requirements. **v3 offers
+no way to answer "No"**, so the hard-block-on-"No" interaction and its
+`ReleaseBlockedPanel` are gone. Q3 IS the caption: the server writes
+`releaseForm.postText` into `submissions.caption` on both kinds, so
+existing search, cards, and email keep working.
+
+### Legacy documents (v1/v2) are read, never re-validated
+
+`ReleaseForm` is **one superset interface**, not a discriminated union —
+every v2-only field survives as optional and deprecated. One type serves
+every read surface, and retyping `RELEASE_QUESTIONS` makes `tsc`
+enumerate the callers of a removed question.
+
+`validateReleaseForm` implements the **v3 rules only**. Nothing
+re-validates a stored document, so there is deliberately no v2 branch.
+
+Read surfaces (`ReleaseFormPanel`, `FormRecordDetail`, `FormRecords` +
+CSV, the notification email) branch on `releaseForm.version` via
+`isV3Form()`. Legacy records render through
+**`LEGACY_RELEASE_QUESTIONS`**, a frozen copy of the v1/v2 question text:
+without it an old record would be relabelled with questions its submitter
+was never asked. That table is audit copy — never reword it.
+
+Two columns are **frozen, not dropped** (migration 0033 comments them):
+
+- `vp_approved` — v3 asks no VP question, so it is written `null`.
+  Writing `false` would record an answer nobody gave.
+- `release_flagged` — v3 raises no flag issues, so it is always `false`.
+  The column, the `Flagged only` filter, and every flag chip stay so
+  historical flagged rows keep surfacing. `validateReleaseForm` still
+  returns a `"flag"` severity in its type and `flagsOf()` still exists;
+  nothing produces one today.
+
+### Storage
 
 The form is stored as one **versioned jsonb document**
-(`submissions.release_form`, `version: 1`), with the high-traffic
-answers denormalized into columns (`platforms text[]`,
-`requested_post_date`, `requested_post_time`, `vp_approved`,
-`release_flagged` — migration 0027) so the Kanban board and the Form
-Records register filter in the query, never in JS. Q9 ("What would you
-like your post to say?") IS the caption: the server writes
-`releaseForm.postText` into `submissions.caption` for both kinds, so
-existing search, cards, and email keep working.
+(`submissions.release_form`), with the high-traffic answers denormalized
+into columns (`platforms text[]`, `requested_post_date`,
+`requested_post_time`, `vp_approved`, `release_flagged` — migration 0027)
+so the Kanban board and the Form Records register filter in the query,
+never in JS. Under v3 `requested_post_date` is usually null; the board's
+post-date sort already handles that (`nullsFirst`).
 
 Uploaded files ride `submissions.asset_paths` as
 `[{ path, name, mimeType, size }]` where `path` is a **bare storage
 path** under `{company_id}/` in the private `submissions` bucket —
 resolved to signed URLs at display time only (`assetUrls()` on the
 submission store), never persisted signed. Uploads go through
-`public-upload` (widened mime map + per-file 200 MB cap, migration
-0028; the project's global upload limit must be raised to match) via
-XHR so per-file progress is reportable.
+`public-upload` (widened mime map, migration 0028) via XHR so per-file
+progress is reportable. The per-file ceiling is 250 MB (`MAX_UPLOAD_BYTES`,
+raised from 200 MB by migration 0033); **the project's global upload limit
+in Dashboard → Storage → Settings must be raised to match or the bucket
+limit has no effect.**
 
 Admin surfaces: the Submissions screen is a **Kanban board**
 (`SubmissionBoard`, native HTML5 drag-and-drop, optimistic moves with

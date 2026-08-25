@@ -5,7 +5,7 @@
 // v2.2: two intake kinds share this endpoint. 'template' is the brand
 // template flow (frozen schema snapshot, filled values); 'direct' is a
 // facility uploading their own media with proposed copy. Both carry the
-// Social Media Update Form (release_form).
+// Social Media Submission Form (release_form, v3 as of migration 0033).
 //
 // POST { token, kind, facilityId, submitterName, submitterEmail,
 //        releaseForm, assets, previewPath?,
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
       return json({ error: "Unsupported asset type" }, 400);
     }
     if (typeof a.size !== "number" || a.size < 0 || a.size > MAX_UPLOAD_BYTES) {
-      return json({ error: "Asset exceeds the 200 MB limit" }, 400);
+      return json({ error: "Asset exceeds the 250 MB limit" }, 400);
     }
     if (typeof a.name !== "string" || !a.name) return json({ error: "Asset name missing" }, 400);
   }
@@ -144,7 +144,10 @@ Deno.serve(async (req) => {
   if (isBlocked(issues)) {
     return json({ error: blockingIssues[0].message, issues }, 400);
   }
+  // v3 raises no flag issues at all — this stays computed from `issues`
+  // so the plumbing survives if The Agency ever wants a triage signal back.
   const releaseFlagged = issues.some((i) => i.severity === "flag");
+  const isV3 = (releaseForm.version ?? 0) >= 3;
 
   const previewPath = typeof body.previewPath === "string" ? body.previewPath : null;
   if (previewPath && !validPath(previewPath, portal.companyId)) {
@@ -172,7 +175,7 @@ Deno.serve(async (req) => {
     if (invalid) return json({ error: invalid }, 400);
   }
 
-  // 4. Caption reconciliation: Q9 IS the caption. The modal has already
+  // 4. Caption reconciliation: Q3 IS the caption. The modal has already
   //    written the edited caption into postText; the server takes postText
   //    as authoritative so the two can never diverge.
   const caption = String(releaseForm.postText ?? "").slice(0, 4000);
@@ -219,7 +222,10 @@ Deno.serve(async (req) => {
       platforms: releaseForm.platforms ?? [],
       requested_post_date: releaseForm.requestedPostDate || null,
       requested_post_time: releaseForm.requestedPostTime || null,
-      vp_approved: releaseForm.vpApproved === "Yes",
+      // v3 asks no VP question, so writing `false` here would be a lie
+      // about an answer nobody gave. Null is the honest value; the column
+      // is nullable and kept only for v1/v2 rows.
+      vp_approved: isV3 ? null : releaseForm.vpApproved === "Yes",
       release_flagged: releaseFlagged,
     })
     .select("id")

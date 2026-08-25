@@ -143,7 +143,7 @@ export interface PublicSubmissionPayload {
   facilityId: string;
   submitterName: string;
   submitterEmail?: string;
-  /** The Social Media Update Form — required on every v2.2 submission. */
+  /** The Social Media Submission Form — required on every submission. */
   releaseForm: ReleaseForm;
   /** Already-uploaded files (paths from uploadPublicFile). Dev backend:
    * `path` holds a data URL instead. */
@@ -296,11 +296,14 @@ async function submitLocal(
       // has a thumbnail (dev backend stores data URLs in asset paths).
       payload.assets.find((a) => a.mimeType.startsWith("image/"))?.path;
 
-  // Q9 is the caption for both kinds — same reconciliation the Edge
+  // Q3 is the caption for both kinds — same reconciliation the Edge
   // Function performs.
   const caption = payload.releaseForm.postText;
   const values = payload.kind === "template" ? payload.values ?? {} : {};
-  const releaseFlagged = payload.releaseForm.vpApproved === "No";
+  // Mirrors submit-content: v3 has no VP question, so it can neither flag
+  // nor claim an approval. Legacy shapes are still honoured for parity.
+  const isV3 = (payload.releaseForm.version ?? 0) >= 3;
+  const releaseFlagged = !isV3 && payload.releaseForm.vpApproved === "No";
 
   const now = new Date().toISOString();
   const id = newId();
@@ -324,7 +327,7 @@ async function submitLocal(
       platforms: payload.releaseForm.platforms,
       requestedPostDate: payload.releaseForm.requestedPostDate || undefined,
       requestedPostTime: payload.releaseForm.requestedPostTime || undefined,
-      vpApproved: payload.releaseForm.vpApproved === "Yes",
+      vpApproved: isV3 ? undefined : payload.releaseForm.vpApproved === "Yes",
       releaseFlagged,
       schemaSnapshot: template ? JSON.parse(JSON.stringify(template)) : null,
       brandSnapshot: {

@@ -1,19 +1,29 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { AlertTriangle, ChevronDown, ExternalLink, FileText, Film, Presentation, X } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, ChevronDown, ExternalLink, FileText, Film, Presentation, X } from "lucide-react";
 import type { PublicFacility } from "@/lib/publicClient";
 import {
+  AGENCY_EMAIL,
+  AGREEMENT_CONFIRM_LABEL,
   ALLOWED_UPLOAD_MIME,
   MAX_UPLOAD_FILES,
+  MAX_UPLOAD_LABEL,
   MEDIA_RELEASE_FORMS_URL,
-  RELEASE_INTRO,
-  RELEASE_PLATFORMS,
+  PHOTO_REMINDERS,
+  PHOTO_REMINDERS_CLOSING,
+  PLATFORM_CHOICES,
+  PLATFORM_FOOTNOTE,
+  POST_TEXT_REMINDER,
   RELEASE_QUESTIONS,
+  SCHEDULE_CHOICES,
+  SCHEDULE_NOTE,
+  SUBMISSION_AGREEMENT,
+  SUBMISSION_INTRO,
+  platformsForChoice,
   uploadRejectReason,
   type ReleaseForm as ReleaseFormDoc,
   type ReleaseFormIssue,
   type YesNo,
-  type YesNoNa,
 } from "@/lib/releaseForm";
 import { FacilityCombobox } from "../FacilityCombobox";
 import { Checkbox } from "../ui/checkbox";
@@ -42,10 +52,10 @@ export interface ReleaseFormProps {
   onIdentityChange(patch: { submitterName?: string; submitterEmail?: string }): void;
   form: Partial<ReleaseFormDoc>;
   onChange(patch: Partial<ReleaseFormDoc>): void;
-  /** Template path: Q10 is answered and hidden, and Q11 shows the generated
-   * graphic as the attached media. Extra uploads stay allowed. */
+  /** Template path: the rendered graphic IS the media, so Q4 shows it and
+   * uploads stay optional. Direct path: Q4 requires at least one file. */
   hasGeneratedGraphic: boolean;
-  /** Object URL of the rendered graphic, shown in Q11 on the template path so
+  /** Object URL of the rendered graphic, shown in Q4 on the template path so
    * the user can see what is being attached. */
   graphicPreviewUrl?: string | null;
   assets: PendingAsset[];
@@ -53,7 +63,7 @@ export interface ReleaseFormProps {
   /** Show validation messages only after a submit attempt. */
   showIssues: boolean;
   issues: ReleaseFormIssue[];
-  /** Q11 dropzone is disabled while an upload is in flight. */
+  /** Q4 dropzone is disabled while an upload is in flight. */
   uploading: boolean;
 }
 
@@ -84,37 +94,6 @@ function AssetGlyph({ mimeType }: { mimeType: string }) {
   );
 }
 
-/** The panel revealed the moment Q4/Q5/Q6 is answered "No" — the single
- * most important interaction in the form. Submit is blocked; this explains
- * why and where the release forms live. */
-function ReleaseBlockedPanel() {
-  return (
-    <div
-      role="alert"
-      className="rounded-lg px-3 py-2.5 space-y-1.5"
-      style={{ background: "var(--fill-danger-bg, rgba(198,47,36,0.08))", border: "1px solid var(--danger)" }}
-    >
-      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--danger)" }}>
-        We can&rsquo;t post this without a signed release on file.
-      </p>
-      <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--fg-1)" }}>
-        Please use a different photo, or get permission <b>before</b> uploading
-        the images. Media release forms live here:
-      </p>
-      <a
-        href={MEDIA_RELEASE_FORMS_URL}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex items-center gap-1"
-        style={{ fontSize: 12, color: "var(--solar)", textDecoration: "underline", textUnderlineOffset: 3 }}
-      >
-        Media Release Forms on SharePoint
-        <ExternalLink style={{ width: 11, height: 11 }} />
-      </a>
-    </div>
-  );
-}
-
 function QuestionPanel({
   number,
   suffix,
@@ -125,7 +104,7 @@ function QuestionPanel({
   anchorId,
 }: {
   number?: number;
-  /** "a"/"b" for gated pairs — renders as "Question 03a". */
+  /** "a"/"b" for the gated schedule pair — renders as "Question 05a". */
   suffix?: "a" | "b";
   label: string;
   helper?: string;
@@ -165,6 +144,8 @@ function QuestionPanel({
   );
 }
 
+/** Radio row over explicit value/label pairs — Q5's labels are sentences,
+ * not the stored value. */
 function ChoiceRow<T extends string>({
   name,
   options,
@@ -172,7 +153,7 @@ function ChoiceRow<T extends string>({
   onChange,
 }: {
   name: string;
-  options: readonly T[];
+  options: ReadonlyArray<{ value: T; label: string }>;
   value: T | undefined;
   onChange(v: T): void;
 }) {
@@ -180,22 +161,26 @@ function ChoiceRow<T extends string>({
     <RadioGroup
       value={value ?? ""}
       onValueChange={(v) => onChange(v as T)}
-      className="flex flex-wrap gap-x-5 gap-y-2"
+      className="flex flex-col gap-2"
       aria-label={name}
     >
       {options.map((o) => (
-        <label key={o} className="flex items-center gap-2" style={{ fontSize: 13, color: "var(--fg-1)", cursor: "pointer" }}>
-          <RadioGroupItem value={o} id={`${name}-${o}`} />
-          {o}
+        <label
+          key={o.value}
+          className="flex items-center gap-2"
+          style={{ fontSize: 13, color: "var(--fg-1)", cursor: "pointer" }}
+        >
+          <RadioGroupItem value={o.value} id={`${name}-${o.value}`} />
+          {o.label}
         </label>
       ))}
     </RadioGroup>
   );
 }
 
-/** The Social Media Update Form body — used inline by the direct path and
- * inside the modal by the template path. Owns NO submission logic; question
- * copy comes from src/lib/releaseForm.ts, never duplicated here. */
+/** The Social Media Submission Form body — used inline by the direct path
+ * and inside the modal by the template path. Owns NO submission logic;
+ * question copy comes from src/lib/releaseForm.ts, never duplicated here. */
 export function ReleaseForm({
   facilities,
   facility,
@@ -214,29 +199,15 @@ export function ReleaseForm({
   issues,
   uploading,
 }: ReleaseFormProps) {
-  // Q10 is hidden on the template path because the rendered graphic IS the
-  // media, so answer it on the user's behalf — the value still rides the
-  // saved form and Form Records. The guard stops this from re-firing.
-  useEffect(() => {
-    if (hasGeneratedGraphic && form.includesMedia !== "Yes") onChange({ includesMedia: "Yes" });
-  }, [hasGeneratedGraphic, form.includesMedia, onChange]);
-
-  // Long intro: collapsed behind a disclosure on mobile, expanded at sm+.
+  // The two supporting intro paragraphs collapse behind a disclosure on
+  // mobile; the lead paragraph is always visible.
   const [introOpen, setIntroOpen] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
 
-  const issueFor = (field: ReleaseFormIssue["field"]): ReleaseFormIssue | null => {
-    const found = issues.find((i) => i.field === field) ?? null;
-    if (!found) return null;
-    // The three release "No" answers and the VP flag surface IMMEDIATELY —
-    // waiting for a submit attempt would bury the most important state.
-    const immediate =
-      (field === "photoRelease" && form.photoRelease === "No") ||
-      (field === "minorRelease" && form.minorRelease === "No") ||
-      (field === "offCampusRelease" && form.offCampusRelease === "No") ||
-      (field === "vpApproved" && form.vpApproved === "No");
-    return showIssues || immediate ? found : null;
-  };
+  // v3 has no answer that is wrong on its own — the six consent gates are
+  // gone — so nothing surfaces an error before a submit attempt.
+  const issueFor = (field: ReleaseFormIssue["field"]): ReleaseFormIssue | null =>
+    showIssues ? (issues.find((i) => i.field === field) ?? null) : null;
 
   const onDrop = useCallback(
     (accepted: File[]) => {
@@ -286,83 +257,77 @@ export function ReleaseForm({
   };
 
   const Q = RELEASE_QUESTIONS;
-  const releaseNo = (v: YesNo | YesNoNa | undefined) => v === "No";
 
   return (
     <div className="space-y-4">
-      {/* Posting guidelines intro */}
+      {/* Intro — three paragraphs from the client's form */}
       <div className="p-4" style={panel}>
+        <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--fg-1)" }}>{SUBMISSION_INTRO.lead}</p>
         <button
           type="button"
-          className="flex items-center justify-between w-full sm:hidden"
+          className="flex items-center justify-between w-full sm:hidden mt-3"
           onClick={() => setIntroOpen((o) => !o)}
           aria-expanded={introOpen}
           style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}
         >
-          Read the posting guidelines
+          Read before submitting
           <ChevronDown
             style={{ width: 15, height: 15, transform: introOpen ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}
           />
         </button>
-        <div className={`${introOpen ? "block mt-3" : "hidden"} sm:block space-y-2`}>
-          <p className="hidden sm:block" style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
-            Posting guidelines
+        <div className={`${introOpen ? "block mt-3" : "hidden"} sm:block sm:mt-2 space-y-2`}>
+          <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--fg-1)" }}>
+            <b style={{ fontWeight: 600, color: "var(--ink)" }}>Before submitting:</b>{" "}
+            {SUBMISSION_INTRO.beforeSubmitting}
           </p>
-          <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--fg-1)" }}>{RELEASE_INTRO.lead}</p>
-          <ul className="space-y-1.5" style={{ paddingLeft: 18, listStyle: "disc" }}>
-            {RELEASE_INTRO.rules.map((rule) => (
-              <li key={rule} style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--fg-2)" }}>
-                {rule}
-              </li>
-            ))}
-          </ul>
+          <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--fg-2)" }}>{SUBMISSION_INTRO.timing}</p>
         </div>
       </div>
 
-      {/* Information — unnumbered; replaces the old submit-panel identity */}
-      <div className="p-4 space-y-3" style={panel}>
-        <p className="sp-eyebrow">Information</p>
-        <div>
-          <span className="block mb-1" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
-            Facility Name
-          </span>
-          {facility ? (
-            <div
-              className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5"
-              style={{ border: "1px solid var(--hairline)", background: "var(--paper)" }}
-            >
-              <span className="min-w-0">
-                <span className="block truncate" style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
-                  {facility.shortName}
-                  {facility.state && (
-                    <span style={{ fontWeight: 400, fontSize: 11, color: "var(--fg-4)" }}> · {facility.state}</span>
-                  )}
-                </span>
-                {facility.name !== facility.shortName && (
-                  <span className="block truncate" style={{ fontSize: 11, color: "var(--fg-3)" }}>{facility.name}</span>
+      {/* Q1 — facility */}
+      <QuestionPanel anchorId="rf-facility" number={Q.facility.number} label={Q.facility.label}>
+        {facility ? (
+          <div
+            className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5"
+            style={{ border: "1px solid var(--hairline)", background: "var(--paper)" }}
+          >
+            <span className="min-w-0">
+              <span className="block truncate" style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+                {facility.shortName}
+                {facility.state && (
+                  <span style={{ fontWeight: 400, fontSize: 11, color: "var(--fg-4)" }}> · {facility.state}</span>
                 )}
               </span>
-              <button type="button" onClick={onClearFacility} style={{ fontSize: 11, color: "var(--fg-3)", whiteSpace: "nowrap" }}>
-                Change
-              </button>
-            </div>
-          ) : (
-            <FacilityCombobox
-              facilities={facilities}
-              onSelect={onSelectFacility}
-              placeholder="Search your facility…"
-              emptyHint={
-                <span>
-                  No facility matches that search. Don&rsquo;t see yours? Contact the
-                  Signature marketing team and they&rsquo;ll add it.
-                </span>
-              }
-            />
-          )}
-          {showIssues && !facility && (
-            <p role="alert" style={{ fontSize: 12, color: "var(--danger)", marginTop: 4 }}>Pick your facility.</p>
-          )}
-        </div>
+              {facility.name !== facility.shortName && (
+                <span className="block truncate" style={{ fontSize: 11, color: "var(--fg-3)" }}>{facility.name}</span>
+              )}
+            </span>
+            <button type="button" onClick={onClearFacility} style={{ fontSize: 11, color: "var(--fg-3)", whiteSpace: "nowrap" }}>
+              Change
+            </button>
+          </div>
+        ) : (
+          <FacilityCombobox
+            facilities={facilities}
+            onSelect={onSelectFacility}
+            placeholder="Select your facility"
+            emptyHint={
+              <span>
+                No facility matches that search. Don&rsquo;t see yours? Contact the
+                Signature marketing team and they&rsquo;ll add it.
+              </span>
+            }
+          />
+        )}
+        {showIssues && !facility && (
+          <p role="alert" style={{ fontSize: 12, color: "var(--danger)" }}>Pick your facility.</p>
+        )}
+      </QuestionPanel>
+
+      {/* Information — unnumbered. The client's form doesn't ask, but
+          submitter_email is NOT NULL and the decline flow emails it. */}
+      <div className="p-4 space-y-3" style={panel}>
+        <p className="sp-eyebrow">Information</p>
         <div>
           <label className="block mb-1" htmlFor="release-name" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
             Your name
@@ -398,7 +363,9 @@ export function ReleaseForm({
         </div>
       </div>
 
-      {/* Q2 — platforms */}
+      {/* Q2 — where to post. Checkboxes to match the client's form, but
+          single-select: every combination collapses to one of three states,
+          and "Both" is the third. */}
       <QuestionPanel
         anchorId="rf-platforms"
         number={Q.platforms.number}
@@ -407,146 +374,35 @@ export function ReleaseForm({
         issue={issueFor("platforms")}
       >
         <div className="flex flex-wrap gap-x-5 gap-y-2">
-          {RELEASE_PLATFORMS.map((p) => {
-            const checked = (form.platforms ?? []).includes(p);
-            return (
-              <label key={p} className="flex items-center gap-2" style={{ fontSize: 13, color: "var(--fg-1)", cursor: "pointer" }}>
-                <Checkbox
-                  checked={checked}
-                  onCheckedChange={(on) => {
-                    const cur = form.platforms ?? [];
-                    onChange({ platforms: on ? [...cur, p] : cur.filter((x) => x !== p) });
-                  }}
-                />
-                {p}
-              </label>
-            );
-          })}
+          {PLATFORM_CHOICES.map((c) => (
+            <label key={c} className="flex items-center gap-2" style={{ fontSize: 13, color: "var(--fg-1)", cursor: "pointer" }}>
+              <Checkbox
+                checked={form.platformChoice === c}
+                onCheckedChange={(on) =>
+                  onChange(
+                    on
+                      ? { platformChoice: c, platforms: platformsForChoice(c) }
+                      : { platformChoice: undefined, platforms: [] },
+                  )
+                }
+              />
+              {c}
+            </label>
+          ))}
         </div>
+        <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--fg-3)" }}>
+          {PLATFORM_FOOTNOTE.before}
+          <a
+            href={`mailto:${AGENCY_EMAIL}`}
+            style={{ color: "var(--solar)", textDecoration: "underline", textUnderlineOffset: 3 }}
+          >
+            {AGENCY_EMAIL}
+          </a>
+          {PLATFORM_FOOTNOTE.after}
+        </p>
       </QuestionPanel>
 
-      {/* Q3a — event gate. Answering "No" clears any VP answer already given,
-          so a user who changes their mind can't leave a stale one behind. */}
-      <QuestionPanel
-        anchorId="rf-isEvent"
-        number={Q.isEvent.number}
-        suffix={Q.isEvent.suffix}
-        label={Q.isEvent.label}
-        issue={issueFor("isEvent")}
-      >
-        <ChoiceRow
-          name="isEvent"
-          options={["Yes", "No"] as const}
-          value={form.isEvent}
-          onChange={(v) => onChange(v === "Yes" ? { isEvent: v } : { isEvent: v, vpApproved: undefined })}
-        />
-      </QuestionPanel>
-
-      {/* Q3b — VP approval (flag, not block). Only asked for events. */}
-      {form.isEvent === "Yes" && (
-        <QuestionPanel
-          anchorId="rf-vpApproved"
-          number={Q.vpApproved.number}
-          suffix={Q.vpApproved.suffix}
-          label={Q.vpApproved.label}
-          issue={issueFor("vpApproved")}
-        >
-          <ChoiceRow name="vpApproved" options={["Yes", "No"] as const} value={form.vpApproved} onChange={(v) => onChange({ vpApproved: v })} />
-        </QuestionPanel>
-      )}
-
-      {/* Q4 — photo release (blocks on No) */}
-      <QuestionPanel
-        anchorId="rf-photoRelease"
-        number={Q.photoRelease.number}
-        label={Q.photoRelease.label}
-        helper={Q.photoRelease.helper}
-        issue={releaseNo(form.photoRelease) ? null : issueFor("photoRelease")}
-      >
-        <ChoiceRow name="photoRelease" options={["Yes", "No"] as const} value={form.photoRelease} onChange={(v) => onChange({ photoRelease: v })} />
-        {releaseNo(form.photoRelease) && <ReleaseBlockedPanel />}
-      </QuestionPanel>
-
-      {/* Q5a — minors gate. "No" clears any release answer already given. */}
-      <QuestionPanel
-        anchorId="rf-hasMinors"
-        number={Q.hasMinors.number}
-        suffix={Q.hasMinors.suffix}
-        label={Q.hasMinors.label}
-        issue={issueFor("hasMinors")}
-      >
-        <ChoiceRow
-          name="hasMinors"
-          options={["Yes", "No"] as const}
-          value={form.hasMinors}
-          onChange={(v) => onChange(v === "Yes" ? { hasMinors: v } : { hasMinors: v, minorRelease: undefined })}
-        />
-      </QuestionPanel>
-
-      {/* Q5b — minor release (blocks on No). Only asked when minors present.
-          "N/A" is gone: Q5a now carries the meaning it used to. */}
-      {form.hasMinors === "Yes" && (
-        <QuestionPanel
-          anchorId="rf-minorRelease"
-          number={Q.minorRelease.number}
-          suffix={Q.minorRelease.suffix}
-          label={Q.minorRelease.label}
-          helper={Q.minorRelease.helper}
-          issue={releaseNo(form.minorRelease) ? null : issueFor("minorRelease")}
-        >
-          <ChoiceRow name="minorRelease" options={["Yes", "No"] as const} value={form.minorRelease} onChange={(v) => onChange({ minorRelease: v })} />
-          {releaseNo(form.minorRelease) && <ReleaseBlockedPanel />}
-        </QuestionPanel>
-      )}
-
-      {/* Q6 — off-campus release (blocks on No) */}
-      <QuestionPanel
-        anchorId="rf-offCampusRelease"
-        number={Q.offCampusRelease.number}
-        label={Q.offCampusRelease.label}
-        issue={releaseNo(form.offCampusRelease) ? null : issueFor("offCampusRelease")}
-      >
-        <ChoiceRow name="offCampusRelease" options={["N/A", "Yes", "No"] as const} value={form.offCampusRelease} onChange={(v) => onChange({ offCampusRelease: v })} />
-        {releaseNo(form.offCampusRelease) && <ReleaseBlockedPanel />}
-      </QuestionPanel>
-
-      {/* Q7 — post date */}
-      <QuestionPanel
-        anchorId="rf-requestedPostDate"
-        number={Q.requestedPostDate.number}
-        label={Q.requestedPostDate.label}
-        helper={Q.requestedPostDate.helper}
-        issue={issueFor("requestedPostDate")}
-      >
-        <input
-          type="date"
-          className="sp-input"
-          value={form.requestedPostDate ?? ""}
-          min={new Date().toLocaleDateString("en-CA")}
-          onChange={(e) => onChange({ requestedPostDate: e.target.value })}
-          aria-label={Q.requestedPostDate.label}
-        />
-      </QuestionPanel>
-
-      {/* Q8 — post time */}
-      <QuestionPanel
-        anchorId="rf-requestedPostTime"
-        number={Q.requestedPostTime.number}
-        label={Q.requestedPostTime.label}
-        helper={Q.requestedPostTime.helper}
-        issue={issueFor("requestedPostTime")}
-      >
-        <input
-          type="text"
-          className="sp-input"
-          placeholder="e.g. 2:30 PM CST"
-          value={form.requestedPostTime ?? ""}
-          onChange={(e) => onChange({ requestedPostTime: e.target.value })}
-          aria-label={Q.requestedPostTime.label}
-        />
-      </QuestionPanel>
-
-      {/* Q9 — the post copy (this IS the caption) */}
+      {/* Q3 — the post copy (this IS the caption) */}
       <QuestionPanel
         anchorId="rf-postText"
         number={Q.postText.number}
@@ -557,28 +413,22 @@ export function ReleaseForm({
         <textarea
           className="sp-input"
           rows={6}
+          placeholder="Enter your answer"
           value={form.postText ?? ""}
           onChange={(e) => onChange({ postText: e.target.value })}
           aria-label={Q.postText.label}
           style={{ resize: "vertical" }}
         />
+        <p
+          className="rounded-lg px-3 py-2"
+          style={{ fontSize: 12, lineHeight: 1.55, color: "var(--fg-2)", background: "var(--accent-wash)" }}
+        >
+          {POST_TEXT_REMINDER}
+        </p>
       </QuestionPanel>
 
-      {/* Q10 — including media? Hidden on the template path: a graphic is
-          always attached there, so asking is confusing. Auto-answered above. */}
-      {!hasGeneratedGraphic && (
-        <QuestionPanel
-          anchorId="rf-includesMedia"
-          number={Q.includesMedia.number}
-          label={Q.includesMedia.label}
-          issue={issueFor("includesMedia")}
-        >
-          <ChoiceRow name="includesMedia" options={["Yes", "No"] as const} value={form.includesMedia} onChange={(v) => onChange({ includesMedia: v })} />
-        </QuestionPanel>
-      )}
-
-      {/* Q11 — dropzone. On the template path the rendered graphic is already
-          attached, so lead with it and reframe uploads as optional extras. */}
+      {/* Q4 — upload. Required on the direct path; on the template path the
+          rendered graphic is already attached, so uploads are extras. */}
       <QuestionPanel
         anchorId="rf-assets"
         number={Q.upload.number}
@@ -620,20 +470,41 @@ export function ReleaseForm({
             </div>
           </div>
         )}
-        <a
-          href={MEDIA_RELEASE_FORMS_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1"
-          style={{ fontSize: 12, color: "var(--solar)", textDecoration: "underline", textUnderlineOffset: 3 }}
+
+        {/* Photo reminders — the guidance that used to live in the posting
+            rules intro, moved next to the upload it governs. */}
+        <div
+          className="p-3 space-y-2"
+          style={{ background: "var(--accent-wash)", border: "1px solid var(--hairline)", borderRadius: "var(--radius-input)" }}
         >
-          Media release forms
-          <ExternalLink style={{ width: 11, height: 11 }} />
-        </a>
+          <p style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)" }}>Photo reminders:</p>
+          <ul className="space-y-1.5" style={{ paddingLeft: 18, listStyle: "disc" }}>
+            {PHOTO_REMINDERS.map((rule) => (
+              <li key={rule} style={{ fontSize: 12, lineHeight: 1.55, color: "var(--fg-2)" }}>
+                {rule}
+              </li>
+            ))}
+          </ul>
+          <p style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.55, color: "var(--solar)" }}>
+            {PHOTO_REMINDERS_CLOSING}
+          </p>
+          {/* Reminder 6 asks for consent on file; this is where to get one. */}
+          <a
+            href={MEDIA_RELEASE_FORMS_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1"
+            style={{ fontSize: 12, color: "var(--solar)", textDecoration: "underline", textUnderlineOffset: 3 }}
+          >
+            Media release forms
+            <ExternalLink style={{ width: 11, height: 11 }} />
+          </a>
+        </div>
+
         <div
           {...getRootProps({
             role: "button",
-            "aria-label": `Upload up to ${MAX_UPLOAD_FILES} photos, videos, or documents, 200 MB each`,
+            "aria-label": `Upload up to ${MAX_UPLOAD_FILES} photos, videos, or documents, 250 MB each`,
           })}
           className="text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5"
           style={{
@@ -649,7 +520,7 @@ export function ReleaseForm({
             {isDragActive ? "Drop files to add them" : "Click or drag files here"}
           </p>
           <p style={{ fontSize: 11, color: "var(--fg-4)" }}>
-            Photos, videos, PDFs, Word, PowerPoint · up to {MAX_UPLOAD_FILES} files · 200 MB each
+            Photos, videos, PDFs, Word, PowerPoint · up to {MAX_UPLOAD_FILES} files · Max file size: {MAX_UPLOAD_LABEL}
           </p>
         </div>
         {dropError && (
@@ -700,20 +571,120 @@ export function ReleaseForm({
         )}
       </QuestionPanel>
 
-      {/* Q12 — acknowledgement */}
+      {/* Q5 — scheduling gate. Choosing "No" clears any date/time already
+          entered, so a user who changes their mind can't leave a stale
+          request behind. */}
+      <QuestionPanel
+        anchorId="rf-needsSpecificSchedule"
+        number={Q.needsSpecificSchedule.number}
+        label={Q.needsSpecificSchedule.label}
+        issue={issueFor("needsSpecificSchedule")}
+      >
+        <ChoiceRow
+          name="needsSpecificSchedule"
+          options={SCHEDULE_CHOICES}
+          value={form.needsSpecificSchedule}
+          onChange={(v: YesNo) =>
+            onChange(
+              v === "Yes"
+                ? { needsSpecificSchedule: v }
+                : { needsSpecificSchedule: v, requestedPostDate: undefined, requestedPostTime: undefined },
+            )
+          }
+        />
+      </QuestionPanel>
+
+      {form.needsSpecificSchedule === "Yes" && (
+        <>
+          {/* Q5a — required once a slot is requested */}
+          <QuestionPanel
+            anchorId="rf-requestedPostDate"
+            number={Q.requestedPostDate.number}
+            suffix={Q.requestedPostDate.suffix}
+            label={Q.requestedPostDate.label}
+            issue={issueFor("requestedPostDate")}
+          >
+            <input
+              type="date"
+              className="sp-input"
+              placeholder="Please select a date"
+              value={form.requestedPostDate ?? ""}
+              min={new Date().toLocaleDateString("en-CA")}
+              onChange={(e) => onChange({ requestedPostDate: e.target.value })}
+              aria-label={Q.requestedPostDate.label}
+            />
+          </QuestionPanel>
+
+          {/* Q5b — OPTIONAL, even with a date requested */}
+          <QuestionPanel
+            anchorId="rf-requestedPostTime"
+            number={Q.requestedPostTime.number}
+            suffix={Q.requestedPostTime.suffix}
+            label={Q.requestedPostTime.label}
+            helper={Q.requestedPostTime.helper}
+            issue={issueFor("requestedPostTime")}
+          >
+            <input
+              type="text"
+              className="sp-input"
+              placeholder="Enter time (e.g., 2:00 PM)"
+              value={form.requestedPostTime ?? ""}
+              onChange={(e) => onChange({ requestedPostTime: e.target.value })}
+              aria-label={Q.requestedPostTime.label}
+            />
+          </QuestionPanel>
+
+          <p className="px-1" style={{ fontSize: 12, lineHeight: 1.55, color: "var(--fg-3)" }}>
+            {SCHEDULE_NOTE}
+          </p>
+        </>
+      )}
+
+      {/* Social Media Submission Agreement — unnumbered, and the whole
+          reason v3 needs no consent gates. */}
+      <div className="p-4 space-y-2.5" style={panel}>
+        <p className="sp-panel-title">Social Media Submission Agreement</p>
+        <p style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.55, color: "var(--ink)" }}>
+          {SUBMISSION_AGREEMENT.lead}
+        </p>
+        <p style={{ fontSize: 13, lineHeight: 1.55, color: "var(--fg-1)" }}>
+          {SUBMISSION_AGREEMENT.preamble}
+        </p>
+        <ul className="space-y-2">
+          {SUBMISSION_AGREEMENT.items.map((item) => (
+            <li key={item} className="flex items-start gap-2">
+              <CheckCircle2
+                aria-hidden
+                style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2, color: "var(--mint)" }}
+              />
+              <span style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--fg-2)" }}>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Q6 — the single confirm */}
       <QuestionPanel
         anchorId="rf-acknowledged"
         number={Q.acknowledged.number}
         label={Q.acknowledged.label}
+        helper={Q.acknowledged.helper}
         issue={issueFor("acknowledged")}
       >
-        <label className="flex items-start gap-2.5" style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--fg-1)", cursor: "pointer" }}>
+        <label
+          className="flex items-center gap-2.5"
+          style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", cursor: "pointer" }}
+        >
           <Checkbox
             checked={form.acknowledged === true}
             onCheckedChange={(on) => onChange({ acknowledged: on === true })}
-            style={{ marginTop: 2 }}
           />
-          <span>{Q.acknowledged.helper}</span>
+          <span className="flex items-center gap-1.5">
+            {form.acknowledged === true && (
+              <Check aria-hidden style={{ width: 13, height: 13, color: "var(--mint)" }} />
+            )}
+            {AGREEMENT_CONFIRM_LABEL}
+          </span>
         </label>
       </QuestionPanel>
     </div>

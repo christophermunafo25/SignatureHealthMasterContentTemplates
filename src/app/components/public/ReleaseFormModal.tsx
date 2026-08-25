@@ -3,6 +3,7 @@ import { AlertTriangle, RefreshCw, Send } from "lucide-react";
 import type { PublicFacility } from "@/lib/publicClient";
 import {
   isBlocked,
+  questionNumberForField,
   validateReleaseForm,
   type ReleaseForm as ReleaseFormDoc,
   type ReleaseFormIssue,
@@ -70,7 +71,11 @@ export function ReleaseFormModal(props: ReleaseFormModalProps) {
       ...(facility ? [] : ["your facility"]),
       ...(submitterName.trim().length > 1 ? [] : ["your name"]),
       ...(EMAIL_RE.test(submitterEmail.trim()) ? [] : ["your email"]),
-      ...issues.filter((i) => i.severity === "blocking").map((i) => `Q${questionNumber(i.field)}`),
+      ...issues
+        .filter((i) => i.severity === "blocking")
+        .map((i) => questionNumberForField(i.field))
+        .filter((n): n is string => n !== null)
+        .map((n) => `Q${n}`),
     ];
     return needs.length ? `Still needed: ${[...new Set(needs)].join(", ")}` : null;
   }, [showIssues, blocked, facility, submitterName, submitterEmail, issues]);
@@ -222,32 +227,3 @@ export function ReleaseFormModal(props: ReleaseFormModalProps) {
   );
 }
 
-/** Paper-form question number for a validation field (blocked-reason line). */
-function questionNumber(field: ReleaseFormIssue["field"]): number {
-  switch (field) {
-    case "platforms":
-      return 2;
-    case "vpApproved":
-      return 3;
-    case "photoRelease":
-      return 4;
-    case "minorRelease":
-      return 5;
-    case "offCampusRelease":
-      return 6;
-    case "requestedPostDate":
-      return 7;
-    case "requestedPostTime":
-      return 8;
-    case "postText":
-      return 9;
-    case "includesMedia":
-      return 10;
-    case "assets":
-      return 11;
-    case "acknowledged":
-      return 12;
-    default:
-      return 0;
-  }
-}

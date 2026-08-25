@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, Download, ExternalLink, Flag } from "lucide-react";
 import type { Submission, SubmissionAsset } from "@/lib/types";
-import { RELEASE_INTRO, RELEASE_QUESTIONS, type ReleaseForm } from "@/lib/releaseForm";
+import {
+  LEGACY_RELEASE_QUESTIONS,
+  RELEASE_QUESTIONS,
+  SUBMISSION_AGREEMENT,
+  isV3Form,
+  type ReleaseForm,
+} from "@/lib/releaseForm";
 import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
 import { useRouter } from "../../router";
@@ -75,7 +81,9 @@ export function FormRecordDetail({ submissionId }: { submissionId: string }) {
 function RecordLoaded({ sub, onBack }: { sub: Submission; onBack(): void }) {
   const { navigate } = useRouter();
   const rf: ReleaseForm | undefined = sub.releaseForm;
+  const v3 = isV3Form(rf);
   const Q = RELEASE_QUESTIONS;
+  const L = LEGACY_RELEASE_QUESTIONS;
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -174,14 +182,19 @@ function RecordLoaded({ sub, onBack }: { sub: Submission; onBack(): void }) {
         </p>
       ) : (
         <div className="space-y-3">
-          {/* Information section, then Q2–Q12 in paper-form order. */}
+          {/* Information, then the questions in the order the form asked
+              them — v3's Q1–Q6, or the v1/v2 Q2–Q12 for older records. */}
           <div className="p-4 space-y-1.5" style={panel}>
             <p className="sp-eyebrow">Information</p>
             <dl className="space-y-1" style={{ fontSize: 13 }}>
-              <div className="flex gap-2">
-                <dt style={{ color: "var(--fg-3)" }}>Facility:</dt>
-                <dd style={{ fontWeight: 600, color: "var(--ink)" }}>{sub.facilityName}</dd>
-              </div>
+              {/* v3 asks for the facility as Q1, so it renders below rather
+                  than twice. Legacy forms never numbered it. */}
+              {!v3 && (
+                <div className="flex gap-2">
+                  <dt style={{ color: "var(--fg-3)" }}>Facility:</dt>
+                  <dd style={{ fontWeight: 600, color: "var(--ink)" }}>{sub.facilityName}</dd>
+                </div>
+              )}
               <div className="flex gap-2">
                 <dt style={{ color: "var(--fg-3)" }}>Name:</dt>
                 <dd style={{ fontWeight: 600, color: "var(--ink)" }}>{sub.submitterName}</dd>
@@ -193,42 +206,20 @@ function RecordLoaded({ sub, onBack }: { sub: Submission; onBack(): void }) {
             </dl>
           </div>
 
+{v3 ? (
+        <>
+          {/* v3 — Q1 through Q6, in the order the facility answered them. */}
+          <Question number={Q.facility.number} label={Q.facility.label}>
+            <span style={{ fontWeight: 600, color: "var(--ink)" }}>{sub.facilityName}</span>
+          </Question>
           <Question number={Q.platforms.number} label={Q.platforms.label}>
             {rf.platforms?.length ? (
-              <span style={{ fontWeight: 600, color: "var(--ink)" }}>{rf.platforms.join(", ")}</span>
+              <span style={{ fontWeight: 600, color: "var(--ink)" }}>
+                {rf.platformChoice === "Both" ? "Both" : rf.platforms.join(", ")}
+              </span>
             ) : (
               <NotRecorded />
             )}
-          </Question>
-          <Question number={Q.isEvent.number} suffix={Q.isEvent.suffix} label={Q.isEvent.label}>
-            <Answer value={rf.isEvent} />
-          </Question>
-          {/* Gated follow-ups render only when asked — a missing 3b means
-              "not an event", which the 3a answer above already states. */}
-          {rf.vpApproved && (
-            <Question number={Q.vpApproved.number} suffix={Q.vpApproved.suffix} label={Q.vpApproved.label}>
-              <Answer value={rf.vpApproved} />
-            </Question>
-          )}
-          <Question number={Q.photoRelease.number} label={Q.photoRelease.label}>
-            <Answer value={rf.photoRelease} />
-          </Question>
-          <Question number={Q.hasMinors.number} suffix={Q.hasMinors.suffix} label={Q.hasMinors.label}>
-            <Answer value={rf.hasMinors} />
-          </Question>
-          {rf.minorRelease && (
-            <Question number={Q.minorRelease.number} suffix={Q.minorRelease.suffix} label={Q.minorRelease.label}>
-              <Answer value={rf.minorRelease} />
-            </Question>
-          )}
-          <Question number={Q.offCampusRelease.number} label={Q.offCampusRelease.label}>
-            <Answer value={rf.offCampusRelease} />
-          </Question>
-          <Question number={Q.requestedPostDate.number} label={Q.requestedPostDate.label}>
-            <Answer value={rf.requestedPostDate} />
-          </Question>
-          <Question number={Q.requestedPostTime.number} label={Q.requestedPostTime.label}>
-            <Answer value={rf.requestedPostTime} />
           </Question>
           <Question number={Q.postText.number} label={Q.postText.label}>
             {rf.postText ? (
@@ -236,9 +227,6 @@ function RecordLoaded({ sub, onBack }: { sub: Submission; onBack(): void }) {
             ) : (
               <NotRecorded />
             )}
-          </Question>
-          <Question number={Q.includesMedia.number} label={Q.includesMedia.label}>
-            <Answer value={rf.includesMedia} />
           </Question>
           <Question number={Q.upload.number} label="Attachments">
             {sub.assets.length === 0 ? (
@@ -271,10 +259,139 @@ function RecordLoaded({ sub, onBack }: { sub: Submission; onBack(): void }) {
               </ul>
             )}
           </Question>
+          <Question number={Q.needsSpecificSchedule.number} label={Q.needsSpecificSchedule.label}>
+            <Answer value={rf.needsSpecificSchedule} />
+          </Question>
+          {/* The schedule pair was only ever asked when Q5 was "Yes", so an
+              omitted row means "standard scheduling", not "unanswered". */}
+          {rf.needsSpecificSchedule === "Yes" && (
+            <>
+              <Question
+                number={Q.requestedPostDate.number}
+                suffix={Q.requestedPostDate.suffix}
+                label={Q.requestedPostDate.label}
+              >
+                <Answer value={rf.requestedPostDate} />
+              </Question>
+              <Question
+                number={Q.requestedPostTime.number}
+                suffix={Q.requestedPostTime.suffix}
+                label={Q.requestedPostTime.label}
+              >
+                {rf.requestedPostTime ? (
+                  <Answer value={rf.requestedPostTime} />
+                ) : (
+                  <span style={{ color: "var(--fg-4)" }}>No time requested</span>
+                )}
+              </Question>
+            </>
+          )}
           <Question number={Q.acknowledged.number} label={Q.acknowledged.label}>
             <Answer value={rf.acknowledged ? "Yes" : "No"} />
-            <p style={{ fontSize: 11.5, color: "var(--fg-4)", marginTop: 4 }}>{RELEASE_INTRO.lead}</p>
+            <p style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 6, lineHeight: 1.55 }}>
+              {Q.acknowledged.helper}
+            </p>
+            <p style={{ fontSize: 11.5, color: "var(--fg-4)", marginTop: 6 }}>
+              {SUBMISSION_AGREEMENT.preamble}
+            </p>
+            <ul className="space-y-1" style={{ paddingLeft: 16, listStyle: "disc", marginTop: 2 }}>
+              {SUBMISSION_AGREEMENT.items.map((item) => (
+                <li key={item} style={{ fontSize: 11.5, lineHeight: 1.5, color: "var(--fg-4)" }}>
+                  {item}
+                </li>
+              ))}
+            </ul>
           </Question>
+        </>
+      ) : (
+        <>
+          {/* v1/v2 — Q2 through Q12, under the copy the facility was
+              actually asked. Frozen: an old record must read today exactly
+              as it read the day it was submitted. */}
+          <Question number={L.platforms.number} label={L.platforms.label}>
+            {rf.platforms?.length ? (
+              <span style={{ fontWeight: 600, color: "var(--ink)" }}>{rf.platforms.join(", ")}</span>
+            ) : (
+              <NotRecorded />
+            )}
+          </Question>
+          <Question number={L.isEvent.number} suffix={L.isEvent.suffix} label={L.isEvent.label}>
+            <Answer value={rf.isEvent} />
+          </Question>
+          {/* Gated follow-ups render only when asked — a missing 3b means
+              "not an event", which the 3a answer above already states. */}
+          {rf.vpApproved && (
+            <Question number={L.vpApproved.number} suffix={L.vpApproved.suffix} label={L.vpApproved.label}>
+              <Answer value={rf.vpApproved} />
+            </Question>
+          )}
+          <Question number={L.photoRelease.number} label={L.photoRelease.label}>
+            <Answer value={rf.photoRelease} />
+          </Question>
+          <Question number={L.hasMinors.number} suffix={L.hasMinors.suffix} label={L.hasMinors.label}>
+            <Answer value={rf.hasMinors} />
+          </Question>
+          {rf.minorRelease && (
+            <Question number={L.minorRelease.number} suffix={L.minorRelease.suffix} label={L.minorRelease.label}>
+              <Answer value={rf.minorRelease} />
+            </Question>
+          )}
+          <Question number={L.offCampusRelease.number} label={L.offCampusRelease.label}>
+            <Answer value={rf.offCampusRelease} />
+          </Question>
+          <Question number={L.requestedPostDate.number} label={L.requestedPostDate.label}>
+            <Answer value={rf.requestedPostDate} />
+          </Question>
+          <Question number={L.requestedPostTime.number} label={L.requestedPostTime.label}>
+            <Answer value={rf.requestedPostTime} />
+          </Question>
+          <Question number={L.postText.number} label={L.postText.label}>
+            {rf.postText ? (
+              <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{rf.postText}</p>
+            ) : (
+              <NotRecorded />
+            )}
+          </Question>
+          <Question number={L.includesMedia.number} label={L.includesMedia.label}>
+            <Answer value={rf.includesMedia} />
+          </Question>
+          <Question number={L.upload.number} label="Attachments">
+            {sub.assets.length === 0 ? (
+              <p style={{ color: "var(--fg-3)" }}>No files were uploaded.</p>
+            ) : (
+              <ul className="space-y-2" style={{ marginTop: 4 }}>
+                {sub.assets.map((asset) => (
+                  <li
+                    key={asset.path}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2"
+                    style={{ border: "1px solid var(--hairline)", background: "var(--paper)" }}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate" style={{ fontSize: 13, color: "var(--ink)" }}>{asset.name}</span>
+                      <span className="block" style={{ fontSize: 11, color: "var(--fg-3)" }}>
+                        {asset.mimeType} · {fmtSize(asset.size)}
+                      </span>
+                    </span>
+                    <button
+                      className="sp-btn sp-btn-ghost flex-shrink-0"
+                      style={{ minHeight: 30, padding: "3px 10px", fontSize: 12 }}
+                      onClick={() => void downloadAsset(asset)}
+                      disabled={!urls[asset.path]}
+                    >
+                      <Download style={{ width: 12, height: 12 }} />
+                      Download
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Question>
+          <Question number={L.acknowledged.number} label={L.acknowledged.label}>
+            <Answer value={rf.acknowledged ? "Yes" : "No"} />
+            <p style={{ fontSize: 11.5, color: "var(--fg-4)", marginTop: 4 }}>{L.acknowledged.helper}</p>
+          </Question>
+        </>
+      )}
         </div>
       )}
 

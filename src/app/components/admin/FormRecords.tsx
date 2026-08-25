@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ClipboardList, Download, Flag, Search, X } from "lucide-react";
 import type { Submission, SubmissionStatus } from "@/lib/types";
-import { RELEASE_QUESTIONS } from "@/lib/releaseForm";
+import { LEGACY_RELEASE_QUESTIONS, RELEASE_QUESTIONS, isV3Form } from "@/lib/releaseForm";
 import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -39,6 +39,14 @@ const csvField = (v: unknown): string => `"${String(v ?? "").replace(/"/g, '""')
 
 function buildCsv(rows: Submission[]): string {
   const Q = RELEASE_QUESTIONS;
+  const L = LEGACY_RELEASE_QUESTIONS;
+  // The CSV is an audit artifact, so no column is ever dropped: metadata
+  // first, then the v3 questions, then the v1/v2-only questions kept at the
+  // end so historical rows still export the consent answers they gave. A v3
+  // row leaves the legacy cells empty and a legacy row leaves the v3-only
+  // cell empty; the shared questions (platforms, post copy, requested slot,
+  // acknowledgement) fill for both, which is why "Form version" is here —
+  // it says which questionnaire produced the answer.
   const header = [
     "Submitted",
     "Facility",
@@ -48,22 +56,25 @@ function buildCsv(rows: Submission[]): string {
     "Status",
     "Flagged",
     "Files",
+    "Form version",
     Q.platforms.label,
-    Q.isEvent.label,
-    Q.vpApproved.label,
-    Q.photoRelease.label,
-    Q.hasMinors.label,
-    Q.minorRelease.label,
-    Q.offCampusRelease.label,
+    Q.postText.label,
+    Q.needsSpecificSchedule.label,
     Q.requestedPostDate.label,
     Q.requestedPostTime.label,
-    Q.postText.label,
-    Q.includesMedia.label,
     Q.acknowledged.label,
+    L.isEvent.label,
+    L.vpApproved.label,
+    L.photoRelease.label,
+    L.hasMinors.label,
+    L.minorRelease.label,
+    L.offCampusRelease.label,
+    L.includesMedia.label,
   ];
   const lines = [header.map(csvField).join(",")];
   for (const s of rows) {
     const rf = s.releaseForm;
+    const v3 = isV3Form(rf);
     lines.push(
       [
         s.createdAt,
@@ -74,18 +85,20 @@ function buildCsv(rows: Submission[]): string {
         STATUS_LABELS[s.status],
         s.releaseFlagged ? "Yes" : "No",
         s.assets.length,
+        rf ? `v${rf.version}` : "",
         rf?.platforms?.join("; ") ?? "",
-        rf?.isEvent ?? "",
-        rf?.vpApproved ?? "",
-        rf?.photoRelease ?? "",
-        rf?.hasMinors ?? "",
-        rf?.minorRelease ?? "",
-        rf?.offCampusRelease ?? "",
+        rf?.postText ?? s.caption,
+        v3 ? rf?.needsSpecificSchedule ?? "" : "",
         rf?.requestedPostDate ?? "",
         rf?.requestedPostTime ?? "",
-        rf?.postText ?? s.caption,
-        rf?.includesMedia ?? "",
         rf ? (rf.acknowledged ? "Yes" : "No") : "",
+        v3 ? "" : rf?.isEvent ?? "",
+        v3 ? "" : rf?.vpApproved ?? "",
+        v3 ? "" : rf?.photoRelease ?? "",
+        v3 ? "" : rf?.hasMinors ?? "",
+        v3 ? "" : rf?.minorRelease ?? "",
+        v3 ? "" : rf?.offCampusRelease ?? "",
+        v3 ? "" : rf?.includesMedia ?? "",
       ]
         .map(csvField)
         .join(","),
@@ -94,9 +107,9 @@ function buildCsv(rows: Submission[]): string {
   return lines.join("\r\n");
 }
 
-/** Form Records: the searchable, filterable register of every release form.
- * A dense table for lookup and audit — the working queue lives on the
- * Submissions board. */
+/** Form Records: the searchable, filterable register of every submitted
+ * form, v1 through v3. A dense table for lookup and audit — the working
+ * queue lives on the Submissions board. */
 export function FormRecords() {
   const { company } = useAuth();
   const { navigate } = useRouter();
@@ -209,8 +222,8 @@ export function FormRecords() {
         <div>
           <h1 className="sp-page-title">Form Records</h1>
           <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
-            The register of every Social Media Update Form. For lookup and
-            audit — review happens on the Submissions board.
+            The register of every Social Media Submission Form. For lookup
+            and audit — review happens on the Submissions board.
           </p>
         </div>
         <button className="sp-btn sp-btn-ghost" onClick={() => void exportCsv()} disabled={exporting || rows.length === 0}>

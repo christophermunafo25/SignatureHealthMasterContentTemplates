@@ -185,6 +185,106 @@ export const RELEASE_QUESTIONS: Record<
   },
 };
 
+/** v1/v2 question copy, FROZEN. v3 asks none of these, but the review
+ * panel, Form Records, and the CSV export must render a historical document
+ * exactly as it read the day it was submitted. Treat this as audit copy:
+ * never reword it, never renumber it, never delete a key. */
+export const LEGACY_RELEASE_QUESTIONS: Record<
+  | "platforms"
+  | "isEvent"
+  | "vpApproved"
+  | "photoRelease"
+  | "hasMinors"
+  | "minorRelease"
+  | "offCampusRelease"
+  | "requestedPostDate"
+  | "requestedPostTime"
+  | "postText"
+  | "includesMedia"
+  | "upload"
+  | "acknowledged",
+  ReleaseQuestion
+> = {
+  platforms: {
+    number: 2,
+    label: "What platform is this for?",
+    helper:
+      "Not all facilities have IG. If interested, please contact the Agency at theagency@signaturehealthcarellc.com.",
+  },
+  isEvent: {
+    number: 3,
+    suffix: "a",
+    label: "Is this submission for an event?",
+  },
+  vpApproved: {
+    number: 3,
+    suffix: "b",
+    label: "Did your Vice President of Operations approve this event?",
+  },
+  photoRelease: {
+    number: 4,
+    label:
+      "Do you have a photo release on file for ALL residents & stakeholders in these photos?",
+    helper:
+      "If you do not have a signed permission form, please use a different photo or get permission BEFORE uploading the images.",
+  },
+  hasMinors: {
+    number: 5,
+    suffix: "a",
+    label: "Are there any minors in this submission?",
+  },
+  minorRelease: {
+    number: 5,
+    suffix: "b",
+    label: "Do ALL minors in the pictures have proper media releases and consent forms?",
+    helper:
+      "If you do not have a signed consent form, please use a different photo or get permission BEFORE uploading the images.",
+  },
+  offCampusRelease: {
+    number: 6,
+    label:
+      "Do you have an off-campus consent release on file for ALL residents and stakeholders in these photos?",
+  },
+  requestedPostDate: {
+    number: 7,
+    label: "When would you like this posted?",
+    helper: "By default, requests are posted the day of submission or within 24 hours.",
+  },
+  requestedPostTime: {
+    number: 8,
+    label: "What time would you like this posted?",
+    helper:
+      "Please indicate what time you would like this posted. Please include AM or PM. All entries default to EST, so if you are in CST, please indicate that as well, so we can adjust times accordingly.",
+  },
+  postText: {
+    number: 9,
+    label: "What would you like your post to say?",
+    helper:
+      "Please note: Do not capitalize every word, or submit your request in all caps. Please use complete sentences with correct grammar when submitting.",
+  },
+  includesMedia: {
+    number: 10,
+    label: "Are you uploading a photo/video to be included in the post?",
+  },
+  upload: {
+    number: 11,
+    label: "Upload file here.",
+    helper:
+      "This includes any media such as images, graphics, flyers, videos, etc. If you're requesting a Stakeholder Spotlight post, please don't forget to include a photo of the stakeholder! Please keep in mind: if your photos are blurry, if residents are not properly clothed, if the resident's Simply Me chart is visible in the photos, we will not be able to post the photos.",
+  },
+  acknowledged: {
+    number: 12,
+    label: "Posting Guideline Rules Acknowledgement",
+    helper:
+      "By checking Yes, you have read and understood the rules of our posting guidelines. If your request does not comply with the above rules and guidelines, it may not be posted. Requests are sent for approval prior to posting.",
+  },
+};
+
+/** True when a stored document uses the v3 questionnaire. Every admin read
+ * surface branches on this — legacy rows must never be re-rendered as v3. */
+export const isV3Form = (form: { version?: number } | null | undefined): boolean =>
+  (form?.version ?? 0) >= 3;
+
 /** The single confirm control on Q6. */
 export const AGREEMENT_CONFIRM_LABEL = "Yes, I confirm.";
 

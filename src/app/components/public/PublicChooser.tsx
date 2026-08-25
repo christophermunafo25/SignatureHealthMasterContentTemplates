@@ -30,7 +30,7 @@ export function PublicChooser({ token }: { token: string }) {
       qualifier: "I already have the photo or video",
       title: "Submit content",
       body:
-        "Upload what you shot, write the caption you'd like, answer a few release questions, and send it to the social team.",
+        "Upload what you shot, write the caption you'd like, and send it to the social team.",
       steps: ["Upload", "Answer the form", "Sent for review"],
       bestFor: "Event photos, resident spotlights, anything you shot yourself.",
       cta: "Upload your content",
@@ -43,7 +43,7 @@ export function PublicChooser({ token }: { token: string }) {
       qualifier: "I need a graphic made",
       title: "Use a brand template",
       body:
-        "Pick a Signature template, fill in the details, and we'll take care of the design. The release questions come at the end.",
+        "Pick a Signature template, fill in the details, and we'll take care of the design. A few last questions come at the end.",
       steps: ["Pick a template", "Fill it in", "Answer the form"],
       bestFor: "Birthdays, work anniversaries, hiring posts, holidays.",
       cta: "Browse templates",

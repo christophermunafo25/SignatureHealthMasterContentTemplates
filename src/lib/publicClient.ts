@@ -143,7 +143,7 @@ export interface PublicSubmissionPayload {
   facilityId: string;
   submitterName: string;
   submitterEmail?: string;
-  /** The Social Media Update Form — required on every v2.2 submission. */
+  /** The Social Media Submission Form — required on every submission. */
   releaseForm: ReleaseForm;
   /** Already-uploaded files (paths from uploadPublicFile). Dev backend:
    * `path` holds a data URL instead. */
@@ -296,7 +296,7 @@ async function submitLocal(
       // has a thumbnail (dev backend stores data URLs in asset paths).
       payload.assets.find((a) => a.mimeType.startsWith("image/"))?.path;
 
-  // Q9 is the caption for both kinds — same reconciliation the Edge
+  // Q3 is the caption for both kinds — same reconciliation the Edge
   // Function performs.
   const caption = payload.releaseForm.postText;
   const values = payload.kind === "template" ? payload.values ?? {} : {};

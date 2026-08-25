@@ -336,8 +336,9 @@ export interface Submission {
   originalValues: FieldValues;
   caption: string;
   originalCaption: string;
-  /** v2.2 Social Media Update Form document. Absent on pre-v2.2 rows —
-   * every UI surface must tolerate a submission with no release form. */
+  /** The Social Media Submission Form document (v1/v2/v3 — read surfaces
+   * branch on releaseForm.version). Absent on pre-v2.2 rows — every UI
+   * surface must tolerate a submission with no form at all. */
   releaseForm?: import("./releaseForm").ReleaseForm;
   /** Facility-uploaded media (direct kind, or extra files on either kind). */
   assets: SubmissionAsset[];

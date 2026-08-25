@@ -139,19 +139,18 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
       if (prev) URL.revokeObjectURL(prev);
       return blob ? URL.createObjectURL(blob) : null;
     });
-    // Seed Q9 from the current caption and default Q10 to Yes (the rendered
-    // graphic is the media).
+    // Seed Q3 from the current caption — the rendered graphic is already
+    // the media, so Q4 asks for nothing on this path.
     setForm((f) => ({
       ...f,
       postText: caption ?? mergeCaption(template, values, facilitySnapshot),
-      includesMedia: f.includesMedia ?? "Yes",
     }));
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
-    // Editing Q9 IS the caption edit — nothing is lost on cancel.
+    // Editing Q3 IS the caption edit — nothing is lost on cancel.
     if (form.postText !== undefined) setCaption(form.postText);
     submitButtonRef.current?.focus();
   };
@@ -316,7 +315,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
                 Submit for review
               </button>
               <p className="text-center" style={{ fontSize: 11, color: "var(--fg-4)" }}>
-                A few release questions come next, then the Signature social
+                A few last questions come next, then the Signature social
                 team reviews and posts it.
               </p>
               {blockers.length > 0 && (

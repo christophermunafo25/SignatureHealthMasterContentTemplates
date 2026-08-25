@@ -182,8 +182,8 @@ export function PublicDirectSubmit({ token }: { token: string }) {
             Submit content
           </h1>
           <p style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 6, maxWidth: 460 }}>
-            Upload your photo or video, answer the release questions, and the
-            Signature social team takes it from there.
+            Send us your photos, videos, and story details, and the Signature
+            social team takes it from there.
           </p>
         </div>
 

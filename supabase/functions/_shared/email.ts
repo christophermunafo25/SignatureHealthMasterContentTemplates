@@ -150,25 +150,40 @@ export async function sendSubmissionNotification(
   const rf = p.releaseForm;
   const row = (label: string, value: string) =>
     `<tr><td style="color: #777; padding-right: 14px;">${label}</td><td>${value}</td></tr>`;
-  // v2 gates Q3/Q5 behind Q3a/Q5a, so a follow-up row is only meaningful when
-  // it was actually asked. Rendering each row only when its answer exists
-  // keeps v1 submissions readable too — they simply have no gate recorded.
-  const releaseRows = rf
-    ? [
-        row("Platforms", esc((rf.platforms ?? []).join(", ") || "—")),
-        row(
+  // v3 collapsed the six consent questions into one agreement, so its rows
+  // are just the operational three. Older documents keep the v2 rendering:
+  // this email is only ever sent at submit time, so in practice the v3 arm
+  // runs — the legacy arm is what keeps a replayed v1/v2 payload readable.
+  const scheduleRow = () =>
+    rf!.requestedPostDate
+      ? row(
           "Requested post",
-          `${esc(rf.requestedPostDate || "—")}${rf.requestedPostTime ? ` at ${esc(rf.requestedPostTime)}` : ""}`,
-        ),
-        rf.isEvent ? row("Event", esc(rf.isEvent)) : "",
-        rf.vpApproved ? row("VP approved", esc(rf.vpApproved)) : "",
-        row("Photo release", esc(rf.photoRelease ?? "—")),
-        rf.hasMinors ? row("Minors in submission", esc(rf.hasMinors)) : "",
-        rf.minorRelease ? row("Minor release", esc(rf.minorRelease)) : "",
-        row("Off-campus release", esc(rf.offCampusRelease ?? "—")),
-        row("Files", String(p.assetCount)),
-      ].join("")
-    : "";
+          `${esc(rf!.requestedPostDate)}${rf!.requestedPostTime ? ` at ${esc(rf!.requestedPostTime)}` : ""}`,
+        )
+      : row("Scheduling", "Standard scheduling");
+
+  const releaseRows = !rf
+    ? ""
+    : (rf.version ?? 0) >= 3
+      ? [
+          row("Platforms", esc((rf.platforms ?? []).join(", ") || "—")),
+          scheduleRow(),
+          row("Files", String(p.assetCount)),
+        ].join("")
+      : [
+          row("Platforms", esc((rf.platforms ?? []).join(", ") || "—")),
+          row(
+            "Requested post",
+            `${esc(rf.requestedPostDate || "—")}${rf.requestedPostTime ? ` at ${esc(rf.requestedPostTime)}` : ""}`,
+          ),
+          rf.isEvent ? row("Event", esc(rf.isEvent)) : "",
+          rf.vpApproved ? row("VP approved", esc(rf.vpApproved)) : "",
+          row("Photo release", esc(rf.photoRelease ?? "—")),
+          rf.hasMinors ? row("Minors in submission", esc(rf.hasMinors)) : "",
+          rf.minorRelease ? row("Minor release", esc(rf.minorRelease)) : "",
+          row("Off-campus release", esc(rf.offCampusRelease ?? "—")),
+          row("Files", String(p.assetCount)),
+        ].join("");
 
   // Plain and legible: a work notification in a busy inbox — restraint
   // beats art direction.

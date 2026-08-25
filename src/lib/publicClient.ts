@@ -300,7 +300,10 @@ async function submitLocal(
   // Function performs.
   const caption = payload.releaseForm.postText;
   const values = payload.kind === "template" ? payload.values ?? {} : {};
-  const releaseFlagged = payload.releaseForm.vpApproved === "No";
+  // Mirrors submit-content: v3 has no VP question, so it can neither flag
+  // nor claim an approval. Legacy shapes are still honoured for parity.
+  const isV3 = (payload.releaseForm.version ?? 0) >= 3;
+  const releaseFlagged = !isV3 && payload.releaseForm.vpApproved === "No";
 
   const now = new Date().toISOString();
   const id = newId();
@@ -324,7 +327,7 @@ async function submitLocal(
       platforms: payload.releaseForm.platforms,
       requestedPostDate: payload.releaseForm.requestedPostDate || undefined,
       requestedPostTime: payload.releaseForm.requestedPostTime || undefined,
-      vpApproved: payload.releaseForm.vpApproved === "Yes",
+      vpApproved: isV3 ? undefined : payload.releaseForm.vpApproved === "Yes",
       releaseFlagged,
       schemaSnapshot: template ? JSON.parse(JSON.stringify(template)) : null,
       brandSnapshot: {

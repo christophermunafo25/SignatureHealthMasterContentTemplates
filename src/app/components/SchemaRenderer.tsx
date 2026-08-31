@@ -14,6 +14,7 @@ import { loadGoogleFonts, schemaFontFamilies } from "@/lib/render/fonts";
 import { exportSchemaPng, renderSchemaBlob, type ExportOutcome } from "@/lib/render/exportPng";
 import { stores } from "@/lib/stores";
 import defaultFacilityLogo from "@/assets/default-facility-logo.png";
+import defaultImagePlaceholder from "@/assets/default-image-placeholder.jpg";
 
 export interface SchemaRendererHandle {
   /** Renders the canvas to PNG and hands it to the user. Records a
@@ -442,32 +443,26 @@ function ImageFieldBox({ field, value }: { field: TemplateField; value: string |
   // Member uploads are already data URLs and pass straight through; the raw
   // value fills in only while conversion is in flight (or failed, which
   // renders no worse than before).
-  const dataUrl = useDataUrl(value || undefined);
-  const shown = value ? dataUrl ?? value : undefined;
+  //
+  // An unfilled field shows the bundled placeholder photo instead of a
+  // dashed box, so template thumbnails, the builder canvas, and the fill
+  // page all present a real image until the member uploads their own.
+  const source = value || defaultImagePlaceholder;
+  const dataUrl = useDataUrl(source);
+  const shown = dataUrl ?? source;
   return (
     <div
       style={{
         ...contentBaseStyle(field),
         overflow: "hidden",
         borderRadius: cornerRadiusCss(field),
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: shown ? undefined : "rgba(0,0,0,0.06)",
-        border: shown ? undefined : "1.5px dashed rgba(0,0,0,0.25)",
       }}
     >
-      {shown ? (
-        <img
-          src={shown}
-          alt={field.label}
-          style={{ width: "100%", height: "100%", objectFit: field.objectFit ?? "cover" }}
-        />
-      ) : (
-        <span style={{ color: "rgba(0,0,0,0.35)", fontSize: Math.max(18, field.width / 14), textAlign: "center" }}>
-          {field.label}
-        </span>
-      )}
+      <img
+        src={shown}
+        alt={field.label}
+        style={{ width: "100%", height: "100%", objectFit: field.objectFit ?? "cover" }}
+      />
     </div>
   );
 }

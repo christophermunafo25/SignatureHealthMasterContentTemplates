@@ -31,7 +31,7 @@ export function CanvasSizePicker({
         Back
       </button>
       <div className="text-center space-y-1">
-        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase" as const, fontSize: 18, letterSpacing: "0.08em", color: "var(--ink)" }}>
+        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em", color: "var(--ink)" }}>
           Pick a canvas size
         </h2>
         <p style={{ fontSize: 13, color: "var(--fg-2)" }}>

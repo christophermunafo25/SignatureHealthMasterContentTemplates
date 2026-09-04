@@ -121,8 +121,7 @@ export function ReleaseFormModal(props: ReleaseFormModalProps) {
               style={{
                 fontFamily: "var(--font-display)",
                 fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
+                letterSpacing: "-0.01em",
                 fontSize: 18,
                 color: "var(--ink)",
               }}

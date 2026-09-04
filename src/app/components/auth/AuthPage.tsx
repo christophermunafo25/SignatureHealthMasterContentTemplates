@@ -53,7 +53,7 @@ export function SetPasswordGate({ email, onDone }: { email: string; onDone(): vo
       <div className="w-full space-y-4" style={{ maxWidth: 380 }}>
         <div>
           <p className="sp-eyebrow mb-1">{email}</p>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", fontSize: 20, color: "var(--ink)" }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, letterSpacing: "-0.01em", fontSize: 20, color: "var(--ink)" }}>
             Set your password
           </h1>
           <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>
@@ -182,7 +182,7 @@ export function AuthPage() {
           <div className="mb-3">
             <BrandLogo height={40} variant="reverse" />
           </div>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase", fontSize: 20, letterSpacing: "0.1em", color: "#ffffff" }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, letterSpacing: "-0.01em", color: "#ffffff" }}>
             {view === "forgot" ? "Reset password" : view === "setPassword" ? "Choose a new password" : "Sign in"}
           </h1>
         </div>

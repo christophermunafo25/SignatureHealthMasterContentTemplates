@@ -172,9 +172,8 @@ export function PublicDirectSubmit({ token }: { token: string }) {
             style={{
               fontFamily: "var(--font-display)",
               fontWeight: 700,
-              textTransform: "uppercase",
               fontSize: "clamp(20px, 3vw, 32px)",
-              letterSpacing: "0.06em",
+              letterSpacing: "-0.02em",
               lineHeight: 1.05,
               color: "#ffffff",
             }}

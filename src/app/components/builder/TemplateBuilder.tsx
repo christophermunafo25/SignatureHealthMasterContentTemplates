@@ -582,8 +582,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         <p
           style={{
             fontFamily: "var(--font-display)",
-            fontWeight: 800,
-            textTransform: "uppercase" as const,
+            letterSpacing: "-0.01em", fontWeight: 800,
             fontSize: 18,
             color: "var(--ink)",
           }}
@@ -644,7 +643,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                   className="animate-spin mx-auto"
                   style={{ width: 28, height: 28, color: "var(--solar)" }}
                 />
-                <p style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 17, color: "var(--ink)" }}>
+                <p style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.01em", fontWeight: 800, fontSize: 17, color: "var(--ink)" }}>
                   Publishing…
                 </p>
                 <p style={{ fontSize: 12, color: "var(--fg-3)" }}>
@@ -659,7 +658,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                 >
                   <Check style={{ width: 22, height: 22, color: "var(--ink)" }} />
                 </span>
-                <p style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 17, color: "var(--ink)" }}>
+                <p style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.01em", fontWeight: 800, fontSize: 17, color: "var(--ink)" }}>
                   Template published
                 </p>
                 <p style={{ fontSize: 12, color: "var(--fg-3)" }}>
@@ -697,7 +696,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         </button>
         <span
           className="flex-1 min-w-[200px] truncate"
-          style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 18, letterSpacing: "-0.3px", color: draft.name.trim() ? "var(--ink)" : "var(--fg-4)" }}
+          style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 18, letterSpacing: "-0.01em", color: draft.name.trim() ? "var(--ink)" : "var(--fg-4)" }}
         >
           {draft.name.trim() || "Untitled template"}
         </span>
@@ -825,7 +824,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
         /* Source pick: two co-equal creation paths */
         <div className="max-w-3xl mx-auto py-10 space-y-5">
           <div className="text-center space-y-1 mb-2">
-            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 18, letterSpacing: "-0.01em", color: "var(--ink)" }}>
               Start your template
             </h2>
             <p style={{ fontSize: 13, color: "var(--fg-2)" }}>
@@ -1126,7 +1125,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
             <div className="max-w-2xl mx-auto py-8">
               <div className="sp-card p-6 space-y-4">
                 <div className="space-y-1">
-                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}>
+                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 18, letterSpacing: "-0.01em", color: "var(--ink)" }}>
                     Suggested caption
                     <span style={{ fontSize: 12, color: "var(--fg-4)", fontWeight: 400 }}> · optional</span>
                   </h2>
@@ -1149,7 +1148,7 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
             <div className="max-w-2xl mx-auto py-8 space-y-4">
               <div className="sp-card p-6 space-y-4">
                 <div className="space-y-1">
-                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 18, letterSpacing: "-0.3px", color: "var(--ink)" }}>
+                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 18, letterSpacing: "-0.01em", color: "var(--ink)" }}>
                     Name & publish
                   </h2>
                   <p style={{ fontSize: 13, color: "var(--fg-2)" }}>

@@ -185,14 +185,12 @@ export function PublicShell({
         className="flex items-center justify-between gap-3 px-5 sm:px-[38px]"
         style={{ height: 113, background: "var(--lift)", borderBottom: "1px solid var(--hairline)" }}
       >
-        {/* Brand Studio's uploaded logo wins (that is the multi-tenant path);
-            the bundled lockup is the fallback. The header is white, so this
-            is the NAVY variant even though the gradient starts right below. */}
-        {data?.logoUrl ? (
-          <img src={data.logoUrl} alt={data.company.name} style={{ height: 71, width: "auto" }} />
-        ) : (
-          <BrandLogo height={71} variant="navy" />
-        )}
+        {/* Always the bundled official lockup — CJ's call (2026-09-04): the
+            portal chrome does not follow Brand Studio's primary logo. Brand
+            Studio assets still feed the graphics themselves. The header is
+            white, so this is the NAVY variant even though the gradient starts
+            right below. */}
+        <BrandLogo height={71} variant="navy" />
         {adminLink && <AdminSignInLink variant="button" />}
       </header>
       {data?.tokenStale && (

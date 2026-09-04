@@ -30,7 +30,7 @@ export function PublicChooser({ token }: { token: string }) {
       qualifier: "I already have the photo or video",
       title: "Submit content",
       body:
-        "Upload what you shot, write the caption you'd like, and send it to The Agency.",
+        "Upload your photos, write your caption, and submit for posting.",
       steps: ["Upload", "Answer the form", "Sent for review"],
       bestFor: "Event photos, resident spotlights, anything you shot yourself.",
       cta: "Upload your content",
@@ -45,7 +45,7 @@ export function PublicChooser({ token }: { token: string }) {
       body:
         "Pick a Signature template, fill in the details, and we'll take care of the design. A few last questions come at the end.",
       steps: ["Pick a template", "Fill it in", "Answer the form"],
-      bestFor: "Birthdays, work anniversaries, hiring posts, holidays.",
+      bestFor: "Birthdays, work anniversaries, holidays, and facility milestones.",
       cta: "Browse templates",
       accent: "var(--sky)",
       tile: "var(--sky)",

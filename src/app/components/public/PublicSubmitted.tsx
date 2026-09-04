@@ -59,13 +59,13 @@ export function PublicSubmitted({
             fontWeight: 700,
             textTransform: "uppercase",
             letterSpacing: "0.08em",
-            fontSize: 20,
+            fontSize: 22,
             color: "#ffffff",
           }}
         >
           Sent for review
         </h1>
-        <p style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.85)" }}>
+        <p style={{ fontSize: 16, lineHeight: 1.6, color: "rgba(255,255,255,0.85)" }}>
           The Agency has your {template ? "graphic" : "content"} from {facilityName}.
           {requested ? <> <b style={{ color: "#ffffff", fontWeight: 600 }}>{requested}</b></> : null}
           {" "}They&rsquo;ll review it and post it on the brand&rsquo;s channels — no
@@ -98,7 +98,7 @@ export function PublicSubmitted({
       ) : assets.length > 0 ? (
         <p
           className="mx-auto flex items-center justify-center gap-2 rounded-xl px-4 py-3"
-          style={{ maxWidth: 280, border: "1px solid var(--hairline)", background: "var(--lift)", fontSize: 13, color: "var(--fg-2)" }}
+          style={{ maxWidth: 280, border: "1px solid var(--hairline)", background: "var(--lift)", fontSize: 15, color: "var(--fg-2)" }}
         >
           <Files style={{ width: 15, height: 15, color: "var(--fg-3)" }} />
           {assets.length} file{assets.length === 1 ? "" : "s"} attached

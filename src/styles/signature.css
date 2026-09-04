@@ -240,6 +240,26 @@ button, input, select, textarea, optgroup {
 .sp-input::placeholder { color: var(--fg-4); }
 .sp-input:focus { border-color: transparent; box-shadow: var(--focus-ring-tight); }
 
+/* Field chrome shared by the template fill flow (public) and the admin
+   submission detail. Class-driven so the .sp-public scope below can reach it;
+   the base values are the admin sizes and must not change. */
+.sp-field-label { font-size: 14px; font-weight: 500; color: var(--ink); }
+.sp-field-hint  { font-size: 12px; color: var(--fg-3); }
+.sp-field-meta  { font-family: var(--font-mono); font-size: 10px; color: var(--fg-3); }
+
+/* Facility-facing scale. The public portal is used on phones, in hallways,
+   by people who are not designers — everything runs one step larger than the
+   admin app. Scoped so /admin keeps the tighter chrome. NOTE: ReleaseFormModal
+   portals to document.body, so it carries this class on its DialogContent. */
+.sp-public .sp-input { font-size: 15px; padding: 12px 14px; }
+.sp-public textarea.sp-input { line-height: 1.55; }
+.sp-public .sp-btn { font-size: 15px; min-height: 46px; padding: 11px 20px; }
+.sp-public .sp-eyebrow { font-size: 11.5px; letter-spacing: 0.06em; }
+.sp-public .sp-panel-title { font-size: 16px; }
+.sp-public .sp-field-label { font-size: 16px; }
+.sp-public .sp-field-hint  { font-size: 13.5px; }
+.sp-public .sp-field-meta  { font-size: 11.5px; }
+
 .sp-card {
   background: var(--lift);
   border: 1px solid var(--hairline);

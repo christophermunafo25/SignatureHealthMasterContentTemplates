@@ -176,12 +176,12 @@ function ImageFieldInput({ field, value, onChange, inputId }: FieldInputProps) {
             <Upload style={{ width: 15, height: 15, color: "var(--ink)" }} />
           </span>
         )}
-        <p style={{ fontSize: 12, color: "var(--fg-2)" }}>
+        <p className="sp-field-hint" style={{ color: "var(--fg-2)" }}>
           {value ? "Replace image" : "Click or drag to upload"}
         </p>
       </div>
       {uploadError && (
-        <p role="alert" style={{ fontSize: 12, color: "var(--solar)", marginTop: 6 }}>
+        <p role="alert" className="sp-field-hint" style={{ color: "var(--solar)", marginTop: 6 }}>
           {uploadError}
         </p>
       )}

@@ -178,7 +178,7 @@ export function PublicShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: pageBackground ?? BRAND_PAGE_GRADIENT }}>
+    <div className="sp-public min-h-screen flex flex-col" style={{ background: pageBackground ?? BRAND_PAGE_GRADIENT }}>
       <header
         className="flex items-center justify-between gap-3 px-5 sm:px-8"
         style={{ height: 64, background: "var(--lift)", borderBottom: "1px solid var(--hairline)" }}

@@ -109,7 +109,7 @@ export function OnboardingWizard({ firstRun }: { firstRun: boolean }) {
           <p className="sp-eyebrow mb-1" style={{ color: "rgba(255,255,255,0.85)" }}>
             {firstRun ? "Welcome" : "New company"}
           </p>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase", fontSize: 20, letterSpacing: "0.1em", lineHeight: 1.05, color: "#f2f3ef" }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, letterSpacing: "-0.01em", lineHeight: 1.05, color: "#f2f3ef" }}>
             {firstRun ? "Set up your brand portal" : "Create a company"}
           </h1>
           <div className="flex gap-1.5 mt-5">

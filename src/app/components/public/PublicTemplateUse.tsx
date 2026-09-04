@@ -245,8 +245,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
                 style={{
                   fontFamily: "var(--font-display)",
                   fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
+                  letterSpacing: "-0.02em",
                   fontSize: "clamp(19px, 2.6vw, 30px)",
                   lineHeight: 1.1,
                   color: "#ffffff",

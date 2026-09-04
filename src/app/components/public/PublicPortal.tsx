@@ -50,9 +50,8 @@ export function PublicPortal({ token }: { token: string }) {
           style={{
             fontFamily: "var(--font-display)",
             fontWeight: 700,
-            textTransform: "uppercase",
             fontSize: "clamp(20px, 3vw, 34px)",
-            letterSpacing: "0.06em",
+            letterSpacing: "-0.02em",
             lineHeight: 1.05,
             color: "#ffffff",
             marginBottom: 8,
@@ -123,7 +122,7 @@ export function PublicPortal({ token }: { token: string }) {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       {t.category && <p className="sp-eyebrow mb-1">{t.category}</p>}
-                      <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase" as const, fontSize: 17, letterSpacing: "0.04em", color: "var(--ink)" }}>
+                      <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, letterSpacing: "-0.01em", color: "var(--ink)" }}>
                         {t.name}
                       </h2>
                     </div>

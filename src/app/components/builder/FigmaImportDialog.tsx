@@ -70,7 +70,7 @@ export function FigmaImportDialog({ onClose, onImported }: FigmaImportDialogProp
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontWeight: 800, textTransform: "uppercase" as const, fontSize: 17, letterSpacing: "-0.3px", color: "var(--ink)" }}>
+          <h2 className="flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 17, letterSpacing: "-0.01em", color: "var(--ink)" }}>
             <Figma className="w-5 h-5" />
             Import from Figma
           </h2>

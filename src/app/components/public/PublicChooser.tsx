@@ -93,9 +93,8 @@ export function PublicChooser({ token }: { token: string }) {
           style={{
             fontFamily: "var(--font-display)",
             fontWeight: 700,
-            textTransform: "uppercase",
             fontSize: "clamp(24px, 3.2vw, 34px)",
-            letterSpacing: "0.06em",
+            letterSpacing: "-0.02em",
             lineHeight: 1.05,
             color: "#ffffff",
             marginBottom: 8,
@@ -147,9 +146,8 @@ export function PublicChooser({ token }: { token: string }) {
                       style={{
                         fontFamily: "var(--font-display)",
                         fontWeight: 700,
-                        textTransform: "uppercase",
                         fontSize: 20,
-                        letterSpacing: "-0.02em",
+                        letterSpacing: "-0.01em",
                         color: "var(--ink)",
                       }}
                     >

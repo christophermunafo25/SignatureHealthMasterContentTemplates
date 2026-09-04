@@ -57,8 +57,7 @@ export function PublicSubmitted({
           style={{
             fontFamily: "var(--font-display)",
             fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
+            letterSpacing: "-0.01em",
             fontSize: 22,
             color: "#ffffff",
           }}

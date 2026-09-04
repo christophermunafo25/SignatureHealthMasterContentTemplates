@@ -19,12 +19,14 @@ import { profileDisplayName, profileInitials } from "@/lib/profile";
 import { stores } from "@/lib/stores";
 import { useRouter, type Route } from "../router";
 import { ProfileDialog } from "./ProfileDialog";
+import { BrandLogo } from "./BrandLogo";
 const LS_COLLAPSED = "shc-graphics-sidebar-collapsed";
 
-/** Signature HealthCare mark — "SH" monogram placeholder rendered in the
- * display face, one-color via currentColor. Swap for the official logo
- * asset when it lands in src/assets. Used where the full lockup doesn't
- * fit: the collapsed rail and DS empty states. */
+/** Signature HealthCARE mark — "SH" monogram placeholder rendered in the
+ * display face, one-color via currentColor. The official horizontal lockup
+ * (BrandLogo) is 1.7:1 and does not fit a square; this stays until an
+ * official standalone mark lands in src/assets. Used where the full lockup
+ * doesn't fit: the collapsed rail and DS empty states. */
 export function BrandMark({ width = 28 }: { width?: number }) {
   return (
     <span
@@ -49,28 +51,11 @@ export function BrandMark({ width = 28 }: { width?: number }) {
   );
 }
 
-/** Horizontal lockup — text wordmark placeholder in the display face until
- * the official logo asset lands in src/assets. Inherits chrome ink so it
- * works on light and dark. */
-function BrandLockup({ height = 16 }: { height?: number }) {
-  return (
-    <span
-      aria-label="Signature HealthCare"
-      style={{
-        display: "block",
-        fontFamily: "var(--font-display)",
-        fontSize: height * 0.82,
-        fontWeight: 700,
-        letterSpacing: "0.1em",
-        textTransform: "uppercase",
-        lineHeight: 1.2,
-        whiteSpace: "nowrap",
-        color: "var(--ink)",
-      }}
-    >
-      Signature&nbsp;<span style={{ fontWeight: 400 }}>HealthCare</span>
-    </span>
-  );
+/** Horizontal lockup — the official navy + amber art. The sidebar and the
+ * mobile drawer header are both white (--sb-bg), so this is always the navy
+ * variant; 32px is the floor at which the tagline still reads. */
+function BrandLockup({ height = 32 }: { height?: number }) {
+  return <BrandLogo height={height} variant="navy" />;
 }
 
 interface NavItem {
@@ -316,8 +301,8 @@ export function Sidebar() {
           style={{ background: "var(--sb-bg)", borderBottom: "1px solid var(--sb-border)", zIndex: 40 }}
         >
           <div className="flex items-center justify-between px-4" style={{ height: 56 }}>
-            <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} aria-label="Signature HealthCare — home">
-              <BrandLockup height={18} />
+            <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} aria-label="Signature HealthCARE — home">
+              <BrandLockup />
             </button>
             <button
               onClick={() => setMenuOpen(!menuOpen)}
@@ -396,7 +381,7 @@ export function Sidebar() {
         {/* Logo + collapse toggle */}
         <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} mb-7`}>
           {!collapsed && (
-            <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} title="Home" aria-label="Signature HealthCare — home">
+            <button onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })} title="Home" aria-label="Signature HealthCARE — home">
               <BrandLockup />
             </button>
           )}
@@ -413,7 +398,7 @@ export function Sidebar() {
         {collapsed && (
           <button
             onClick={() => go({ name: role === "admin" ? "adminTemplates" : "portal" })}
-            title="Signature HealthCare — home"
+            title="Signature HealthCARE — home"
             className="mx-auto mb-6"
             style={{ color: "var(--solar)" }}
           >

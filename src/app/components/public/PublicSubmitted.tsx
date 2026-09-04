@@ -3,6 +3,7 @@ import { CheckCircle2, Files } from "lucide-react";
 import type { BrandKit, FacilitySnapshot, FieldValues, TemplateSchema } from "@/lib/types";
 import type { ReleaseForm } from "@/lib/releaseForm";
 import { SchemaRenderer } from "../SchemaRenderer";
+import { BrandLogo } from "../BrandLogo";
 import type { PendingAsset } from "./ReleaseForm";
 
 /** Confirmation state after a facility submission: what was sent, a
@@ -45,6 +46,11 @@ export function PublicSubmitted({
     // Light-on-navy: the confirmation sits on the brand wash like every
     // other public screen.
     <div className="max-w-md mx-auto px-5 py-10 text-center space-y-5">
+      {/* Reverse art — this screen sits on the navy wash, in its upper third
+          where contrast is strongest. */}
+      <div className="flex justify-center">
+        <BrandLogo height={44} variant="reverse" />
+      </div>
       <CheckCircle2 style={{ width: 40, height: 40, color: "var(--mint)", margin: "0 auto" }} />
       <div className="space-y-2">
         <h1

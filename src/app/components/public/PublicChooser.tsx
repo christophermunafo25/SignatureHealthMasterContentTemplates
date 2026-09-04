@@ -68,13 +68,13 @@ export function PublicChooser({ token }: { token: string }) {
         fontFamily: "var(--font-mono)",
         fontSize: 10,
         fontWeight: 600,
-        letterSpacing: "0.08em",
+        letterSpacing: "0.02em",
         color: "var(--fg-3)",
         boxShadow: "var(--shadow-e1)",
       }}
       aria-hidden
     >
-      OR
+      or
     </span>
   );
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/stores/supabase/client";
+import { BrandLogo } from "../BrandLogo";
 
 type View = "signin" | "forgot" | "setPassword";
 
@@ -177,9 +178,10 @@ export function AuthPage() {
         style={{ background: "var(--lift)", border: "1px solid var(--hairline)", borderRadius: "var(--radius-card)", boxShadow: "var(--shadow-e4)" }}
       >
         <div className="sp-mesh px-7 pt-7 pb-6">
-          <p className="sp-eyebrow mb-1" style={{ color: "rgba(255,255,255,0.85)" }}>
-            Signature HealthCare
-          </p>
+          {/* Reverse art: the mesh is flat navy, where the navy lockup would vanish. */}
+          <div className="mb-3">
+            <BrandLogo height={40} variant="reverse" />
+          </div>
           <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase", fontSize: 20, letterSpacing: "0.1em", color: "#ffffff" }}>
             {view === "forgot" ? "Reset password" : view === "setPassword" ? "Choose a new password" : "Sign in"}
           </h1>

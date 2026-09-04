@@ -8,6 +8,7 @@ import { PublicChooser } from "./PublicChooser";
 import { PublicDirectSubmit } from "./PublicDirectSubmit";
 import { PublicPortal } from "./PublicPortal";
 import { PublicTemplateUse } from "./PublicTemplateUse";
+import { BrandLogo } from "../BrandLogo";
 
 /** Home-aware route builders: the same components serve the tokened shared
  * link (/g/…) and the root-URL public portal (ref === HOME_REF). */
@@ -177,28 +178,20 @@ export function PublicShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: pageBackground ?? BRAND_PAGE_GRADIENT }}>
+    <div className="sp-public min-h-screen flex flex-col" style={{ background: pageBackground ?? BRAND_PAGE_GRADIENT }}>
+      {/* Figma "Public Chooser — Current State" header, scaled up at CJ's
+          request: 128px tall (frame: 113), 38px side padding, 92px logo
+          (frame: 71), 32px admin button vertically centered. */}
       <header
-        className="flex items-center justify-between gap-3 px-5 sm:px-8"
-        style={{ height: 56, background: "var(--lift)", borderBottom: "1px solid var(--hairline)" }}
+        className="flex items-center justify-between gap-3 px-5 sm:px-[38px]"
+        style={{ height: 128, background: "var(--lift)", borderBottom: "1px solid var(--hairline)" }}
       >
-        {data?.logoUrl ? (
-          <img src={data.logoUrl} alt={data.company.name} style={{ height: 24, width: "auto" }} />
-        ) : (
-          <span
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "var(--ink)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {data?.company.name || "Signature HealthCare"}
-          </span>
-        )}
+        {/* Always the bundled official lockup — CJ's call (2026-09-04): the
+            portal chrome does not follow Brand Studio's primary logo. Brand
+            Studio assets still feed the graphics themselves. The header is
+            white, so this is the NAVY variant even though the gradient starts
+            right below. */}
+        <BrandLogo height={92} variant="navy" />
         {adminLink && <AdminSignInLink variant="button" />}
       </header>
       {data?.tokenStale && (
@@ -217,7 +210,10 @@ export function PublicShell({
 
 export function PublicInactive({ adminLink }: { adminLink?: boolean }) {
   return (
-    <div className="min-h-screen flex items-center justify-center p-6" style={{ background: BRAND_PAGE_GRADIENT }}>
+    <div className="min-h-screen flex flex-col items-center p-6" style={{ background: BRAND_PAGE_GRADIENT, paddingTop: "18vh" }}>
+      <div className="flex justify-center" style={{ marginBottom: 20 }}>
+        <BrandLogo height={44} variant="reverse" />
+      </div>
       <div className="text-center space-y-2" style={{ maxWidth: 360 }}>
         <p style={{ fontSize: 16, fontWeight: 600, color: "#ffffff" }}>
           {adminLink ? "The portal isn't open yet." : "This link isn't active."}
@@ -239,7 +235,10 @@ export function PublicInactive({ adminLink }: { adminLink?: boolean }) {
 
 export function PublicLoading() {
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: BRAND_PAGE_GRADIENT }}>
+    <div className="min-h-screen flex flex-col items-center p-6" style={{ background: BRAND_PAGE_GRADIENT, paddingTop: "18vh" }}>
+      <div className="flex justify-center" style={{ marginBottom: 20 }}>
+        <BrandLogo height={44} variant="reverse" />
+      </div>
       <p style={{ fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Loading…</p>
     </div>
   );
@@ -247,7 +246,10 @@ export function PublicLoading() {
 
 export function PublicError({ retry }: { retry(): void }) {
   return (
-    <div className="min-h-screen flex items-center justify-center p-6" style={{ background: BRAND_PAGE_GRADIENT }}>
+    <div className="min-h-screen flex flex-col items-center p-6" style={{ background: BRAND_PAGE_GRADIENT, paddingTop: "18vh" }}>
+      <div className="flex justify-center" style={{ marginBottom: 20 }}>
+        <BrandLogo height={44} variant="reverse" />
+      </div>
       <div className="text-center space-y-3">
         <p style={{ fontSize: 14, fontWeight: 500, color: "#ffffff" }}>We couldn't load the templates.</p>
         <p style={{ fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Check your connection and try again.</p>

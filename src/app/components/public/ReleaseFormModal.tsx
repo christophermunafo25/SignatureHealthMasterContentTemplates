@@ -106,7 +106,7 @@ export function ReleaseFormModal(props: ReleaseFormModalProps) {
   return (
     <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
       <DialogContent
-        className="p-0 gap-0 flex flex-col sm:max-w-[720px] sm:max-h-[90vh] max-sm:top-0 max-sm:left-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:max-w-full max-sm:rounded-none max-sm:border-0"
+        className="sp-public p-0 gap-0 flex flex-col sm:max-w-[720px] sm:max-h-[90vh] max-sm:top-0 max-sm:left-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:max-w-full max-sm:rounded-none max-sm:border-0"
         style={{ background: "var(--linen)" }}
         onInteractOutside={(e) => busy && e.preventDefault()}
         onEscapeKeyDown={(e) => busy && e.preventDefault()}
@@ -123,14 +123,14 @@ export function ReleaseFormModal(props: ReleaseFormModalProps) {
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: "0.05em",
-                fontSize: 16,
+                fontSize: 18,
                 color: "var(--ink)",
               }}
             >
               A few last questions
             </DialogTitle>
-            <DialogDescription style={{ fontSize: 12.5, color: "var(--fg-3)", marginTop: 2 }}>
-              The social team needs these answers before anything is posted.
+            <DialogDescription style={{ fontSize: 13.5, color: "var(--fg-3)", marginTop: 2 }}>
+              The Agency needs these answers before anything is posted.
             </DialogDescription>
           </div>
           {/* Radix's built-in close X sits top-right; onOpenChange guards it
@@ -156,10 +156,10 @@ export function ReleaseFormModal(props: ReleaseFormModalProps) {
             />
           )}
           <span className="min-w-0">
-            <span className="block" style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+            <span className="block" style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>
               Your graphic is attached
             </span>
-            <span className="block truncate" style={{ fontSize: 12, color: "var(--fg-3)" }}>
+            <span className="block truncate" style={{ fontSize: 13, color: "var(--fg-3)" }}>
               {facility ? facility.name : "Choose your facility below"}
             </span>
           </span>
@@ -211,12 +211,12 @@ export function ReleaseFormModal(props: ReleaseFormModalProps) {
             </button>
           </div>
           {blockedReason && (
-            <p id="modal-blocked-reason" role="status" aria-live="polite" className="text-right" style={{ fontSize: 12, color: "var(--fg-3)" }}>
+            <p id="modal-blocked-reason" role="status" aria-live="polite" className="text-right" style={{ fontSize: 13, color: "var(--fg-3)" }}>
               {blockedReason}
             </p>
           )}
           {submitError && (
-            <p role="alert" className="flex items-center gap-1.5 justify-end" style={{ fontSize: 12, color: "var(--danger)" }}>
+            <p role="alert" className="flex items-center gap-1.5 justify-end" style={{ fontSize: 13, color: "var(--danger)" }}>
               <AlertTriangle style={{ width: 13, height: 13, flexShrink: 0 }} />
               {submitError}
             </p>

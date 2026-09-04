@@ -160,7 +160,7 @@ export function PublicDirectSubmit({ token }: { token: string }) {
         <button
           onClick={() => navigate(portalRoute(token))}
           className="flex items-center gap-1.5 mb-5"
-          style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}
+          style={{ fontSize: 15, color: "rgba(255,255,255,0.85)" }}
         >
           <ArrowLeft style={{ width: 14, height: 14 }} />
           Back
@@ -173,7 +173,7 @@ export function PublicDirectSubmit({ token }: { token: string }) {
               fontFamily: "var(--font-display)",
               fontWeight: 700,
               textTransform: "uppercase",
-              fontSize: "clamp(20px, 3vw, 30px)",
+              fontSize: "clamp(20px, 3vw, 32px)",
               letterSpacing: "0.06em",
               lineHeight: 1.05,
               color: "#ffffff",
@@ -181,9 +181,9 @@ export function PublicDirectSubmit({ token }: { token: string }) {
           >
             Submit content
           </h1>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 6, maxWidth: 460 }}>
-            Send us your photos, videos, and story details, and the Signature
-            social team takes it from there.
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", marginTop: 6, maxWidth: 460 }}>
+            Send us your photos, videos, and story details, and The Agency
+            takes it from there.
           </p>
         </div>
 
@@ -223,14 +223,14 @@ export function PublicDirectSubmit({ token }: { token: string }) {
             )}
             {uploading ? uploadStatus ?? "Uploading…" : submitting ? "Sending…" : "Submit for review"}
           </button>
-          <p className="text-center" style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>
-            The Signature social team reviews and posts submissions.
+          <p className="text-center" style={{ fontSize: 12, color: "rgba(255,255,255,0.75)" }}>
+            The Agency reviews and posts submissions.
           </p>
           {submitError && (
             <p
               role="alert"
               className="flex items-center gap-1.5 justify-center rounded-lg px-3 py-2"
-              style={{ fontSize: 12, color: "var(--danger)", background: "var(--lift)" }}
+              style={{ fontSize: 13, color: "var(--danger)", background: "var(--lift)" }}
             >
               <AlertTriangle style={{ width: 13, height: 13, flexShrink: 0 }} />
               {submitError}

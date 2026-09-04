@@ -79,7 +79,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
   if (!template) {
     return (
       <PublicShell data={state.data}>
-        <p className="text-center py-24" style={{ fontSize: 13, color: "var(--fg-3)" }}>Template not found.</p>
+        <p className="text-center py-24" style={{ fontSize: 15, color: "var(--fg-3)" }}>Template not found.</p>
       </PublicShell>
     );
   }
@@ -232,7 +232,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
         <button
           onClick={() => navigate(libraryRoute(token))}
           className="flex items-center gap-1.5 mb-5"
-          style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}
+          style={{ fontSize: 15, color: "rgba(255,255,255,0.85)" }}
         >
           <ArrowLeft style={{ width: 14, height: 14 }} />
           All templates
@@ -247,7 +247,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.05em",
-                  fontSize: "clamp(19px, 2.6vw, 28px)",
+                  fontSize: "clamp(19px, 2.6vw, 30px)",
                   lineHeight: 1.1,
                   color: "#ffffff",
                 }}
@@ -255,7 +255,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
                 {template.name}
               </h1>
               {template.description && (
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 4 }}>{template.description}</p>
+                <p style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", marginTop: 4 }}>{template.description}</p>
               )}
               {requiresFacility && !facility && (
                 <div
@@ -264,7 +264,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
                 >
                   <div>
                     <p className="sp-eyebrow">Your facility</p>
-                    <p style={{ fontSize: 13, color: "var(--fg-2)", marginTop: 2 }}>
+                    <p style={{ fontSize: 15, color: "var(--fg-2)", marginTop: 2 }}>
                       This template shows your facility&rsquo;s logo — pick yours to see it
                       in the preview.
                     </p>
@@ -277,12 +277,12 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
                   className="flex items-center justify-between gap-3 px-4 py-2.5 mt-4"
                   style={{ background: "var(--lift)", border: "1px solid var(--hairline)", borderRadius: 12 }}
                 >
-                  <p className="min-w-0 truncate" style={{ fontSize: 13, color: "var(--ink)" }}>
+                  <p className="min-w-0 truncate" style={{ fontSize: 15, color: "var(--ink)" }}>
                     Submitting as <b style={{ fontWeight: 600 }}>{facility.shortName}</b>
                   </p>
                   <button
                     onClick={clear}
-                    style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--solar)", flexShrink: 0 }}
+                    style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--solar)", flexShrink: 0 }}
                   >
                     Change
                   </button>
@@ -299,7 +299,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
           rendererRef={rendererRef}
           instrument={false}
           allowCaptionCopy={false}
-          previewHint="What the social team receives"
+          previewHint="What The Agency receives"
           facility={facilitySnapshot}
           actions={
             <>
@@ -314,9 +314,9 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
                 <Send style={{ width: 14, height: 14 }} />
                 Submit for review
               </button>
-              <p className="text-center" style={{ fontSize: 11, color: "var(--fg-4)" }}>
-                A few last questions come next, then the Signature social
-                team reviews and posts it.
+              <p className="text-center" style={{ fontSize: 12, color: "var(--fg-4)" }}>
+                A few last questions come next, then The Agency reviews
+                and posts it.
               </p>
               {blockers.length > 0 && (
                 <p
@@ -324,13 +324,13 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
                   role="status"
                   aria-live="polite"
                   className="text-center"
-                  style={{ fontSize: 12, color: "var(--fg-3)" }}
+                  style={{ fontSize: 13, color: "var(--fg-3)" }}
                 >
                   Still needed: {blockers.join(", ")}
                 </p>
               )}
               {!modalOpen && submitError && (
-                <p role="alert" className="flex items-center gap-1.5 justify-center" style={{ fontSize: 12, color: "var(--danger)" }}>
+                <p role="alert" className="flex items-center gap-1.5 justify-center" style={{ fontSize: 13, color: "var(--danger)" }}>
                   <AlertTriangle style={{ width: 13, height: 13 }} />
                   {submitError}
                 </p>

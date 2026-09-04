@@ -113,8 +113,8 @@ export function TemplateFillLayout({
                   <p className="sp-eyebrow">Step {String(i + 1).padStart(2, "0")}</p>
                   <label
                     htmlFor={inputId}
-                    className="block"
-                    style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", marginTop: 2 }}
+                    className="block sp-field-label"
+                    style={{ marginTop: 2 }}
                   >
                     {field.label}
                     {field.required && (
@@ -129,7 +129,8 @@ export function TemplateFillLayout({
                       role="status"
                       aria-live="polite"
                       aria-label={`${(values[field.fieldKey] ?? "").length} of ${maxLength} characters used`}
-                      style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--fg-3)", marginTop: 2 }}
+                      className="sp-field-meta"
+                      style={{ marginTop: 2 }}
                     >
                       {(values[field.fieldKey] ?? "").length}/{maxLength}
                     </p>
@@ -155,7 +156,8 @@ export function TemplateFillLayout({
               {caption !== null && (
                 <button
                   onClick={() => onCaptionEdit(null)}
-                  style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--solar)" }}
+                  className="sp-field-meta"
+                  style={{ color: "var(--solar)" }}
                 >
                   Reset to suggestion
                 </button>

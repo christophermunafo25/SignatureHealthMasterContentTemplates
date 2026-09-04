@@ -57,7 +57,7 @@ export interface ReleaseForm {
 /** The three-paragraph intro shown above the form on both intake paths. */
 export const SUBMISSION_INTRO: { lead: string; beforeSubmitting: string; timing: string } = {
   lead:
-    "Have something great happening at your facility? Send us your photos, videos, and story details, and our team will help share them on social media.",
+    "Have something great happening at your facility? Send us your photos, videos, and story details, and The Agency will help share them on social media.",
   // Rendered with "Before submitting:" bold and inline.
   beforeSubmitting:
     "Please select your best photos rather than uploading multiple similar images. Photos and videos should be clear, appropriate for social media, and follow the submission requirements outlined in this form.",
@@ -96,11 +96,55 @@ export const SUBMISSION_AGREEMENT: { lead: string; preamble: string; items: stri
 
 /** Shown under the Q5a/Q5b pair. */
 export const SCHEDULE_NOTE =
-  "Requested dates and times are not guaranteed. The social media team will make every effort to accommodate time-sensitive requests.";
+  "Requested dates and times are not guaranteed. The Agency will make every effort to accommodate time-sensitive requests.";
 
 /** Q3 — the callout below the textarea. */
 export const POST_TEXT_REMINDER =
-  "Helpful reminder: Please use complete sentences and normal capitalization. Our team may make minor edits for grammar, clarity, length, formatting, and social media style.";
+  "Helpful reminder: Please use complete sentences and normal capitalization. The Agency may make minor edits for grammar, clarity, length, formatting, and social media style.";
+
+/** Q3 — click-to-insert caption skeletons. Facilities stare at an empty box;
+ * these give them a shape to fill in rather than a blank page. Placeholders in
+ * [BRACKETS] are meant to be replaced, and the all-caps rule in
+ * validateReleaseForm() tolerates them (isAllCaps needs 15+ letters with zero
+ * lowercase, and every starter has plenty of lowercase). */
+export interface CaptionStarter {
+  /** Chip label — 2–4 words. */
+  label: string;
+  /** Inserted into the textarea verbatim. */
+  text: string;
+}
+
+export const CAPTION_STARTERS: CaptionStarter[] = [
+  {
+    label: "Resident spotlight",
+    text:
+      "Meet [RESIDENT NAME], who has called [FACILITY] home since [YEAR]. [ONE THING THAT MAKES THEM SPECIAL: a hobby, a story, a favorite saying]. We're grateful to have you with us, [FIRST NAME]!\n\n#LiveWithPurpose #ResidentSpotlight",
+  },
+  {
+    label: "Event recap",
+    text:
+      "What a day at [FACILITY]! Our residents and stakeholders came together for [EVENT], complete with [A DETAIL: the music, the food, the decorations]. Thank you to everyone who made it happen.\n\n#LiveWithPurpose",
+  },
+  {
+    label: "Stakeholder shout-out",
+    text:
+      "A big shout-out to [NAME], [ROLE] at [FACILITY]! [WHAT THEY DID: went above and beyond, earned a certification, stepped up when it counted]. Thank you for the heart you bring to our residents every day.\n\n#LiveWithPurpose #StakeholderSpotlight",
+  },
+  {
+    label: "Holiday or observance",
+    text:
+      "Happy [HOLIDAY OR OBSERVANCE] from all of us at [FACILITY]! We marked the day with [HOW YOU CELEBRATED]. Wishing our residents, families, and stakeholders a wonderful one.\n\n#LiveWithPurpose",
+  },
+  {
+    label: "Milestone",
+    text:
+      "Congratulations to [NAME] on [MILESTONE: a 100th birthday, 20 years of service, a big achievement]! [ONE LINE ABOUT WHAT IT MEANS]. We're proud to celebrate with you at [FACILITY].\n\n#LiveWithPurpose",
+  },
+];
+
+/** What facilities call the central social media team. Every facing surface
+ * reads from here — never hardcode the name in a component. */
+export const AGENCY_NAME = "The Agency";
 
 export const AGENCY_EMAIL = "theagency@SignaturehealthcareLLC.com";
 

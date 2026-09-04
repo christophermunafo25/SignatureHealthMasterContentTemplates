@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
   }
 
   // 1. Validate the shared portal token, then the facility. A submission
-  //    with no valid facility is close to useless to the social team —
+  //    with no valid facility is close to useless to The Agency —
   //    reject rather than accept unattributed content.
   const portal = await requirePortalCompany(db, token);
   if (!portal) return linkNotFound();
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
   if (submitterName.length < 2 || submitterName.length > 120) {
     return json({ error: "Submitter name is required" }, 400);
   }
-  // Email is required on every submission — the social team needs a way to
+  // Email is required on every submission — The Agency needs a way to
   // reach the submitter (and the decline flow emails them the reason).
   const submitterEmail =
     typeof body.submitterEmail === "string" && /^\S+@\S+\.\S+$/.test(body.submitterEmail.trim())
@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
       .then(() => {});
   }
 
-  // 8. Notify the social team (and confirm to the submitter). Email
+  // 8. Notify The Agency (and confirm to the submitter). Email
   //    failure must NOT fail the submission: a lost email is recoverable
   //    from the queue, a lost submission is not.
   try {

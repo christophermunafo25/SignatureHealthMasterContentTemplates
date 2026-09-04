@@ -40,7 +40,7 @@ export function PublicPortal({ token }: { token: string }) {
         <button
           onClick={() => navigate(portalRoute(token))}
           className="flex items-center gap-1.5 mb-5"
-          style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}
+          style={{ fontSize: 15, color: "rgba(255,255,255,0.85)" }}
         >
           <ArrowLeft style={{ width: 14, height: 14 }} />
           Back
@@ -51,7 +51,7 @@ export function PublicPortal({ token }: { token: string }) {
             fontFamily: "var(--font-display)",
             fontWeight: 700,
             textTransform: "uppercase",
-            fontSize: "clamp(20px, 3vw, 32px)",
+            fontSize: "clamp(20px, 3vw, 34px)",
             letterSpacing: "0.06em",
             lineHeight: 1.05,
             color: "#ffffff",
@@ -60,9 +60,9 @@ export function PublicPortal({ token }: { token: string }) {
         >
           Choose a template
         </h1>
-        <p style={{ fontFamily: "var(--font-body)", color: "rgba(255,255,255,0.85)", fontSize: 14, maxWidth: 420, marginBottom: 18 }}>
+        <p style={{ fontFamily: "var(--font-body)", color: "rgba(255,255,255,0.85)", fontSize: 16, maxWidth: 420, marginBottom: 18 }}>
           Pick a template and fill in the details. You&rsquo;ll answer the release
-          questions at the end, then it goes to the Signature social team to post.
+          questions at the end, then it goes to The Agency to post.
         </p>
         {templates.length > 6 && (
           <div className="relative max-w-md">
@@ -82,11 +82,11 @@ export function PublicPortal({ token }: { token: string }) {
 
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8">
         {templates.length === 0 ? (
-          <p className="text-center py-16" style={{ fontSize: 14, color: "rgba(255,255,255,0.85)" }}>
+          <p className="text-center py-16" style={{ fontSize: 16, color: "rgba(255,255,255,0.85)" }}>
             No templates are available yet — check back soon.
           </p>
         ) : filtered.length === 0 ? (
-          <p className="text-center py-16" style={{ fontSize: 14, color: "rgba(255,255,255,0.85)" }}>
+          <p className="text-center py-16" style={{ fontSize: 16, color: "rgba(255,255,255,0.85)" }}>
             No templates match “{query}”.
           </p>
         ) : (
@@ -123,7 +123,7 @@ export function PublicPortal({ token }: { token: string }) {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       {t.category && <p className="sp-eyebrow mb-1">{t.category}</p>}
-                      <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase" as const, fontSize: 15, letterSpacing: "0.04em", color: "var(--ink)" }}>
+                      <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "uppercase" as const, fontSize: 17, letterSpacing: "0.04em", color: "var(--ink)" }}>
                         {t.name}
                       </h2>
                     </div>
@@ -135,7 +135,7 @@ export function PublicPortal({ token }: { token: string }) {
                     </span>
                   </div>
                   {t.description && (
-                    <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--fg-2)", marginTop: 6 }}>{t.description}</p>
+                    <p style={{ fontSize: 14.5, lineHeight: 1.5, color: "var(--fg-2)", marginTop: 6 }}>{t.description}</p>
                   )}
                 </div>
               </button>

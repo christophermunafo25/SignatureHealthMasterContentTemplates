@@ -6,6 +6,7 @@ import {
   AGENCY_EMAIL,
   AGREEMENT_CONFIRM_LABEL,
   ALLOWED_UPLOAD_MIME,
+  CAPTION_STARTERS,
   MAX_UPLOAD_FILES,
   MAX_UPLOAD_LABEL,
   MEDIA_RELEASE_FORMS_URL,
@@ -113,7 +114,7 @@ function QuestionPanel({
   anchorId?: string;
 }) {
   return (
-    <div id={anchorId} className="p-4 space-y-2.5" style={panel}>
+    <div id={anchorId} className="p-5 space-y-2.5" style={panel}>
       <div className="min-w-0">
         {number !== undefined && (
           <p className="sp-eyebrow">
@@ -121,22 +122,22 @@ function QuestionPanel({
             {suffix ?? ""}
           </p>
         )}
-        <p className="block" style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", marginTop: 2 }}>
+        <p className="block" style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", marginTop: 2 }}>
           {label}
         </p>
         {helper && (
-          <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--fg-3)", marginTop: 4 }}>{helper}</p>
+          <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--fg-3)", marginTop: 4 }}>{helper}</p>
         )}
       </div>
       {children}
       {issue &&
         (issue.severity === "blocking" ? (
-          <p role="alert" className="flex items-start gap-1.5" style={{ fontSize: 12, color: "var(--danger)" }}>
+          <p role="alert" className="flex items-start gap-1.5" style={{ fontSize: 13, color: "var(--danger)" }}>
             <AlertTriangle style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }} />
             {issue.message}
           </p>
         ) : (
-          <p role="status" style={{ fontSize: 12, color: "var(--solar)" }}>
+          <p role="status" style={{ fontSize: 13, color: "var(--solar)" }}>
             {issue.message}
           </p>
         ))}
@@ -168,7 +169,7 @@ function ChoiceRow<T extends string>({
         <label
           key={o.value}
           className="flex items-center gap-2"
-          style={{ fontSize: 13, color: "var(--fg-1)", cursor: "pointer" }}
+          style={{ fontSize: 15, color: "var(--fg-1)", cursor: "pointer" }}
         >
           <RadioGroupItem value={o.value} id={`${name}-${o.value}`} />
           {o.label}
@@ -262,13 +263,13 @@ export function ReleaseForm({
     <div className="space-y-4">
       {/* Intro — three paragraphs from the client's form */}
       <div className="p-4" style={panel}>
-        <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--fg-1)" }}>{SUBMISSION_INTRO.lead}</p>
+        <p style={{ fontSize: 15, lineHeight: 1.6, color: "var(--fg-1)" }}>{SUBMISSION_INTRO.lead}</p>
         <button
           type="button"
           className="flex items-center justify-between w-full sm:hidden mt-3"
           onClick={() => setIntroOpen((o) => !o)}
           aria-expanded={introOpen}
-          style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}
+          style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}
         >
           Read before submitting
           <ChevronDown
@@ -276,11 +277,11 @@ export function ReleaseForm({
           />
         </button>
         <div className={`${introOpen ? "block mt-3" : "hidden"} sm:block sm:mt-2 space-y-2`}>
-          <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--fg-1)" }}>
+          <p style={{ fontSize: 15, lineHeight: 1.6, color: "var(--fg-1)" }}>
             <b style={{ fontWeight: 600, color: "var(--ink)" }}>Before submitting:</b>{" "}
             {SUBMISSION_INTRO.beforeSubmitting}
           </p>
-          <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--fg-2)" }}>{SUBMISSION_INTRO.timing}</p>
+          <p style={{ fontSize: 15, lineHeight: 1.6, color: "var(--fg-2)" }}>{SUBMISSION_INTRO.timing}</p>
         </div>
       </div>
 
@@ -292,17 +293,17 @@ export function ReleaseForm({
             style={{ border: "1px solid var(--hairline)", background: "var(--paper)" }}
           >
             <span className="min-w-0">
-              <span className="block truncate" style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+              <span className="block truncate" style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>
                 {facility.shortName}
                 {facility.state && (
-                  <span style={{ fontWeight: 400, fontSize: 11, color: "var(--fg-4)" }}> · {facility.state}</span>
+                  <span style={{ fontWeight: 400, fontSize: 12, color: "var(--fg-4)" }}> · {facility.state}</span>
                 )}
               </span>
               {facility.name !== facility.shortName && (
-                <span className="block truncate" style={{ fontSize: 11, color: "var(--fg-3)" }}>{facility.name}</span>
+                <span className="block truncate" style={{ fontSize: 12, color: "var(--fg-3)" }}>{facility.name}</span>
               )}
             </span>
-            <button type="button" onClick={onClearFacility} style={{ fontSize: 11, color: "var(--fg-3)", whiteSpace: "nowrap" }}>
+            <button type="button" onClick={onClearFacility} style={{ fontSize: 12, color: "var(--fg-3)", whiteSpace: "nowrap" }}>
               Change
             </button>
           </div>
@@ -320,7 +321,7 @@ export function ReleaseForm({
           />
         )}
         {showIssues && !facility && (
-          <p role="alert" style={{ fontSize: 12, color: "var(--danger)" }}>Pick your facility.</p>
+          <p role="alert" style={{ fontSize: 13, color: "var(--danger)" }}>Pick your facility.</p>
         )}
       </QuestionPanel>
 
@@ -329,23 +330,23 @@ export function ReleaseForm({
       <div className="p-4 space-y-3" style={panel}>
         <p className="sp-eyebrow">Information</p>
         <div>
-          <label className="block mb-1" htmlFor="release-name" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
+          <label className="block mb-1" htmlFor="release-name" style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)" }}>
             Your name
           </label>
           <input
             id="release-name"
             className="sp-input"
-            placeholder="So the social team knows who sent it"
+            placeholder="So The Agency knows who sent it"
             value={submitterName}
             onChange={(e) => onIdentityChange({ submitterName: e.target.value })}
             autoComplete="name"
           />
           {showIssues && submitterName.trim().length < 2 && (
-            <p role="alert" style={{ fontSize: 12, color: "var(--danger)", marginTop: 4 }}>Enter your name.</p>
+            <p role="alert" style={{ fontSize: 13, color: "var(--danger)", marginTop: 4 }}>Enter your name.</p>
           )}
         </div>
         <div>
-          <label className="block mb-1" htmlFor="release-email" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
+          <label className="block mb-1" htmlFor="release-email" style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)" }}>
             Email
           </label>
           <input
@@ -358,7 +359,7 @@ export function ReleaseForm({
             autoComplete="email"
           />
           {showIssues && !/^\S+@\S+\.\S+$/.test(submitterEmail.trim()) && (
-            <p role="alert" style={{ fontSize: 12, color: "var(--danger)", marginTop: 4 }}>Enter a valid email.</p>
+            <p role="alert" style={{ fontSize: 13, color: "var(--danger)", marginTop: 4 }}>Enter a valid email.</p>
           )}
         </div>
       </div>
@@ -375,7 +376,7 @@ export function ReleaseForm({
       >
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           {PLATFORM_CHOICES.map((c) => (
-            <label key={c} className="flex items-center gap-2" style={{ fontSize: 13, color: "var(--fg-1)", cursor: "pointer" }}>
+            <label key={c} className="flex items-center gap-2" style={{ fontSize: 15, color: "var(--fg-1)", cursor: "pointer" }}>
               <Checkbox
                 checked={form.platformChoice === c}
                 onCheckedChange={(on) =>
@@ -390,7 +391,7 @@ export function ReleaseForm({
             </label>
           ))}
         </div>
-        <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--fg-3)" }}>
+        <p style={{ fontSize: 13, lineHeight: 1.55, color: "var(--fg-3)" }}>
           {PLATFORM_FOOTNOTE.before}
           <a
             href={`mailto:${AGENCY_EMAIL}`}
@@ -419,9 +420,44 @@ export function ReleaseForm({
           aria-label={Q.postText.label}
           style={{ resize: "vertical" }}
         />
+        {/* Caption starters — scaffolding for the blank-box moment. Once
+            they're actually writing (~40 chars), the chips are noise. */}
+        {(form.postText ?? "").length <= 40 && (
+          <div className="space-y-1.5">
+            <p style={{ fontSize: 13, color: "var(--fg-3)" }}>Not sure where to start? Pick one and edit it.</p>
+            <div className="flex flex-wrap gap-1.5">
+              {CAPTION_STARTERS.map((starter) => (
+                <button
+                  key={starter.label}
+                  type="button"
+                  onClick={() => {
+                    const current = form.postText ?? "";
+                    const isStarter = CAPTION_STARTERS.some((s) => s.text === current);
+                    if (current.trim() && !isStarter && !window.confirm("Replace what you've written?")) return;
+                    onChange({ postText: starter.text });
+                  }}
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 11.5,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    color: "var(--fg-2)",
+                    background: "var(--lift)",
+                    border: "1px solid var(--hairline)",
+                    borderRadius: "var(--radius-input)",
+                    padding: "6px 10px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {starter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <p
           className="rounded-lg px-3 py-2"
-          style={{ fontSize: 12, lineHeight: 1.55, color: "var(--fg-2)", background: "var(--accent-wash)" }}
+          style={{ fontSize: 13, lineHeight: 1.55, color: "var(--fg-2)", background: "var(--accent-wash)" }}
         >
           {POST_TEXT_REMINDER}
         </p>
@@ -460,10 +496,10 @@ export function ReleaseForm({
               />
             ) : null}
             <div className="min-w-0">
-              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
+              <p style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)" }}>
                 Your graphic is attached
               </p>
-              <p style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 2 }}>
+              <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 2 }}>
                 It goes with this submission automatically. Adding photos or
                 videos below is optional.
               </p>
@@ -477,15 +513,15 @@ export function ReleaseForm({
           className="p-3 space-y-2"
           style={{ background: "var(--accent-wash)", border: "1px solid var(--hairline)", borderRadius: "var(--radius-input)" }}
         >
-          <p style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)" }}>Photo reminders:</p>
+          <p style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>Photo reminders:</p>
           <ul className="space-y-1.5" style={{ paddingLeft: 18, listStyle: "disc" }}>
             {PHOTO_REMINDERS.map((rule) => (
-              <li key={rule} style={{ fontSize: 12, lineHeight: 1.55, color: "var(--fg-2)" }}>
+              <li key={rule} style={{ fontSize: 13, lineHeight: 1.55, color: "var(--fg-2)" }}>
                 {rule}
               </li>
             ))}
           </ul>
-          <p style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.55, color: "var(--solar)" }}>
+          <p style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.55, color: "var(--solar)" }}>
             {PHOTO_REMINDERS_CLOSING}
           </p>
           {/* Reminder 6 asks for consent on file; this is where to get one. */}
@@ -494,7 +530,7 @@ export function ReleaseForm({
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1"
-            style={{ fontSize: 12, color: "var(--solar)", textDecoration: "underline", textUnderlineOffset: 3 }}
+            style={{ fontSize: 13, color: "var(--solar)", textDecoration: "underline", textUnderlineOffset: 3 }}
           >
             Media release forms
             <ExternalLink style={{ width: 11, height: 11 }} />
@@ -516,15 +552,15 @@ export function ReleaseForm({
           }}
         >
           <input {...getInputProps()} />
-          <p style={{ fontSize: 13, fontWeight: 500, color: "var(--fg-1)" }}>
+          <p style={{ fontSize: 15, fontWeight: 500, color: "var(--fg-1)" }}>
             {isDragActive ? "Drop files to add them" : "Click or drag files here"}
           </p>
-          <p style={{ fontSize: 11, color: "var(--fg-4)" }}>
+          <p style={{ fontSize: 12, color: "var(--fg-4)" }}>
             Photos, videos, PDFs, Word, PowerPoint · up to {MAX_UPLOAD_FILES} files · Max file size: {MAX_UPLOAD_LABEL}
           </p>
         </div>
         {dropError && (
-          <p role="alert" style={{ fontSize: 12, color: "var(--danger)" }}>{dropError}</p>
+          <p role="alert" style={{ fontSize: 13, color: "var(--danger)" }}>{dropError}</p>
         )}
         {assets.length > 0 && (
           <ul className="space-y-2">
@@ -545,8 +581,8 @@ export function ReleaseForm({
                   <AssetGlyph mimeType={a.mimeType} />
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate" style={{ fontSize: 13, color: "var(--ink)" }}>{a.name}</span>
-                  <span className="block" style={{ fontSize: 11, color: "var(--fg-3)" }}>
+                  <span className="block truncate" style={{ fontSize: 15, color: "var(--ink)" }}>{a.name}</span>
+                  <span className="block" style={{ fontSize: 12, color: "var(--fg-3)" }}>
                     {fmtSize(a.size)}
                     {a.progress === "uploading" && " · uploading…"}
                     {a.progress === "done" && " · uploaded"}
@@ -634,7 +670,7 @@ export function ReleaseForm({
             />
           </QuestionPanel>
 
-          <p className="px-1" style={{ fontSize: 12, lineHeight: 1.55, color: "var(--fg-3)" }}>
+          <p className="px-1" style={{ fontSize: 13, lineHeight: 1.55, color: "var(--fg-3)" }}>
             {SCHEDULE_NOTE}
           </p>
         </>
@@ -644,10 +680,10 @@ export function ReleaseForm({
           reason v3 needs no consent gates. */}
       <div className="p-4 space-y-2.5" style={panel}>
         <p className="sp-panel-title">Social Media Submission Agreement</p>
-        <p style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.55, color: "var(--ink)" }}>
+        <p style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.55, color: "var(--ink)" }}>
           {SUBMISSION_AGREEMENT.lead}
         </p>
-        <p style={{ fontSize: 13, lineHeight: 1.55, color: "var(--fg-1)" }}>
+        <p style={{ fontSize: 15, lineHeight: 1.55, color: "var(--fg-1)" }}>
           {SUBMISSION_AGREEMENT.preamble}
         </p>
         <ul className="space-y-2">
@@ -657,7 +693,7 @@ export function ReleaseForm({
                 aria-hidden
                 style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2, color: "var(--mint)" }}
               />
-              <span style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--fg-2)" }}>{item}</span>
+              <span style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--fg-2)" }}>{item}</span>
             </li>
           ))}
         </ul>
@@ -673,7 +709,7 @@ export function ReleaseForm({
       >
         <label
           className="flex items-center gap-2.5"
-          style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", cursor: "pointer" }}
+          style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)", cursor: "pointer" }}
         >
           <Checkbox
             checked={form.acknowledged === true}

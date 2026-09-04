@@ -3,6 +3,7 @@ import { CheckCircle2, Files } from "lucide-react";
 import type { BrandKit, FacilitySnapshot, FieldValues, TemplateSchema } from "@/lib/types";
 import type { ReleaseForm } from "@/lib/releaseForm";
 import { SchemaRenderer } from "../SchemaRenderer";
+import { BrandLogo } from "../BrandLogo";
 import type { PendingAsset } from "./ReleaseForm";
 
 /** Confirmation state after a facility submission: what was sent, a
@@ -45,6 +46,11 @@ export function PublicSubmitted({
     // Light-on-navy: the confirmation sits on the brand wash like every
     // other public screen.
     <div className="max-w-md mx-auto px-5 py-10 text-center space-y-5">
+      {/* Reverse art — this screen sits on the navy wash, in its upper third
+          where contrast is strongest. */}
+      <div className="flex justify-center">
+        <BrandLogo height={44} variant="reverse" />
+      </div>
       <CheckCircle2 style={{ width: 40, height: 40, color: "var(--mint)", margin: "0 auto" }} />
       <div className="space-y-2">
         <h1
@@ -53,14 +59,14 @@ export function PublicSubmitted({
             fontWeight: 700,
             textTransform: "uppercase",
             letterSpacing: "0.08em",
-            fontSize: 20,
+            fontSize: 22,
             color: "#ffffff",
           }}
         >
           Sent for review
         </h1>
-        <p style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.85)" }}>
-          The Signature social team has your {template ? "graphic" : "content"} from {facilityName}.
+        <p style={{ fontSize: 16, lineHeight: 1.6, color: "rgba(255,255,255,0.85)" }}>
+          The Agency has your {template ? "graphic" : "content"} from {facilityName}.
           {requested ? <> <b style={{ color: "#ffffff", fontWeight: 600 }}>{requested}</b></> : null}
           {" "}They&rsquo;ll review it and post it on the brand&rsquo;s channels — no
           further action needed on your end.
@@ -92,7 +98,7 @@ export function PublicSubmitted({
       ) : assets.length > 0 ? (
         <p
           className="mx-auto flex items-center justify-center gap-2 rounded-xl px-4 py-3"
-          style={{ maxWidth: 280, border: "1px solid var(--hairline)", background: "var(--lift)", fontSize: 13, color: "var(--fg-2)" }}
+          style={{ maxWidth: 280, border: "1px solid var(--hairline)", background: "var(--lift)", fontSize: 15, color: "var(--fg-2)" }}
         >
           <Files style={{ width: 15, height: 15, color: "var(--fg-3)" }} />
           {assets.length} file{assets.length === 1 ? "" : "s"} attached

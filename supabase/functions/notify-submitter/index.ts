@@ -7,6 +7,7 @@
 
 import { handleOptions, json, requireRole, serviceClient } from "../_shared/figma.ts";
 import { sendNotification } from "../_shared/email.ts";
+import { AGENCY_NAME } from "../_shared/releaseForm.ts";
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -46,18 +47,11 @@ Deno.serve(async (req) => {
 
   if (!s.submitter_email) return json({ ok: true, sent: false });
 
-  const { data: company } = await db
-    .from("companies")
-    .select("name")
-    .eq("id", s.company_id)
-    .maybeSingle();
-  const companyName = (company as { name: string } | null)?.name ?? "the marketing team";
-
   const html = `
 <div style="font-family: Arial, Helvetica, sans-serif; max-width: 520px; margin: 0 auto; color: #1a1a1a;">
   <h1 style="font-size: 17px; color: #003B71;">About your "${esc(s.template_name)}" graphic</h1>
   <p style="font-size: 14px; line-height: 1.6;">
-    Hi ${esc(s.submitter_name)} — the ${esc(companyName)} social team reviewed the
+    Hi ${esc(s.submitter_name)} — ${AGENCY_NAME} reviewed the
     graphic you sent from ${esc(s.facility_name)} and can't post it as-is:
   </p>
   <p style="font-size: 14px; line-height: 1.6; background: #f5f6f8; padding: 12px 14px; border-radius: 6px; white-space: pre-wrap;">${esc(reason)}</p>

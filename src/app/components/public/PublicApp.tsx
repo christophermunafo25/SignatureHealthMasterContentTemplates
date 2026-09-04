@@ -179,17 +179,19 @@ export function PublicShell({
 }) {
   return (
     <div className="sp-public min-h-screen flex flex-col" style={{ background: pageBackground ?? BRAND_PAGE_GRADIENT }}>
+      {/* Figma "Public Chooser — Current State" header: 113px tall, 38px side
+          padding, 71px logo, 32px admin button vertically centered. */}
       <header
-        className="flex items-center justify-between gap-3 px-5 sm:px-8"
-        style={{ height: 64, background: "var(--lift)", borderBottom: "1px solid var(--hairline)" }}
+        className="flex items-center justify-between gap-3 px-5 sm:px-[38px]"
+        style={{ height: 113, background: "var(--lift)", borderBottom: "1px solid var(--hairline)" }}
       >
         {/* Brand Studio's uploaded logo wins (that is the multi-tenant path);
             the bundled lockup is the fallback. The header is white, so this
             is the NAVY variant even though the gradient starts right below. */}
         {data?.logoUrl ? (
-          <img src={data.logoUrl} alt={data.company.name} style={{ height: 36, width: "auto" }} />
+          <img src={data.logoUrl} alt={data.company.name} style={{ height: 71, width: "auto" }} />
         ) : (
-          <BrandLogo height={36} variant="navy" />
+          <BrandLogo height={71} variant="navy" />
         )}
         {adminLink && <AdminSignInLink variant="button" />}
       </header>

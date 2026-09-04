@@ -1,5 +1,12 @@
 -- "We're Hiring!" recruiting template: ONE-TIME PROVISIONING SCRIPT.
 --
+-- *** RETIRED (client feedback, round 1, September 2026). ***
+-- The client's recruiting team owns hiring posts, so this template was
+-- unpublished via were-hiring-template-retire.sql. Do NOT re-run this script
+-- without confirming with the client first: if the draft row still exists the
+-- run is a harmless no-op, but if the row was ever deleted this would recreate
+-- the template as 'published' and put it straight back in the facility library.
+--
 -- This is TENANT DATA, so it deliberately does NOT live in supabase/migrations/
 -- (same rule as signature-facilities-provision.sql). Run once against the
 -- Signature project, in the SQL editor or via psql.

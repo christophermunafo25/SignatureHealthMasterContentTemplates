@@ -10,7 +10,7 @@
 // at the START of the notification phase, not on launch day.
 
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
-import type { ReleaseForm } from "./releaseForm.ts";
+import { AGENCY_NAME, type ReleaseForm } from "./releaseForm.ts";
 
 const BRAND_NAVY = "#003B71";
 const BRAND_CREAM = "#F1E4B2";
@@ -125,7 +125,7 @@ export async function sendSubmissionNotification(
   const companyName = (company as { name: string } | null)?.name ?? "your team";
 
   // The preview lives in the PRIVATE submissions bucket — email clients need
-  // a long-lived signed URL (the social team may open this days later).
+  // a long-lived signed URL (The Agency may open this days later).
   let previewUrl: string | null = null;
   if (p.previewPath) {
     const { data } = await db.storage
@@ -232,7 +232,7 @@ export async function sendSubmissionNotification(
   <h1 style="font-size: 17px; color: ${BRAND_NAVY};">Thanks, ${esc(p.submitterName)} — your ${p.kind === "direct" ? "content" : "graphic"} is in review</h1>
   <p style="font-size: 14px; line-height: 1.6;">
     Your ${what} from ${esc(p.facilityName)} was sent to the
-    ${esc(companyName)} social team. They'll review it and post it on the brand's
+    ${AGENCY_NAME}. They'll review it and post it on the brand's
     channels — no further action needed on your end.
   </p>
   ${requestedLine}

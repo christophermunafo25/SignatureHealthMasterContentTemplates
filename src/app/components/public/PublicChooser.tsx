@@ -30,7 +30,7 @@ export function PublicChooser({ token }: { token: string }) {
       qualifier: "I already have the photo or video",
       title: "Submit content",
       body:
-        "Upload what you shot, write the caption you'd like, and send it to the social team.",
+        "Upload what you shot, write the caption you'd like, and send it to The Agency.",
       steps: ["Upload", "Answer the form", "Sent for review"],
       bestFor: "Event photos, resident spotlights, anything you shot yourself.",
       cta: "Upload your content",
@@ -95,7 +95,7 @@ export function PublicChooser({ token }: { token: string }) {
           Send us something to post
         </h1>
         <p style={{ fontFamily: "var(--font-body)", color: "rgba(255,255,255,0.85)", fontSize: 14, maxWidth: 440, marginBottom: 24 }}>
-          The Signature social team reviews everything before it goes live on the
+          The Agency reviews everything before it goes live on the
           brand&rsquo;s channels.
         </p>
 

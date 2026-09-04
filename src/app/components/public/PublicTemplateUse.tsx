@@ -299,7 +299,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
           rendererRef={rendererRef}
           instrument={false}
           allowCaptionCopy={false}
-          previewHint="What the social team receives"
+          previewHint="What The Agency receives"
           facility={facilitySnapshot}
           actions={
             <>
@@ -315,8 +315,8 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
                 Submit for review
               </button>
               <p className="text-center" style={{ fontSize: 11, color: "var(--fg-4)" }}>
-                A few last questions come next, then the Signature social
-                team reviews and posts it.
+                A few last questions come next, then The Agency reviews
+                and posts it.
               </p>
               {blockers.length > 0 && (
                 <p

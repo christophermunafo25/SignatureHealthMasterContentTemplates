@@ -130,7 +130,7 @@ export function ReleaseFormModal(props: ReleaseFormModalProps) {
               A few last questions
             </DialogTitle>
             <DialogDescription style={{ fontSize: 12.5, color: "var(--fg-3)", marginTop: 2 }}>
-              The social team needs these answers before anything is posted.
+              The Agency needs these answers before anything is posted.
             </DialogDescription>
           </div>
           {/* Radix's built-in close X sits top-right; onOpenChange guards it

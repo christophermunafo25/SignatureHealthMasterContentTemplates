@@ -182,8 +182,8 @@ export function PublicDirectSubmit({ token }: { token: string }) {
             Submit content
           </h1>
           <p style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 6, maxWidth: 460 }}>
-            Send us your photos, videos, and story details, and the Signature
-            social team takes it from there.
+            Send us your photos, videos, and story details, and The Agency
+            takes it from there.
           </p>
         </div>
 
@@ -224,7 +224,7 @@ export function PublicDirectSubmit({ token }: { token: string }) {
             {uploading ? uploadStatus ?? "Uploading…" : submitting ? "Sending…" : "Submit for review"}
           </button>
           <p className="text-center" style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>
-            The Signature social team reviews and posts submissions.
+            The Agency reviews and posts submissions.
           </p>
           {submitError && (
             <p

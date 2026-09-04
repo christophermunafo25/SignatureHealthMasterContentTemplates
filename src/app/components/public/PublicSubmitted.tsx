@@ -60,7 +60,7 @@ export function PublicSubmitted({
           Sent for review
         </h1>
         <p style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.85)" }}>
-          The Signature social team has your {template ? "graphic" : "content"} from {facilityName}.
+          The Agency has your {template ? "graphic" : "content"} from {facilityName}.
           {requested ? <> <b style={{ color: "#ffffff", fontWeight: 600 }}>{requested}</b></> : null}
           {" "}They&rsquo;ll review it and post it on the brand&rsquo;s channels — no
           further action needed on your end.

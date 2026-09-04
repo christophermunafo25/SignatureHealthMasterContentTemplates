@@ -60,7 +60,7 @@ export interface ReleaseForm {
 /** The three-paragraph intro shown above the form on both intake paths. */
 export const SUBMISSION_INTRO: { lead: string; beforeSubmitting: string; timing: string } = {
   lead:
-    "Have something great happening at your facility? Send us your photos, videos, and story details, and our team will help share them on social media.",
+    "Have something great happening at your facility? Send us your photos, videos, and story details, and The Agency will help share them on social media.",
   // Rendered with "Before submitting:" bold and inline.
   beforeSubmitting:
     "Please select your best photos rather than uploading multiple similar images. Photos and videos should be clear, appropriate for social media, and follow the submission requirements outlined in this form.",
@@ -99,11 +99,15 @@ export const SUBMISSION_AGREEMENT: { lead: string; preamble: string; items: stri
 
 /** Shown under the Q5a/Q5b pair. */
 export const SCHEDULE_NOTE =
-  "Requested dates and times are not guaranteed. The social media team will make every effort to accommodate time-sensitive requests.";
+  "Requested dates and times are not guaranteed. The Agency will make every effort to accommodate time-sensitive requests.";
 
 /** Q3 — the callout below the textarea. */
 export const POST_TEXT_REMINDER =
-  "Helpful reminder: Please use complete sentences and normal capitalization. Our team may make minor edits for grammar, clarity, length, formatting, and social media style.";
+  "Helpful reminder: Please use complete sentences and normal capitalization. The Agency may make minor edits for grammar, clarity, length, formatting, and social media style.";
+
+/** What facilities call the central social media team. Every facing surface
+ * reads from here — never hardcode the name in a component. */
+export const AGENCY_NAME = "The Agency";
 
 export const AGENCY_EMAIL = "theagency@SignaturehealthcareLLC.com";
 

@@ -62,7 +62,7 @@ export function PublicPortal({ token }: { token: string }) {
         </h1>
         <p style={{ fontFamily: "var(--font-body)", color: "rgba(255,255,255,0.85)", fontSize: 14, maxWidth: 420, marginBottom: 18 }}>
           Pick a template and fill in the details. You&rsquo;ll answer the release
-          questions at the end, then it goes to the Signature social team to post.
+          questions at the end, then it goes to The Agency to post.
         </p>
         {templates.length > 6 && (
           <div className="relative max-w-md">

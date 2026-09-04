@@ -335,7 +335,7 @@ export function ReleaseForm({
           <input
             id="release-name"
             className="sp-input"
-            placeholder="So the social team knows who sent it"
+            placeholder="So The Agency knows who sent it"
             value={submitterName}
             onChange={(e) => onIdentityChange({ submitterName: e.target.value })}
             autoComplete="name"

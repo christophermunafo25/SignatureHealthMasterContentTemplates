@@ -69,7 +69,7 @@ export function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-/** The social team's working queue, now the LIST view behind the Board /
+/** The Agency's working queue, now the LIST view behind the Board /
  * List toggle: stat strip, status tabs, query-side filters, bulk actions,
  * and the J/K/Enter/A/D keyboard flow the board can't replicate. */
 export function SubmissionQueue({ onSwitchView }: { onSwitchView(): void }) {

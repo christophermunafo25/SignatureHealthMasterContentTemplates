@@ -179,18 +179,19 @@ export function PublicShell({
 }) {
   return (
     <div className="sp-public min-h-screen flex flex-col" style={{ background: pageBackground ?? BRAND_PAGE_GRADIENT }}>
-      {/* Figma "Public Chooser — Current State" header: 113px tall, 38px side
-          padding, 71px logo, 32px admin button vertically centered. */}
+      {/* Figma "Public Chooser — Current State" header, scaled up at CJ's
+          request: 128px tall (frame: 113), 38px side padding, 92px logo
+          (frame: 71), 32px admin button vertically centered. */}
       <header
         className="flex items-center justify-between gap-3 px-5 sm:px-[38px]"
-        style={{ height: 113, background: "var(--lift)", borderBottom: "1px solid var(--hairline)" }}
+        style={{ height: 128, background: "var(--lift)", borderBottom: "1px solid var(--hairline)" }}
       >
         {/* Always the bundled official lockup — CJ's call (2026-09-04): the
             portal chrome does not follow Brand Studio's primary logo. Brand
             Studio assets still feed the graphics themselves. The header is
             white, so this is the NAVY variant even though the gradient starts
             right below. */}
-        <BrandLogo height={71} variant="navy" />
+        <BrandLogo height={92} variant="navy" />
         {adminLink && <AdminSignInLink variant="button" />}
       </header>
       {data?.tokenStale && (

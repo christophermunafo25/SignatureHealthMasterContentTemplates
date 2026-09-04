@@ -6,6 +6,7 @@ import {
   AGENCY_EMAIL,
   AGREEMENT_CONFIRM_LABEL,
   ALLOWED_UPLOAD_MIME,
+  CAPTION_STARTERS,
   MAX_UPLOAD_FILES,
   MAX_UPLOAD_LABEL,
   MEDIA_RELEASE_FORMS_URL,
@@ -419,6 +420,41 @@ export function ReleaseForm({
           aria-label={Q.postText.label}
           style={{ resize: "vertical" }}
         />
+        {/* Caption starters — scaffolding for the blank-box moment. Once
+            they're actually writing (~40 chars), the chips are noise. */}
+        {(form.postText ?? "").length <= 40 && (
+          <div className="space-y-1.5">
+            <p style={{ fontSize: 12, color: "var(--fg-3)" }}>Not sure where to start? Pick one and edit it.</p>
+            <div className="flex flex-wrap gap-1.5">
+              {CAPTION_STARTERS.map((starter) => (
+                <button
+                  key={starter.label}
+                  type="button"
+                  onClick={() => {
+                    const current = form.postText ?? "";
+                    const isStarter = CAPTION_STARTERS.some((s) => s.text === current);
+                    if (current.trim() && !isStarter && !window.confirm("Replace what you've written?")) return;
+                    onChange({ postText: starter.text });
+                  }}
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 10.5,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    color: "var(--fg-2)",
+                    background: "var(--lift)",
+                    border: "1px solid var(--hairline)",
+                    borderRadius: "var(--radius-input)",
+                    padding: "6px 10px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {starter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <p
           className="rounded-lg px-3 py-2"
           style={{ fontSize: 12, lineHeight: 1.55, color: "var(--fg-2)", background: "var(--accent-wash)" }}

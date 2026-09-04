@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CAPTION_STARTERS,
   RELEASE_FORM_VERSION,
   isBlocked,
   platformsForChoice,
@@ -86,6 +87,17 @@ describe("Q3 — postText", () => {
     expect(fieldsBlocking(valid({ postText: "Our CEO and CNO visited the SNF today." }))).toEqual(
       [],
     );
+  });
+
+  it("accepts every caption starter as-is", () => {
+    // The form suggests these itself, so a starter that trips the length or
+    // all-caps rule would have the form rejecting its own suggestion.
+    expect(CAPTION_STARTERS.length).toBeGreaterThan(0);
+    for (const starter of CAPTION_STARTERS) {
+      expect(fieldsBlocking(valid({ postText: starter.text })), starter.label).not.toContain(
+        "postText",
+      );
+    }
   });
 });
 

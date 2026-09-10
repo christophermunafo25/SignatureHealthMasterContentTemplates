@@ -43,6 +43,9 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
 
   // Release-form modal state.
   const [modalOpen, setModalOpen] = useState(false);
+  // True while openModal renders the preview — the slow-connection guard in
+  // renderSchemaBlob can hold it for several seconds.
+  const [preparing, setPreparing] = useState(false);
   const [form, setForm] = useState<Partial<ReleaseFormDoc>>(() => emptyReleaseForm());
   const [extraAssets, setExtraAssets] = useState<PendingAsset[]>([]);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
@@ -119,8 +122,9 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
   const canOpen = blockers.length === 0;
 
   const openModal = async () => {
-    if (!canOpen || !rendererRef.current) return;
+    if (!canOpen || preparing || !rendererRef.current) return;
     setSubmitError(null);
+    setPreparing(true);
     // Render the PNG ONCE when the modal opens: the modal shows exactly what
     // will be sent, and the blob is reused at submit time. Capped at 8s — a
     // hung render (e.g. a blocked font fetch) must never wall off the
@@ -134,6 +138,8 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
       if (!blob) console.warn("Preview render timed out; submitting without one");
     } catch (e) {
       console.warn("Preview render failed; submitting without one", e);
+    } finally {
+      setPreparing(false);
     }
     setPreviewBlob(blob);
     setPreviewObjectUrl((prev) => {
@@ -307,13 +313,13 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
               <button
                 ref={submitButtonRef}
                 onClick={() => void openModal()}
-                disabled={!canOpen}
+                disabled={!canOpen || preparing}
                 aria-describedby={blockers.length > 0 ? "submit-blocked-reason" : undefined}
                 className="sp-btn sp-btn-primary w-full"
                 style={{ padding: "11px 14px" }}
               >
                 <Send style={{ width: 14, height: 14 }} />
-                Submit for review
+                {preparing ? "Preparing…" : "Submit for review"}
               </button>
               <p className="text-center" style={{ fontSize: 12, color: "var(--fg-4)" }}>
                 A few last questions come next, then The Agency reviews

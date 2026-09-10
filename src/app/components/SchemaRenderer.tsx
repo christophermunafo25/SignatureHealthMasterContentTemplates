@@ -137,6 +137,7 @@ export const SchemaRenderer = forwardRef<SchemaRendererHandle, SchemaRendererPro
               <img
                 src={backgroundDataUrl}
                 alt=""
+                data-schema-background=""
                 style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
               />
             )}

@@ -89,8 +89,6 @@ function resolveLocalCompany(token: string): (Company & { id: string }) | null {
   return byPrev;
 }
 
-const isFillable = (t: TemplateSchema) => t.fields.some((f) => !f.static);
-
 async function fetchLocal(
   token: string,
   opts?: { templateId?: string; facilityId?: string },
@@ -116,7 +114,7 @@ async function fetchLocal(
   const logo = kit?.primaryLogoAssetId ? assets.find((a) => a.id === kit.primaryLogoAssetId) : null;
 
   const templates = (db.templates as TemplateSchema[]).filter(
-    (t) => t.companyId === company.id && t.status === "published" && isFillable(t),
+    (t) => t.companyId === company.id && t.status === "published",
   );
 
   const base: PublicPortalData = {

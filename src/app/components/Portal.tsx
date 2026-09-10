@@ -5,7 +5,7 @@ import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "../router";
 import { ErrorState } from "./ErrorState";
-import { TemplateThumbnail } from "./TemplateThumbnail";
+import { TemplateThumbnail, TemplateThumbnailMat } from "./TemplateThumbnail";
 
 /** Member-facing, company-scoped searchable template grid. Signature
  * platform chrome: signature warm mesh hero, lift cards on hairlines,
@@ -116,11 +116,10 @@ export function Portal() {
                   onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "var(--shadow-e3)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "var(--shadow-e1)"; }}
                 >
-                  <div
-                    className="w-full overflow-hidden"
-                    style={{ aspectRatio: `${t.canvasWidth} / ${t.canvasHeight}`, background: "var(--surface-sunken)" }}
-                  >
-                    <TemplateThumbnail template={t} />
+                  <div className="w-full" style={{ padding: 8 }}>
+                    <TemplateThumbnailMat template={t}>
+                      <TemplateThumbnail template={t} />
+                    </TemplateThumbnailMat>
                   </div>
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-3 mb-1.5">

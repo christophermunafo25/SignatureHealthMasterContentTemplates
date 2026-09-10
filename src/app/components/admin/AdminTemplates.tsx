@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "../../router";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ErrorState } from "../ErrorState";
-import { TemplateThumbnail } from "../TemplateThumbnail";
+import { TemplateThumbnail, TemplateThumbnailMat } from "../TemplateThumbnail";
 
 type StatusFilter = "all" | "published" | "draft";
 type SortKey = "recent" | "name" | "downloads";
@@ -241,10 +241,12 @@ export function AdminTemplates() {
             <div key={t.id} className="sp-card overflow-hidden flex flex-col" style={{ borderRadius: "var(--radius-card-sm)" }}>
               <button
                 onClick={() => navigate({ name: "builder", templateId: t.id })}
-                className="w-full overflow-hidden"
-                style={{ aspectRatio: `${t.canvasWidth} / ${t.canvasHeight}`, background: "var(--surface-sunken)" }}
+                className="w-full"
+                style={{ padding: 8 }}
               >
-                <TemplateThumbnail template={t} />
+                <TemplateThumbnailMat template={t}>
+                  <TemplateThumbnail template={t} />
+                </TemplateThumbnailMat>
               </button>
               <div className="p-3.5 flex items-center gap-2">
                 <div className="flex-1 min-w-0">

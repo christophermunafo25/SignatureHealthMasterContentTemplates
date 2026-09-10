@@ -9,6 +9,8 @@
 //   → with templateId:    { company, facilities, brandKit, logoUrl,
 //                           brandAssets, template, tokenStale }
 // facilityId (optional, validated) attributes the open usage event.
+// Every published template is served — including ones with no form fields
+// (ready-to-post graphics). Published means visible.
 // Unknown / disabled / expired tokens → 404, never 403.
 
 import { handleOptions, json, serviceClient } from "../_shared/figma.ts";
@@ -22,10 +24,6 @@ import { facilityLogoUrl, loadBrandKit, loadPublishedTemplates, toTemplate } fro
 
 // deno-lint-ignore no-explicit-any
 type Row = Record<string, any>;
-
-/** Published AND usable: a template whose fields are all static presents a
- * form with nothing to fill. */
-const isFillable = (t: Row) => (t.fields ?? []).some((f: Row) => !f.static);
 
 Deno.serve(async (req) => {
   const options = handleOptions(req);
@@ -86,7 +84,6 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!row) return json({ error: "Template not found" }, 404);
     const template = toTemplate(row);
-    if (!isFillable(template)) return json({ error: "Template not found" }, 404);
     // Anonymous open event, attributed to the facility when known.
     void db
       .from("usage_events")
@@ -101,6 +98,6 @@ Deno.serve(async (req) => {
     return json({ ...base, template });
   }
 
-  const templates = (await loadPublishedTemplates(db, portal.companyId)).filter(isFillable);
+  const templates = await loadPublishedTemplates(db, portal.companyId);
   return json({ ...base, templates });
 });

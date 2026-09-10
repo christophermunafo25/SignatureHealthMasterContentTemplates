@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isFormField } from "./fields";
+import { hasFormFields, isFormField } from "./fields";
 import type { TemplateField, FieldType } from "./types";
 
 const make = (type: FieldType, patch: Partial<TemplateField> = {}): TemplateField => ({
@@ -37,5 +37,30 @@ describe("isFormField", () => {
   it("excludes facility_logo by TYPE, without relying on the static flag", () => {
     expect(isFormField(make("facility_logo"))).toBe(false);
     expect(isFormField(make("facility_logo", { static: true }))).toBe(false);
+  });
+});
+
+describe("hasFormFields", () => {
+  it("is false for an empty fields array", () => {
+    expect(hasFormFields({ fields: [] })).toBe(false);
+  });
+
+  it("is false when every element is static or a shape", () => {
+    expect(
+      hasFormFields({
+        fields: [
+          make("text", { static: true, staticValue: "Fixed" }),
+          make("shape", { static: true }),
+        ],
+      }),
+    ).toBe(false);
+  });
+
+  it("is false when the only element is a facility_logo", () => {
+    expect(hasFormFields({ fields: [make("facility_logo")] })).toBe(false);
+  });
+
+  it("is true with one text field", () => {
+    expect(hasFormFields({ fields: [make("text")] })).toBe(true);
   });
 });

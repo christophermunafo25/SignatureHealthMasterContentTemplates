@@ -61,6 +61,11 @@ describe("mergeCaption existing behavior (unchanged)", () => {
     expect(mergeCaption(tpl, {})).toBe("Hello ____ and ____");
   });
 
+  it("returns a tagless caption unchanged (ready-to-post templates)", () => {
+    const tpl = template([], "Happy Halloween from all of us! #LiveWithPurpose");
+    expect(mergeCaption(tpl, {})).toBe("Happy Halloween from all of us! #LiveWithPurpose");
+  });
+
   it("keeps image tags raw and static text fixed", () => {
     const tpl = template(
       [

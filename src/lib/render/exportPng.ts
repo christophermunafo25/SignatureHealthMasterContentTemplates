@@ -4,6 +4,29 @@ import { buildExportFontEmbedCss, ensureSchemaFontsLoaded } from "./fonts";
 
 export type ExportOutcome = "downloaded" | "shared" | "canceled";
 
+/** Wait until the schema's background <img> is mounted and decoded, so the
+ * snapshot can never paint the white base fill where the background belongs.
+ * useDataUrl mounts the img only after its fetch resolves — on a slow
+ * connection an immediate export would race it. 6s sits inside the 8s
+ * preview cap in the public fill page, so its submit-without-preview
+ * fallback still works when the background truly never arrives. */
+async function waitForBackgroundImage(node: HTMLElement): Promise<void> {
+  const deadline = Date.now() + 6000;
+  for (;;) {
+    const img = node.querySelector<HTMLImageElement>("img[data-schema-background]");
+    if (img) {
+      try {
+        await img.decode();
+        return;
+      } catch {
+        // Not decodable yet (or a failed load) — keep polling until the deadline.
+      }
+    }
+    if (Date.now() > deadline) throw new Error("Template background did not load");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
 /** Render a mounted schema node to PNG bytes. No side effects.
  *
  * Ported from the reference Generator's handleDownload:
@@ -20,6 +43,7 @@ export async function renderSchemaBlob(
   brandKit?: BrandKit | null,
 ): Promise<Blob> {
   await ensureSchemaFontsLoaded(schema, brandKit);
+  if (schema.backgroundUrl) await waitForBackgroundImage(node);
   const fontEmbedCss = await buildExportFontEmbedCss(schema, brandKit);
   const options = {
     width: schema.canvasWidth,

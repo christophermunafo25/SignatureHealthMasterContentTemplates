@@ -115,6 +115,34 @@ Identity:
   a fresh unique key. Field rows are replaced wholesale on each builder save,
   and `fieldKey` is what keeps captions valid across edits.
 
+## Ready-to-post templates
+
+A template is **ready to post** when `template.fields.some(isFormField)` is
+false (`hasFormFields` in `src/lib/fields.ts`) — no member-editable inputs at
+all: an empty fields array, or only static elements, shapes, and
+`facility_logo` elements. The state is derived from the fields, never stored.
+
+**Published means visible.** The public portal serves every published
+template — there is no fillable filter (removed; it previously hid no-field
+templates and 404'd their direct links). Publishing a no-field template puts
+a finished graphic in the facility library; the audit script
+`scripts/audit-formless-published-templates.sql` lists which published
+templates that applies to.
+
+On the fill page, the field steps are replaced by a single "Ready to post"
+panel (`readyToPostNote` on `TemplateFillLayout`) telling the facility the
+graphic is finished: check the caption, then submit. Library cards append
+"Ready to post" to the category eyebrow.
+
+Ship these templates WITH a `captionTemplate` (no merge tags needed — a
+tagless caption merges through unchanged): the caption pre-fills Q3 of the
+release form, and Q3 requires 10+ characters, so a template without one
+hands the facility an empty required field.
+
+Authoring is by SQL script for now (see
+`scripts/halloween-templates-provision.sql` for the pattern) — the builder
+still requires at least one form field to publish.
+
 ## Rendering contract
 
 `SchemaRenderer` renders any schema into a live-scaled canvas

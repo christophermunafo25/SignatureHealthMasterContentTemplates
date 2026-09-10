@@ -1,4 +1,4 @@
-import type { TemplateField } from "./types";
+import type { TemplateField, TemplateSchema } from "./types";
 
 /** True when the member form should render an input for this element.
  *
@@ -8,4 +8,10 @@ import type { TemplateField } from "./types";
  * keeps meaning exactly one thing. */
 export function isFormField(field: TemplateField): boolean {
   return !field.static && field.type !== "facility_logo";
+}
+
+/** True when the template presents at least one input to fill. False means
+ * the graphic is ready to post — derived, never stored. */
+export function hasFormFields(t: Pick<TemplateSchema, "fields">): boolean {
+  return t.fields.some(isFormField);
 }

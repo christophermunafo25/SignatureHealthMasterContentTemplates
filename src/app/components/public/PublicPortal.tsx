@@ -111,19 +111,33 @@ export function PublicPortal({ token }: { token: string }) {
                   boxShadow: "var(--shadow-e1)",
                 }}
               >
-                {/* Inset thumbnail: a slim white mat around the artwork so the
-                    card reads as a framed graphic against the brand wash. */}
+                {/* Uniform preview mat: every card's preview area is the same
+                    square regardless of the template's canvas ratio — the
+                    artwork sits contained inside an ink mat, like a framed
+                    print, so mixed canvas sizes can't ragged the grid. */}
                 <div className="w-full" style={{ padding: 8 }}>
                   <div
-                    className="w-full overflow-hidden"
+                    className="w-full overflow-hidden flex items-center justify-center"
                     style={{
-                      aspectRatio: `${t.canvasWidth} / ${t.canvasHeight}`,
-                      background: "var(--surface-sunken)",
-                      border: "1px solid var(--hairline)",
+                      aspectRatio: "1 / 1",
+                      background: "var(--ink)",
                       borderRadius: 14,
+                      padding: 20,
                     }}
                   >
-                    <TemplateThumbnailBase template={t} brandKit={data.brandKit} />
+                    <div
+                      className="overflow-hidden"
+                      style={{
+                        aspectRatio: `${t.canvasWidth} / ${t.canvasHeight}`,
+                        // Contain: the long edge fills the mat, the short
+                        // edge letterboxes.
+                        ...(t.canvasWidth >= t.canvasHeight ? { width: "100%" } : { height: "100%" }),
+                        borderRadius: 10,
+                        boxShadow: "var(--shadow-e2)",
+                      }}
+                    >
+                      <TemplateThumbnailBase template={t} brandKit={data.brandKit} />
+                    </div>
                   </div>
                 </div>
                 <div className="p-4">

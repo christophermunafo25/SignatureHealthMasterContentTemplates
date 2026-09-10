@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import type { BrandKit, FacilitySnapshot, FieldValues, TemplateField, TemplateSchema } from "@/lib/types";
 import { mergeCaption } from "@/lib/caption";
-import { isFormField } from "@/lib/fields";
+import { hasFormFields, isFormField } from "@/lib/fields";
 import { resolveFieldStyle } from "@/lib/brand/resolveStyle";
 import { SchemaRenderer, type SchemaRendererHandle } from "./SchemaRenderer";
 import { FieldInput } from "./FieldInput";
@@ -52,6 +52,9 @@ export interface TemplateFillLayoutProps {
   /** Facility in context for facility_logo elements — forwarded to the
    * renderer and the caption merge. */
   facility?: FacilitySnapshot | null;
+  /** Body text of the panel shown in place of the field steps when the
+   * template has no form fields (a ready-to-post graphic). */
+  readyToPostNote?: React.ReactNode;
 }
 
 /** The shared body of every template-fill surface: field form + caption on
@@ -74,6 +77,7 @@ export function TemplateFillLayout({
   allowCaptionCopy = true,
   previewHint,
   facility,
+  readyToPostNote,
 }: TemplateFillLayoutProps) {
   const [copied, setCopied] = useState(false);
 
@@ -100,6 +104,15 @@ export function TemplateFillLayout({
             {template.description && (
               <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 4 }}>{template.description}</p>
             )}
+          </div>
+        )}
+
+        {!hasFormFields(template) && (
+          <div className="p-4 space-y-2.5" style={panel}>
+            <p className="sp-eyebrow">Ready to post</p>
+            <p style={{ fontSize: 15, color: "var(--fg-2)" }}>
+              {readyToPostNote ?? "This graphic has no fields to fill in."}
+            </p>
           </div>
         )}
 

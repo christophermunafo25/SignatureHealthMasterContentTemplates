@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Search } from "lucide-react";
+import { hasFormFields } from "@/lib/fields";
 import { HOME_REF } from "@/lib/publicClient";
 import { useRouter } from "../../router";
 import { TemplateThumbnailBase } from "../TemplateThumbnail";
@@ -90,11 +91,18 @@ export function PublicPortal({ token }: { token: string }) {
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filtered.map((t) => (
+            {filtered.map((t) => {
+              // A no-field template is a finished graphic — the card says so.
+              const eyebrow = hasFormFields(t)
+                ? t.category
+                : t.category
+                  ? `${t.category} · Ready to post`
+                  : "Ready to post";
+              return (
               <button
                 key={t.id}
                 onClick={() => navigate(templateRoute(token, t.id))}
-                aria-label={t.category ? `${t.name} — ${t.category}` : t.name}
+                aria-label={eyebrow ? `${t.name} — ${eyebrow}` : t.name}
                 className="group text-left overflow-hidden transition-all flex flex-col"
                 style={{
                   background: "var(--lift)",
@@ -121,7 +129,7 @@ export function PublicPortal({ token }: { token: string }) {
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      {t.category && <p className="sp-eyebrow mb-1">{t.category}</p>}
+                      {eyebrow && <p className="sp-eyebrow mb-1">{eyebrow}</p>}
                       <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, letterSpacing: "-0.01em", color: "var(--ink)" }}>
                         {t.name}
                       </h2>
@@ -138,7 +146,8 @@ export function PublicPortal({ token }: { token: string }) {
                   )}
                 </div>
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

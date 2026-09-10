@@ -263,6 +263,7 @@ function Loaded({ initial, onBack }: { initial: Submission; onBack(): void }) {
         rendererRef={rendererRef}
         instrument={false}
         facility={facility}
+        readyToPostNote="This graphic has no editable fields. Review the caption and the release form below."
         header={
           <div>
             <p className="sp-eyebrow">{sub.facilityName}</p>

@@ -4,6 +4,7 @@ import type { FieldValues } from "@/lib/types";
 import { mergeCaption } from "@/lib/caption";
 import { submitPublicContent, uploadPublicAsset } from "@/lib/publicClient";
 import {
+  AGENCY_NAME,
   RELEASE_FORM_VERSION,
   emptyReleaseForm,
   type ReleaseForm as ReleaseFormDoc,
@@ -300,6 +301,7 @@ export function PublicTemplateUse({ token, templateId }: { token: string; templa
           allowCaptionCopy={false}
           previewHint="What The Agency receives"
           facility={facilitySnapshot}
+          readyToPostNote={`This graphic is finished. Check the caption, then send it to ${AGENCY_NAME} for review.`}
           actions={
             <>
               <button

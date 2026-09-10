@@ -113,14 +113,14 @@ export function PublicPortal({ token }: { token: string }) {
               >
                 {/* Uniform preview mat: every card's preview area is the same
                     square regardless of the template's canvas ratio — the
-                    artwork sits contained inside an ink mat, like a framed
-                    print, so mixed canvas sizes can't ragged the grid. */}
+                    artwork sits contained inside a light grey mat, like a
+                    framed print, so mixed canvas sizes can't ragged the grid. */}
                 <div className="w-full" style={{ padding: 8 }}>
                   <div
                     className="w-full overflow-hidden flex items-center justify-center"
                     style={{
                       aspectRatio: "1 / 1",
-                      background: "var(--ink)",
+                      background: "var(--surface-sunken)",
                       borderRadius: 14,
                       padding: 20,
                     }}
@@ -133,6 +133,8 @@ export function PublicPortal({ token }: { token: string }) {
                         // edge letterboxes.
                         ...(t.canvasWidth >= t.canvasHeight ? { width: "100%" } : { height: "100%" }),
                         borderRadius: 10,
+                        // Light artwork needs an edge against the light mat.
+                        border: "1px solid var(--hairline)",
                         boxShadow: "var(--shadow-e2)",
                       }}
                     >

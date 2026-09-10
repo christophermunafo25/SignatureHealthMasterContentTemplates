@@ -105,7 +105,7 @@ begin
       background_storage_path, caption_template
     ) values (
       target_company, r.name, r.description, 'Holidays',
-      array['halloween','holiday','seasonal'], tpl_status,
+      array['halloween','holiday','seasonal'], tpl_status::template_status,
       940, 788, null,
       target_company::text || '/' || r.file, r.caption
     ) returning id into tpl;

@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import { hasFormFields } from "@/lib/fields";
 import { HOME_REF } from "@/lib/publicClient";
 import { useRouter } from "../../router";
-import { TemplateThumbnailBase } from "../TemplateThumbnail";
+import { TemplateThumbnailBase, TemplateThumbnailMat } from "../TemplateThumbnail";
 import { PublicError, PublicInactive, PublicLoading, PublicShell, portalRoute, templateRoute, usePublicPortal } from "./PublicApp";
 
 /** Anonymous facility library: the published template grid, open directly —
@@ -111,36 +111,10 @@ export function PublicPortal({ token }: { token: string }) {
                   boxShadow: "var(--shadow-e1)",
                 }}
               >
-                {/* Uniform preview mat: every card's preview area is the same
-                    square regardless of the template's canvas ratio — the
-                    artwork sits contained inside a light grey mat, like a
-                    framed print, so mixed canvas sizes can't ragged the grid. */}
                 <div className="w-full" style={{ padding: 8 }}>
-                  <div
-                    className="w-full overflow-hidden flex items-center justify-center"
-                    style={{
-                      aspectRatio: "1 / 1",
-                      background: "var(--surface-sunken)",
-                      borderRadius: 14,
-                      padding: 20,
-                    }}
-                  >
-                    <div
-                      className="overflow-hidden"
-                      style={{
-                        aspectRatio: `${t.canvasWidth} / ${t.canvasHeight}`,
-                        // Contain: the long edge fills the mat, the short
-                        // edge letterboxes.
-                        ...(t.canvasWidth >= t.canvasHeight ? { width: "100%" } : { height: "100%" }),
-                        borderRadius: 10,
-                        // Light artwork needs an edge against the light mat.
-                        border: "1px solid var(--hairline)",
-                        boxShadow: "var(--shadow-e2)",
-                      }}
-                    >
-                      <TemplateThumbnailBase template={t} brandKit={data.brandKit} />
-                    </div>
-                  </div>
+                  <TemplateThumbnailMat template={t}>
+                    <TemplateThumbnailBase template={t} brandKit={data.brandKit} />
+                  </TemplateThumbnailMat>
                 </div>
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">

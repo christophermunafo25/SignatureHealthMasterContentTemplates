@@ -161,12 +161,16 @@ export function TemplateFillLayout({
           );
         })}
 
-        {/* Suggested caption */}
-        {template.captionTemplate && (
+        {/* Suggested caption. Also shown when the template itself suggests
+            nothing but a caption exists (a submitted caption in review) —
+            hiding it there would make the caption invisible and uneditable. */}
+        {(Boolean(template.captionTemplate) || caption !== null) && (
           <div className="p-4 space-y-2.5" style={panel}>
             <div className="flex items-center justify-between">
               <h2 className="sp-panel-title">Suggested caption</h2>
-              {caption !== null && (
+              {/* No caption template means the suggestion merges to an empty
+                  string — resetting would wipe the caption, so don't offer it. */}
+              {caption !== null && Boolean(template.captionTemplate) && (
                 <button
                   onClick={() => onCaptionEdit(null)}
                   className="sp-field-meta"

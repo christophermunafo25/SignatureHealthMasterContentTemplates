@@ -12,7 +12,7 @@ import { assert, assertEquals, assertFalse } from "jsr:@std/assert@1";
 import { sendNotification } from "./email.ts";
 
 const API_KEY = "SG.fake-key-for-tests";
-const FROM = "content@mail.example.com";
+const FROM = "sender@example.com";
 const ENDPOINT = "https://api.sendgrid.com/v3/mail/send";
 
 interface Captured {

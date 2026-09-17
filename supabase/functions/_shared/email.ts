@@ -1,13 +1,14 @@
 // Transactional email. Provider (SendGrid) stays behind sendNotification()
 // so swapping to another provider is a one-file change. Secrets:
 //   SENDGRID_API_KEY          — set via `supabase secrets set`
-//   NOTIFICATION_FROM_EMAIL   — e.g. content@mail.<sending-domain>
+//   NOTIFICATION_FROM_EMAIL   — e.g. admin@themercenarynetwork.com
 //   NOTIFICATION_FROM_NAME    — optional display name, e.g. Signature Content
 //   PUBLIC_APP_URL            — deployed origin, for review deep links
 //
-// NOTE FOR ROLLOUT: the sending domain needs SPF and DKIM records on the
-// client's side or notifications land in spam. Raise this with Signature IT
-// at the START of the notification phase, not on launch day.
+// NOTE FOR ROLLOUT: the sender lives on the agency's own domain. Complete
+// SendGrid domain authentication for it before launch — SendGrid generates
+// the SPF/DKIM CNAME records and the agency adds them at its own registrar —
+// or notifications land in spam.
 
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { AGENCY_NAME, type ReleaseForm } from "./releaseForm.ts";

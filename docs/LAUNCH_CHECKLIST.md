@@ -38,7 +38,7 @@ set-password gate. All further admins: People page → Invite.
 | Secret | Purpose | Status |
 |---|---|---|
 | `SENDGRID_API_KEY` | Submission + decline notifications | ☐ |
-| `NOTIFICATION_FROM_EMAIL` | Sending address, e.g. content@mail.<domain> | ☐ |
+| `NOTIFICATION_FROM_EMAIL` | Sending address, e.g. admin@themercenarynetwork.com | ☐ |
 | `NOTIFICATION_FROM_NAME` | Optional display name, e.g. Signature Content | ☐ |
 | `PUBLIC_APP_URL` | Review deep links in email (set) | ☑ |
 | Sender Authentication complete in SendGrid | Domain authentication preferred over single-sender | ☐ |
@@ -48,12 +48,12 @@ fails at send time with a 403, not at deploy time — the functions deploy
 cleanly and then drop every notification. Verify before launch day, not
 after the first missed submission.
 
-**SPF and DKIM records** for the sending domain must be added by
-Signature IT or notifications land in spam. With SendGrid domain
-authentication these are **CNAME records that SendGrid generates** for
-you (Settings → Sender Authentication → Authenticate Your Domain); hand
-that generated set to Signature IT to add at the registrar. Raise before
-launch day.
+**SPF and DKIM records** for the sending domain must be in place or
+notifications land in spam. The sender lives on the agency's own
+domain, so with SendGrid domain authentication these are **CNAME
+records that SendGrid generates** for you (Settings → Sender
+Authentication → Authenticate Your Domain); the agency adds that
+generated set at its own registrar. Complete before launch day.
 
 ## Custom SMTP for auth email (SendGrid relay)
 Invite, recovery, and confirmation mail does **not** go through
@@ -76,7 +76,7 @@ Dashboard → Project Settings → Authentication → SMTP Settings:
 | Port | `587` |
 | Username | `apikey` (the literal string — not the key, not an email) |
 | Password | the SendGrid API key |
-| Sender email | same as `NOTIFICATION_FROM_EMAIL` |
+| Sender email | admin@themercenarynetwork.com (same as `NOTIFICATION_FROM_EMAIL`) |
 | Sender name | e.g. Signature Content |
 
 | Step | Status |

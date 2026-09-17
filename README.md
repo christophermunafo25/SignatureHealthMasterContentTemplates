@@ -102,17 +102,20 @@ Open the printed localhost URL and the first-run wizard walks you through creati
    supabase functions deploy public-upload submit-content
    ```
 
-   For submission notification email, set the function secrets (and have
-   IT add SPF/DKIM on the sending domain):
+   For submission notification email, set the function secrets:
 
    ```bash
-   supabase secrets set SENDGRID_API_KEY=... NOTIFICATION_FROM_EMAIL=... NOTIFICATION_FROM_NAME="Signature Content" PUBLIC_APP_URL=...
+   supabase secrets set SENDGRID_API_KEY=... NOTIFICATION_FROM_EMAIL=admin@themercenarynetwork.com NOTIFICATION_FROM_NAME="Signature Content" PUBLIC_APP_URL=...
    ```
 
    The From address must be verified in SendGrid first (Settings → Sender
-   Authentication) — an unverified sender fails at send time with a 403,
-   not at deploy time, so the functions will deploy cleanly and then drop
-   every notification. `NOTIFICATION_FROM_NAME` is optional.
+   Authentication → Authenticate Your Domain for the agency's sending
+   domain — SendGrid generates the SPF/DKIM CNAME records and the agency
+   adds them at its own registrar) — an unverified sender fails at send
+   time with a 403, not at deploy time, so the functions will deploy
+   cleanly and then drop every notification. `NOTIFICATION_FROM_NAME` is
+   optional; the value above is an example — choose the final display
+   name when setting secrets.
 
 4. In the Supabase dashboard (Authentication → URL Configuration), set the Site URL to your production domain and add your local and hosted URLs to the additional redirect URLs so confirmation, invite, and reset links land correctly.
 

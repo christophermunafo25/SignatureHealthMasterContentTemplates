@@ -108,7 +108,7 @@ security comes from RLS.
 
 | Item | Status |
 |---|---|
-| `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` set in the Vercel Preview environment | ☐ |
+| `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` set in the Vercel Preview environment | ☑ 2026-09-17 (Vercel CLI, values verified against `.env`) |
 
 ## One-time tenant provisioning (after the Signature company exists)
 1. Sign in as the Signature admin, confirm company slug is

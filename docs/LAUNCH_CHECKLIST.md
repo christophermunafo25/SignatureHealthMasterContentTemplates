@@ -96,6 +96,20 @@ the complete config, and every auth key missing from it would land as a
 CLI default — flipping `enable_signup` back on and dropping the minimum
 password length from 12 to 6.
 
+## Vercel preview deployments
+`vite.config.ts` refuses a production build when `VITE_SUPABASE_URL` /
+`VITE_SUPABASE_ANON_KEY` are unset — a production bundle without
+Supabase config would silently ship the localStorage dev backend.
+Vercel builds PR previews in production mode, so until those two
+variables are set in the Vercel project's **Preview** environment
+(Settings → Environment Variables), the Vercel check fails on every
+PR, including docs-only ones. The anon key is client-safe by design;
+security comes from RLS.
+
+| Item | Status |
+|---|---|
+| `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` set in the Vercel Preview environment | ☐ |
+
 ## One-time tenant provisioning (after the Signature company exists)
 1. Sign in as the Signature admin, confirm company slug is
    `signature-healthcare` (or edit the script).

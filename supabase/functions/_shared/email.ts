@@ -90,6 +90,15 @@ export async function sendNotification(
   return sent > 0;
 }
 
+/** One uploaded file, as stored in submissions.asset_paths. `path` is a BARE
+ * storage path in the private submissions bucket, never a signed URL. */
+export interface SubmissionAsset {
+  path: string;
+  name: string;
+  mimeType: string;
+  size: number;
+}
+
 interface SubmissionEmailParams {
   companyId: string;
   submissionId: string;
@@ -101,12 +110,48 @@ interface SubmissionEmailParams {
   caption: string;
   previewPath: string | null;
   releaseForm: ReleaseForm | null;
-  assetCount: number;
+  assets: SubmissionAsset[];
   releaseFlagged: boolean;
 }
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+const fmtSize = (bytes: number): string =>
+  bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+/** Direct download links for every uploaded file, for the team email.
+ *
+ * Pure on purpose: the caller signs the paths and passes the map, so the
+ * markup is testable without a Storage round trip. An asset whose signing
+ * failed renders as plain text — a dead link in a work inbox is worse than
+ * an honest "open the portal".
+ *
+ * `download` makes Storage answer with Content-Disposition: attachment, so a
+ * phone saves the file instead of previewing it and losing the filename. */
+export function renderDownloadList(
+  assets: SubmissionAsset[],
+  urlByPath: Record<string, string>,
+): string {
+  if (assets.length === 0) return "";
+  const items = assets
+    .map((a) => {
+      const meta = `<span style="color: #777;">${fmtSize(a.size)}</span>`;
+      const signed = urlByPath[a.path];
+      if (!signed) {
+        return `<li style="margin: 0 0 6px; color: #777;">${esc(a.name)} ${meta} — link unavailable, open the portal</li>`;
+      }
+      const href = `${signed}&download=${encodeURIComponent(a.name)}`;
+      return `<li style="margin: 0 0 6px;"><a href="${esc(href)}" style="color: ${BRAND_NAVY};">${esc(a.name)}</a> ${meta}</li>`;
+    })
+    .join("");
+  return `
+    <p style="font-size: 12px; color: #777; margin: 18px 0 6px; text-transform: uppercase; letter-spacing: 1px;">Download${assets.length > 1 ? ` — ${assets.length} files` : ""}</p>
+    <ul style="font-size: 14px; line-height: 1.6; margin: 0; padding-left: 18px;">${items}</ul>
+    <p style="font-size: 12px; color: #777; margin: 8px 0 0;">Links work for 30 days, no sign-in needed.</p>`;
+}
 
 /** Team notification + optional submitter confirmation for one submission.
  * Recipients come from companies.notification_emails (configuration, not a
@@ -134,6 +179,26 @@ export async function sendSubmissionNotification(
       .createSignedUrl(p.previewPath, 60 * 60 * 24 * 30); // 30 days
     previewUrl = data?.signedUrl ?? null;
   }
+
+  // Every uploaded file gets its own download link so the team can work the
+  // queue from the inbox instead of signing in. Same mechanism as the preview
+  // above — a signed URL on the private bucket — extended from one file to
+  // all of them. NOTE: these links carry their own authorization, so anyone
+  // holding this email can download the content. companies.notification_emails
+  // is the access boundary; treat it as such when editing that list.
+  const assetUrls: Record<string, string> = {};
+  const assetPaths = p.assets.map((a) => a.path).filter(Boolean);
+  if (assetPaths.length > 0) {
+    const { data, error } = await db.storage
+      .from("submissions")
+      .createSignedUrls(assetPaths, 60 * 60 * 24 * 30); // 30 days, as above
+    // Partial failure is survivable: renderDownloadList degrades per file.
+    if (error) console.warn("signing submission assets for email failed", error);
+    for (const r of data ?? []) {
+      if (r.path && r.signedUrl) assetUrls[r.path] = r.signedUrl;
+    }
+  }
+  const downloadList = renderDownloadList(p.assets, assetUrls);
 
   const appUrl = (Deno.env.get("PUBLIC_APP_URL") ?? "").replace(/\/$/, "");
   const reviewUrl = appUrl ? `${appUrl}/submissions/${p.submissionId}` : null;
@@ -169,7 +234,7 @@ export async function sendSubmissionNotification(
       ? [
           row("Platforms", esc((rf.platforms ?? []).join(", ") || "—")),
           scheduleRow(),
-          row("Files", String(p.assetCount)),
+          row("Files", String(p.assets.length)),
         ].join("")
       : [
           row("Platforms", esc((rf.platforms ?? []).join(", ") || "—")),
@@ -183,7 +248,7 @@ export async function sendSubmissionNotification(
           rf.hasMinors ? row("Minors in submission", esc(rf.hasMinors)) : "",
           rf.minorRelease ? row("Minor release", esc(rf.minorRelease)) : "",
           row("Off-campus release", esc(rf.offCampusRelease ?? "—")),
-          row("Files", String(p.assetCount)),
+          row("Files", String(p.assets.length)),
         ].join("");
 
   // Plain and legible: a work notification in a busy inbox — restraint
@@ -206,9 +271,10 @@ export async function sendSubmissionNotification(
     ${p.caption ? `
     <p style="font-size: 12px; color: #777; margin: 16px 0 4px; text-transform: uppercase; letter-spacing: 1px;">Caption</p>
     <p style="font-size: 14px; line-height: 1.6; background: #f7f5ee; padding: 12px 14px; border-radius: 6px; margin: 0; white-space: pre-wrap;">${esc(p.caption)}</p>` : ""}
+    ${downloadList}
     ${reviewUrl ? `
     <p style="text-align: center; margin: 22px 0 6px;">
-      <a href="${reviewUrl}" style="background: ${BRAND_NAVY}; color: #ffffff; text-decoration: none; padding: 12px 26px; border-radius: 6px; font-size: 14px; display: inline-block;">Review &amp; download</a>
+      <a href="${reviewUrl}" style="background: ${BRAND_NAVY}; color: #ffffff; text-decoration: none; padding: 12px 26px; border-radius: 6px; font-size: 14px; display: inline-block;">Open in the portal</a>
     </p>` : ""}
   </div>
 </div>`;

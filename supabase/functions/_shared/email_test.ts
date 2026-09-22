@@ -9,7 +9,7 @@
 // not SendGrid's. Delivery still needs a live smoke test.
 
 import { assert, assertEquals, assertFalse } from "jsr:@std/assert@1";
-import { sendNotification } from "./email.ts";
+import { renderDownloadList, sendNotification, type SubmissionAsset } from "./email.ts";
 
 const API_KEY = "SG.fake-key-for-tests";
 const FROM = "sender@example.com";
@@ -281,4 +281,65 @@ Deno.test("sends run concurrently, not serially", async () => {
       `serial execution suspected: ${Math.round(elapsed)}ms for 4x${DELAY_MS}ms sends`,
     );
   });
+});
+
+// --- renderDownloadList -----------------------------------------------------
+// The team works the queue from the inbox, so these links are the product.
+// Pure function: sign separately, pass the map, assert on the markup.
+
+const asset = (over: Partial<SubmissionAsset> = {}): SubmissionAsset => ({
+  path: "co-1/sub-1/photo.jpg",
+  name: "photo.jpg",
+  mimeType: "image/jpeg",
+  size: 2 * 1024 * 1024,
+  ...over,
+});
+
+Deno.test("download list: no assets renders nothing at all", () => {
+  assertEquals(renderDownloadList([], {}), "");
+});
+
+Deno.test("download list: one link per asset, forced to download", () => {
+  const a = asset();
+  const b = asset({ path: "co-1/sub-1/flyer.png", name: "flyer.png", size: 15_000 });
+  const html = renderDownloadList([a, b], {
+    [a.path]: "https://x.supabase.co/storage/v1/object/sign/submissions/a?token=AAA",
+    [b.path]: "https://x.supabase.co/storage/v1/object/sign/submissions/b?token=BBB",
+  });
+
+  assert(html.includes("token=AAA&amp;download=photo.jpg"), `missing first link: ${html}`);
+  assert(html.includes("token=BBB&amp;download=flyer.png"), `missing second link: ${html}`);
+  // Sizes are what tell a reviewer whether to open this on cellular.
+  assert(html.includes("2.0 MB"), `expected MB size, got: ${html}`);
+  assert(html.includes("15 KB"), `expected KB size, got: ${html}`);
+  assert(html.includes("2 files"), "expected a file count for a multi-file submission");
+});
+
+Deno.test("download list: an unsigned asset degrades instead of linking nowhere", () => {
+  const a = asset();
+  const b = asset({ path: "co-1/sub-1/broken.jpg", name: "broken.jpg" });
+  // Only the first path signed — createSignedUrls reports per-row failures.
+  const html = renderDownloadList([a, b], { [a.path]: "https://x/sign?token=AAA" });
+
+  assert(html.includes("broken.jpg"), "the file should still be named");
+  assert(html.includes("link unavailable"), "expected an honest fallback");
+  assertEquals(
+    (html.match(/<a /g) ?? []).length,
+    1,
+    "only the signed asset may render as a link",
+  );
+});
+
+Deno.test("download list: filenames are escaped and URL-encoded", () => {
+  const a = asset({ path: "co-1/sub-1/odd.jpg", name: `resident "A" & B.jpg` });
+  const html = renderDownloadList([a], { [a.path]: "https://x/sign?token=AAA" });
+
+  // Escaped in the visible label...
+  assert(html.includes("resident &quot;A&quot; &amp; B.jpg"), `label not escaped: ${html}`);
+  // ...and percent-encoded inside the href, so the quote cannot close it.
+  assert(html.includes("download=resident%20%22A%22%20%26%20B.jpg"), `href not encoded: ${html}`);
+  assertFalse(
+    /href="[^"]*resident "A"/.test(html),
+    "a raw quote in the filename must not break out of the href",
+  );
 });

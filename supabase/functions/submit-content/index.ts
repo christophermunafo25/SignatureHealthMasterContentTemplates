@@ -266,7 +266,7 @@ Deno.serve(async (req) => {
       caption,
       previewPath,
       releaseForm,
-      assetCount: assets.length,
+      assets,
       releaseFlagged,
     });
   } catch (e) {

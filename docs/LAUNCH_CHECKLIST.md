@@ -115,6 +115,32 @@ security comes from RLS.
 |---|---|
 | `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` set in the Vercel Preview environment | ☑ 2026-09-17 (Vercel CLI, values verified against `.env`) |
 
+## Submission notifications carry download links (access boundary)
+The Signature team works the queue from the inbox rather than signing
+in, so the team notification email lists **every uploaded file as a
+direct download link**. Those are signed Storage URLs on the private
+`submissions` bucket, valid for **30 days**, and they carry their own
+authorization — anyone holding the email can download the content
+without an account. This extends what the embedded preview image has
+always done, from one file to all of them.
+
+Consequences worth being deliberate about:
+- `companies.notification_emails` (Settings → submission notifications)
+  is now the effective access boundary for submitted media. Adding an
+  address grants 30-day access to everything submitted from then on.
+- Forwarding a notification forwards working download links.
+- Submissions can contain resident and minor imagery covered by the
+  release form, so treat the recipient list as PHI-adjacent.
+
+Revoking early means deleting the object or rotating the bucket; there
+is no per-link revocation. If that tradeoff stops being acceptable,
+shorten the expiry in `_shared/email.ts` (one constant, used by both
+the preview and the download list).
+
+| Item | Status |
+|---|---|
+| Recipient list reviewed with the client against the above | ☐ |
+
 ## One-time tenant provisioning (after the Signature company exists)
 1. Sign in as the Signature admin, confirm company slug is
    `signature-healthcare` (or edit the script).

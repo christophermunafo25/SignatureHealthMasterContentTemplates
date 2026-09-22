@@ -37,11 +37,16 @@ set-password gate. All further admins: People page → Invite.
 ## Edge Function secrets (`supabase secrets set`)
 | Secret | Purpose | Status |
 |---|---|---|
-| `SENDGRID_API_KEY` | Submission + decline notifications | ☐ |
-| `NOTIFICATION_FROM_EMAIL` | Sending address, e.g. admin@themercenarynetwork.com | ☐ |
-| `NOTIFICATION_FROM_NAME` | Optional display name, e.g. Signature Content | ☐ |
+| `SENDGRID_API_KEY` | Submission + decline notifications | ☑ 2026-09-17 |
+| `NOTIFICATION_FROM_EMAIL` | Sending address, e.g. admin@themercenarynetwork.com | ☑ 2026-09-17 |
+| `NOTIFICATION_FROM_NAME` | Display name on outgoing mail — `Social Submission` | ☑ 2026-09-22 |
 | `PUBLIC_APP_URL` | Review deep links in email (set) | ☑ |
 | Sender Authentication complete in SendGrid | Domain authentication preferred over single-sender | ☐ |
+
+`supabase secrets list` exposes only a SHA-256 digest of each value, so
+a checkmark above confirms a secret is **set**, not that its value is
+correct. Confirm the actual From address and display name from the From
+line on a delivered notification or the SendGrid Activity Feed.
 
 **Sender Authentication is not optional.** An unverified From address
 fails at send time with a 403, not at deploy time — the functions deploy

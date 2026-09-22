@@ -232,7 +232,7 @@ export async function sendSubmissionNotification(
 <div style="font-family: Arial, Helvetica, sans-serif; max-width: 520px; margin: 0 auto; color: #1a1a1a;">
   <h1 style="font-size: 17px; color: ${BRAND_NAVY};">Thanks, ${esc(p.submitterName)} — your ${p.kind === "direct" ? "content" : "graphic"} is in review</h1>
   <p style="font-size: 14px; line-height: 1.6;">
-    Your ${what} from ${esc(p.facilityName)} was sent to the
+    Your ${what} from ${esc(p.facilityName)} was sent to
     ${AGENCY_NAME}. They'll review it and post it on the brand's
     channels — no further action needed on your end.
   </p>

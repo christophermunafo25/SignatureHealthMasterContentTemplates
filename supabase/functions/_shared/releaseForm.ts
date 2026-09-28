@@ -157,6 +157,10 @@ export const PLATFORM_FOOTNOTE: { before: string; after: string } = {
 /** Q4 — the size affordance beside the dropzone. */
 export const MAX_UPLOAD_LABEL = "250MB";
 
+/** Q4 — the per-submission file cap. Declared here, not with the other file
+ * constants below, because the Q4 helper in RELEASE_QUESTIONS reads it. */
+export const MAX_UPLOAD_FILES = 10;
+
 export const MEDIA_RELEASE_FORMS_URL =
   "https://signaturehealthcarellc.sharepoint.com/sites/THEAgency/Media%20Release%20Forms/Forms/AllItems.aspx";
 
@@ -204,7 +208,7 @@ export const RELEASE_QUESTIONS: Record<
   upload: {
     number: 4,
     label: "Upload your photos or videos.",
-    helper: "Upload the best photos or videos from your event or activity.",
+    helper: `Upload up to ${MAX_UPLOAD_FILES} of your best photos or videos from your event or activity.`,
   },
   needsSpecificSchedule: {
     number: 5,
@@ -493,7 +497,6 @@ export const flagsOf = (issues: ReleaseFormIssue[]): ReleaseFormIssue[] =>
 // MUST exactly match the bucket's allowed_mime_types in migration 0028 and
 // the bucket's file_size_limit as raised by migration 0033.
 
-export const MAX_UPLOAD_FILES = 10;
 export const MAX_UPLOAD_BYTES = 250 * 1024 * 1024; // 250 MB
 
 /** mime → extension. */

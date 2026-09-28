@@ -9,7 +9,12 @@
 // not SendGrid's. Delivery still needs a live smoke test.
 
 import { assert, assertEquals, assertFalse } from "jsr:@std/assert@1";
-import { renderDownloadList, sendNotification, type SubmissionAsset } from "./email.ts";
+import {
+  renderDownloadList,
+  sendNotification,
+  sendSubmissionNotification,
+  type SubmissionAsset,
+} from "./email.ts";
 
 const API_KEY = "SG.fake-key-for-tests";
 const FROM = "sender@example.com";
@@ -342,4 +347,52 @@ Deno.test("download list: filenames are escaped and URL-encoded", () => {
     /href="[^"]*resident "A"/.test(html),
     "a raw quote in the filename must not break out of the href",
   );
+});
+
+// --- sendSubmissionNotification ---------------------------------------------
+// The team email's detail table. Signature's team found a "Submitted"
+// timestamp row confusing (Sept 28), so the label list is pinned exactly.
+// Asserting on labels, not on the absence of "Submitted": that word also
+// appears in "Submitted by" and in the preview image's alt text.
+
+Deno.test("team email: detail rows are Facility, Template, Submitted by, then the release rows", async () => {
+  const fakeDb = {
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () =>
+      Promise.resolve({
+        data: { name: "Signature HealthCARE", notification_emails: ["team@example.com"] },
+        error: null,
+      }),
+    }) }) }),
+  } as unknown as Parameters<typeof sendSubmissionNotification>[0];
+
+  await withHarness({}, async (h) => {
+    // previewPath null and no assets keep Storage out of it.
+    await sendSubmissionNotification(fakeDb, {
+      companyId: "c1",
+      submissionId: "s1",
+      kind: "template",
+      facilityName: "Signature HealthCARE of Kinston",
+      templateName: "Resident Spotlight",
+      submitterName: "Dev Tester",
+      submitterEmail: null,
+      caption: "Caption",
+      previewPath: null,
+      releaseForm: {
+        version: 3,
+        platforms: ["Facebook"],
+        postText: "Caption",
+        needsSpecificSchedule: "No",
+        acknowledged: true,
+        submittedAt: "2026-09-28T12:00:00.000Z",
+      } as Parameters<typeof sendSubmissionNotification>[1]["releaseForm"],
+      assets: [],
+      releaseFlagged: false,
+    });
+
+    assertEquals(h.captured.length, 1, "expected one team email and no confirmation");
+    const html: string = h.captured[0].body.content[0].value;
+    const labels = [...html.matchAll(/<td style="color: #777; padding-right: 14px;">([^<]+)<\/td>/g)]
+      .map((m) => m[1]);
+    assertEquals(labels, ["Facility", "Template", "Submitted by", "Platforms", "Scheduling", "Files"]);
+  });
 });

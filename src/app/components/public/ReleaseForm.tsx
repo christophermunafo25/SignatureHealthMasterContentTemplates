@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { useDropzone, type FileRejection } from "react-dropzone";
 import { AlertTriangle, Check, CheckCircle2, ChevronDown, ExternalLink, FileText, Film, Presentation, X } from "lucide-react";
 import type { PublicFacility } from "@/lib/publicClient";
 import {
@@ -210,18 +210,24 @@ export function ReleaseForm({
   const issueFor = (field: ReleaseFormIssue["field"]): ReleaseFormIssue | null =>
     showIssues ? (issues.find((i) => i.field === field) ?? null) : null;
 
+  // One message per pick or drop, computed from both arguments here:
+  // react-dropzone calls onDrop and then onDropRejected in the same tick, so
+  // a separate onDropRejected would overwrite anything set in onDrop.
   const onDrop = useCallback(
-    (accepted: File[]) => {
-      setDropError(null);
+    (accepted: File[], rejected: FileRejection[]) => {
       const next = [...assets];
+      let reasonMessage: string | null = null;
+      let overflow = 0;
       for (const file of accepted) {
-        if (next.length >= MAX_UPLOAD_FILES) {
-          setDropError(`At most ${MAX_UPLOAD_FILES} files per submission.`);
-          break;
-        }
         const reason = uploadRejectReason(file);
         if (reason) {
-          setDropError(reason);
+          reasonMessage = reason;
+          continue;
+        }
+        // Keep the files that fit and count the rest, rather than letting
+        // react-dropzone's maxFiles reject the whole batch.
+        if (next.length >= MAX_UPLOAD_FILES) {
+          overflow++;
           continue;
         }
         next.push({
@@ -234,26 +240,34 @@ export function ReleaseForm({
           progress: "pending",
         });
       }
+      if (overflow > 0) {
+        setDropError(
+          `Only ${MAX_UPLOAD_FILES} files fit in one submission, so ${overflow} of the files you picked ${overflow === 1 ? "wasn't" : "weren't"} added.`,
+        );
+      } else if (rejected.length > 0) {
+        setDropError(uploadRejectReason(rejected[0].file) ?? "We couldn't read that file.");
+      } else {
+        setDropError(reasonMessage);
+      }
       onAssetsChange(next);
     },
     [assets, onAssetsChange],
   );
 
+  const atCap = assets.length >= MAX_UPLOAD_FILES;
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    onDropRejected: (rejections) => {
-      const first = rejections[0];
-      setDropError(first ? uploadRejectReason(first.file) ?? "We couldn't read that file." : null);
-    },
     accept: Object.fromEntries(
       Object.entries(ALLOWED_UPLOAD_MIME).map(([mime, ext]) => [mime, [`.${ext}`]]),
     ),
-    disabled: uploading,
+    disabled: uploading || atCap,
   });
 
   const removeAsset = (id: string) => {
     const target = assets.find((a) => a.id === id);
     if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+    setDropError(null);
     onAssetsChange(assets.filter((a) => a.id !== id));
   };
 
@@ -500,8 +514,8 @@ export function ReleaseForm({
                 Your graphic is attached
               </p>
               <p style={{ fontSize: 13, color: "var(--fg-3)", marginTop: 2 }}>
-                It goes with this submission automatically. Adding photos or
-                videos below is optional.
+                It goes with this submission automatically, and you can add up
+                to {MAX_UPLOAD_FILES} photos or videos below.
               </p>
             </div>
           </div>
@@ -540,23 +554,38 @@ export function ReleaseForm({
         <div
           {...getRootProps({
             role: "button",
-            "aria-label": `Upload up to ${MAX_UPLOAD_FILES} photos, videos, or documents, 250 MB each`,
+            "aria-label": atCap
+              ? `${MAX_UPLOAD_FILES} of ${MAX_UPLOAD_FILES} files added. Remove a file to add a different one.`
+              : assets.length > 0
+                ? `Upload photos, videos, or documents, ${assets.length} of ${MAX_UPLOAD_FILES} files added, 250 MB each`
+                : `Upload up to ${MAX_UPLOAD_FILES} photos, videos, or documents, 250 MB each`,
           })}
-          className="text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5"
+          className={`text-center ${atCap ? "" : "cursor-pointer "}transition-all flex flex-col items-center justify-center gap-1.5`}
           style={{
             border: `1.5px dashed ${isDragActive ? "var(--solar)" : "var(--hairline-strong)"}`,
             borderRadius: "var(--radius-input)",
             background: isDragActive ? "var(--accent-wash)" : "var(--lift)",
             padding: 18,
-            opacity: uploading ? 0.6 : 1,
+            opacity: uploading || atCap ? 0.6 : 1,
           }}
         >
           <input {...getInputProps()} />
           <p style={{ fontSize: 15, fontWeight: 500, color: "var(--fg-1)" }}>
-            {isDragActive ? "Drop files to add them" : "Click or drag files here"}
+            {atCap
+              ? `${MAX_UPLOAD_FILES} of ${MAX_UPLOAD_FILES} files added`
+              : isDragActive
+                ? "Drop files to add them"
+                : "Click or drag files here"}
           </p>
+          {/* Non-breaking spaces keep the count on one line at 390px. */}
           <p style={{ fontSize: 12, color: "var(--fg-4)" }}>
-            Photos, videos, PDFs, Word, PowerPoint · up to {MAX_UPLOAD_FILES} files · Max file size: {MAX_UPLOAD_LABEL}
+            {atCap
+              ? "Remove a file to add a different one."
+              : `Photos, videos, PDFs, Word, PowerPoint · ${
+                  assets.length > 0
+                    ? `${assets.length}\u00a0of\u00a0${MAX_UPLOAD_FILES}\u00a0files`
+                    : `up\u00a0to\u00a0${MAX_UPLOAD_FILES}\u00a0files`
+                } · Max file size: ${MAX_UPLOAD_LABEL}`}
           </p>
         </div>
         {dropError && (

@@ -202,13 +202,6 @@ export async function sendSubmissionNotification(
 
   const appUrl = (Deno.env.get("PUBLIC_APP_URL") ?? "").replace(/\/$/, "");
   const reviewUrl = appUrl ? `${appUrl}/submissions/${p.submissionId}` : null;
-  const submittedAt = new Date().toLocaleString("en-US", {
-    timeZone: "America/New_York",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 
   // v2.2: the release answers ride the team email so triage can happen from
   // the inbox. The flag line goes FIRST — it's the one thing that changes
@@ -265,8 +258,7 @@ export async function sendSubmissionNotification(
     <table style="font-size: 14px; line-height: 1.7; border-collapse: collapse;">
       <tr><td style="color: #777; padding-right: 14px;">Facility</td><td>${esc(p.facilityName)}</td></tr>
       <tr><td style="color: #777; padding-right: 14px;">${p.kind === "direct" ? "Type" : "Template"}</td><td>${p.kind === "direct" ? "Direct upload" : esc(p.templateName)}</td></tr>
-      <tr><td style="color: #777; padding-right: 14px;">Submitted by</td><td>${esc(p.submitterName)}</td></tr>
-      <tr><td style="color: #777; padding-right: 14px;">Submitted</td><td>${submittedAt} ET</td></tr>${releaseRows}
+      <tr><td style="color: #777; padding-right: 14px;">Submitted by</td><td>${esc(p.submitterName)}</td></tr>${releaseRows}
     </table>
     ${p.caption ? `
     <p style="font-size: 12px; color: #777; margin: 16px 0 4px; text-transform: uppercase; letter-spacing: 1px;">Caption</p>

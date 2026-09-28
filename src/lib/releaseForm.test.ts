@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   CAPTION_STARTERS,
+  MAX_UPLOAD_FILES,
   RELEASE_FORM_VERSION,
+  RELEASE_QUESTIONS,
   isBlocked,
   platformsForChoice,
   questionNumberForField,
@@ -112,6 +114,11 @@ describe("Q4 — upload", () => {
 
   it("accepts the template path with no extra upload at all", () => {
     expect(validateReleaseForm(valid(), TEMPLATE)).toEqual([]);
+  });
+
+  it("states the file cap in the helper, from the same constant the form enforces", () => {
+    expect(MAX_UPLOAD_FILES).toBe(10);
+    expect(RELEASE_QUESTIONS.upload.helper).toContain(`up to ${MAX_UPLOAD_FILES}`);
   });
 });
 

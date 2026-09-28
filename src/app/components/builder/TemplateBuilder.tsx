@@ -27,6 +27,7 @@ import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
 import { useHistory } from "@/lib/useHistory";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { categoryOptions } from "@/lib/templateLibrary";
 import { useBrand } from "@/lib/brand/BrandContext";
 import { ErrorState } from "../ErrorState";
 import { newId } from "@/lib/stores/local/db";
@@ -102,6 +103,14 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
 
   const presetsState = useAsync<CanvasPreset[]>(() => stores.companies.listCanvasPresets(), []);
   const presets = presetsState.status === "ready" ? presetsState.data : [];
+  // Existing categories, offered as suggestions so "Holiday" and "Holidays"
+  // don't become two filters in the library. Free text still works.
+  const categoriesState = useAsync(
+    () => (company ? stores.templates.listAll(company.id) : Promise.resolve([])),
+    [company],
+  );
+  const categorySuggestions =
+    categoriesState.status === "ready" ? categoryOptions(categoriesState.data).map((c) => c.name) : [];
   const templateState = useAsync<TemplateSchema | null>(
     () => (templateId ? stores.templates.get(templateId) : Promise.resolve(null)),
     [templateId],
@@ -1177,7 +1186,13 @@ export function TemplateBuilder({ templateId }: { templateId: string | null }) {
                     onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }), "text:category")}
                     placeholder="Category"
                     className="sp-input"
+                    list="builder-category-suggestions"
                   />
+                  <datalist id="builder-category-suggestions">
+                    {categorySuggestions.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
                   <input
                     value={draft.tags.join(", ")}
                     onChange={(e) =>

@@ -4,6 +4,7 @@ import type { TemplateSchema, UsageSummary } from "@/lib/types";
 import { stores } from "@/lib/stores";
 import { useAsync } from "@/lib/useAsync";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { categoryOptions } from "@/lib/templateLibrary";
 import { useRouter } from "../../router";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ErrorState } from "../ErrorState";
@@ -49,6 +50,8 @@ export function AdminTemplates() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<SortKey>("recent");
+  const [category, setCategory] = useState<string>("");
+  const categories = useMemo(() => categoryOptions(templates), [templates]);
 
   const publishedCount = templates.filter((t) => t.status === "published").length;
   const draftCount = templates.length - publishedCount;
@@ -56,6 +59,7 @@ export function AdminTemplates() {
   const visible = useMemo(() => {
     let list =
       statusFilter === "all" ? templates : templates.filter((t) => t.status === statusFilter);
+    if (category) list = list.filter((t) => t.category.trim() === category);
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(
@@ -75,7 +79,7 @@ export function AdminTemplates() {
       );
     // "recent" keeps the store order (updatedAt desc on both backends).
     return sorted;
-  }, [templates, statusFilter, query, sort, usageByTemplate]);
+  }, [templates, statusFilter, category, query, sort, usageByTemplate]);
 
   const toggleStatus = async (t: TemplateSchema) => {
     await stores.templates.setStatus(t.id, t.status === "published" ? "draft" : "published");
@@ -193,6 +197,22 @@ export function AdminTemplates() {
               </button>
             ))}
           </div>
+          {categories.length > 1 && (
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              aria-label="Filter by category"
+              className="sp-input"
+              style={{ width: "auto", padding: "8px 10px", fontSize: 12 }}
+            >
+              <option value="">All categories</option>
+              {categories.map((c) => (
+                <option key={c.name} value={c.name}>
+                  {c.name} ({c.count})
+                </option>
+              ))}
+            </select>
+          )}
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
@@ -231,6 +251,8 @@ export function AdminTemplates() {
         <p className="text-center py-20" style={{ fontSize: 14, color: "var(--fg-2)" }}>
           {query.trim()
             ? "No templates match that search."
+            : category
+              ? `No ${statusFilter === "all" ? "" : `${statusFilter} `}templates in ${category}.`
             : statusFilter === "draft"
               ? "No drafts."
               : "Nothing published yet."}

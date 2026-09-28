@@ -143,6 +143,26 @@ Authoring is by SQL script for now (see
 `scripts/halloween-templates-provision.sql` for the pattern) — the builder
 still requires at least one form field to publish.
 
+## Browsing: categories and holidays
+
+The facility library (`/browse`) and the team gallery (`/admin`) organize
+templates with `organizeLibrary` in `src/lib/templateLibrary.ts`; nothing
+about it is stored.
+
+- **`category`** becomes a filter chip. It is free text, so the builder
+  suggests existing categories: "Holiday" and "Holidays" would be two chips.
+- **Holidays come from `tags`.** The first tag that matches a key or alias in
+  `src/lib/holidays.ts` puts the template under that holiday, e.g.
+  `thanksgiving`, `christmas`, `4th-of-july` (alias `independence-day`).
+  Holidays are dated every year (Easter, Thanksgiving and Hanukkah are
+  computed), so the order rolls forward on its own: holidays within 60 days
+  lead the unfiltered view under "Coming up", then the everyday categories,
+  then the rest of the year in calendar order.
+- A holiday template without a recognized tag still shows under its
+  category, just undated. To support a new holiday, add it to `HOLIDAYS`.
+- Category and holiday are mirrored to the query string, so a link like
+  `/browse?category=Holidays&holiday=thanksgiving` opens to that view.
+
 ## Rendering contract
 
 `SchemaRenderer` renders any schema into a live-scaled canvas

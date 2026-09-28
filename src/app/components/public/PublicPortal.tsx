@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Search } from "lucide-react";
+import React, { useMemo } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { hasFormFields } from "@/lib/fields";
 import { HOME_REF } from "@/lib/publicClient";
+import { EMPTY_FILTER, organizeLibrary } from "@/lib/templateLibrary";
 import { useRouter } from "../../router";
+import { LibraryFilterBar, LibraryNoMatches, LibrarySections, useLibraryFilter } from "../TemplateLibrary";
 import { TemplateThumbnailBase, TemplateThumbnailMat } from "../TemplateThumbnail";
 import { PublicError, PublicInactive, PublicLoading, PublicShell, portalRoute, templateRoute, usePublicPortal } from "./PublicApp";
 
@@ -13,20 +15,10 @@ import { PublicError, PublicInactive, PublicLoading, PublicShell, portalRoute, t
 export function PublicPortal({ token }: { token: string }) {
   const { navigate } = useRouter();
   const state = usePublicPortal(token);
-  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useLibraryFilter();
 
   const templates = state.status === "ready" ? state.data.templates ?? [] : [];
-  const filtered = useMemo(() => {
-    if (!query.trim()) return templates;
-    const q = query.toLowerCase();
-    return templates.filter(
-      (t) =>
-        t.name.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q) ||
-        t.category.toLowerCase().includes(q) ||
-        t.tags.some((tag) => tag.toLowerCase().includes(q)),
-    );
-  }, [templates, query]);
+  const library = useMemo(() => organizeLibrary(templates, filter), [templates, filter]);
 
   const isHome = token === HOME_REF;
   if (state.status === "loading") return <PublicLoading />;
@@ -65,18 +57,13 @@ export function PublicPortal({ token }: { token: string }) {
           questions at the end, then it goes to The Agency to post.
         </p>
         {templates.length > 6 && (
-          <div className="relative max-w-md">
-            <Search className="absolute" style={{ left: 14, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "var(--fg-3)", zIndex: 1 }} />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search templates…"
-              aria-label="Search templates"
-              className="sp-input"
-              style={{ padding: "10px 14px 10px 38px" }}
-            />
-          </div>
+          <LibraryFilterBar
+            library={library}
+            filter={filter}
+            onChange={setFilter}
+            totalCount={templates.length}
+            tone="onDark"
+          />
         )}
       </div>
 
@@ -85,13 +72,13 @@ export function PublicPortal({ token }: { token: string }) {
           <p className="text-center py-16" style={{ fontSize: 16, color: "rgba(255,255,255,0.85)" }}>
             No templates are available yet — check back soon.
           </p>
-        ) : filtered.length === 0 ? (
-          <p className="text-center py-16" style={{ fontSize: 16, color: "rgba(255,255,255,0.85)" }}>
-            No templates match “{query}”.
-          </p>
+        ) : library.total === 0 ? (
+          <LibraryNoMatches filter={filter} onClear={() => setFilter(EMPTY_FILTER)} tone="onDark" />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filtered.map((t) => {
+          <LibrarySections
+            sections={library.sections}
+            tone="onDark"
+            renderCard={(t) => {
               // A no-field template is a finished graphic — the card says so.
               const eyebrow = hasFormFields(t)
                 ? t.category
@@ -120,9 +107,9 @@ export function PublicPortal({ token }: { token: string }) {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       {eyebrow && <p className="sp-eyebrow mb-1">{eyebrow}</p>}
-                      <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, letterSpacing: "-0.01em", color: "var(--ink)" }}>
+                      <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, letterSpacing: "-0.01em", color: "var(--ink)" }}>
                         {t.name}
-                      </h2>
+                      </h3>
                     </div>
                     <span
                       className="flex items-center justify-center flex-shrink-0 rounded-full transition-transform group-hover:translate-x-0.5"
@@ -137,8 +124,8 @@ export function PublicPortal({ token }: { token: string }) {
                 </div>
               </button>
               );
-            })}
-          </div>
+            }}
+          />
         )}
       </div>
     </PublicShell>

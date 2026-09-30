@@ -355,44 +355,95 @@ Deno.test("download list: filenames are escaped and URL-encoded", () => {
 // Asserting on labels, not on the absence of "Submitted": that word also
 // appears in "Submitted by" and in the preview image's alt text.
 
-Deno.test("team email: detail rows are Facility, Template, Submitted by, then the release rows", async () => {
-  const fakeDb = {
+type SubmissionParams = Parameters<typeof sendSubmissionNotification>[1];
+
+/** Company lookup only. previewPath null and no assets keep Storage out of it. */
+const stubDb = () =>
+  ({
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () =>
       Promise.resolve({
         data: { name: "Signature HealthCARE", notification_emails: ["team@example.com"] },
         error: null,
       }),
     }) }) }),
-  } as unknown as Parameters<typeof sendSubmissionNotification>[0];
+  }) as unknown as Parameters<typeof sendSubmissionNotification>[0];
 
+const submissionParams = (over: Partial<SubmissionParams> = {}): SubmissionParams => ({
+  companyId: "c1",
+  submissionId: "s1",
+  kind: "template",
+  facilityName: "Signature HealthCARE of Kinston",
+  templateName: "Resident Spotlight",
+  submitterName: "Dev Tester",
+  submitterEmail: null,
+  caption: "Caption",
+  previewPath: null,
+  releaseForm: {
+    version: 3,
+    platforms: ["Facebook"],
+    postText: "Caption",
+    needsSpecificSchedule: "No",
+    acknowledged: true,
+    submittedAt: "2026-09-28T12:00:00.000Z",
+  } as SubmissionParams["releaseForm"],
+  assets: [],
+  releaseFlagged: false,
+  ...over,
+});
+
+const detailLabels = (html: string) =>
+  [...html.matchAll(/<td style="color: #777; padding-right: 14px;">([^<]+)<\/td>/g)]
+    .map((m) => m[1]);
+
+Deno.test("team email: detail rows are Facility, Template, Submitted by, Email, then release rows", async () => {
   await withHarness({}, async (h) => {
-    // previewPath null and no assets keep Storage out of it.
-    await sendSubmissionNotification(fakeDb, {
-      companyId: "c1",
-      submissionId: "s1",
-      kind: "template",
-      facilityName: "Signature HealthCARE of Kinston",
-      templateName: "Resident Spotlight",
-      submitterName: "Dev Tester",
-      submitterEmail: null,
-      caption: "Caption",
-      previewPath: null,
-      releaseForm: {
-        version: 3,
-        platforms: ["Facebook"],
-        postText: "Caption",
-        needsSpecificSchedule: "No",
-        acknowledged: true,
-        submittedAt: "2026-09-28T12:00:00.000Z",
-      } as Parameters<typeof sendSubmissionNotification>[1]["releaseForm"],
-      assets: [],
-      releaseFlagged: false,
-    });
+    await sendSubmissionNotification(stubDb(), submissionParams());
 
     assertEquals(h.captured.length, 1, "expected one team email and no confirmation");
     const html: string = h.captured[0].body.content[0].value;
-    const labels = [...html.matchAll(/<td style="color: #777; padding-right: 14px;">([^<]+)<\/td>/g)]
-      .map((m) => m[1]);
-    assertEquals(labels, ["Facility", "Template", "Submitted by", "Platforms", "Scheduling", "Files"]);
+    assertEquals(detailLabels(html), [
+      "Facility",
+      "Template",
+      "Submitted by",
+      "Email",
+      "Platforms",
+      "Scheduling",
+      "Files",
+    ]);
+  });
+});
+
+Deno.test("team email: no address on file says so instead of leaving a blank cell", async () => {
+  await withHarness({}, async (h) => {
+    await sendSubmissionNotification(stubDb(), submissionParams({ submitterEmail: null }));
+
+    const html: string = h.captured[0].body.content[0].value;
+    assert(html.includes("Not provided"), `expected an explicit empty-address cell: ${html}`);
+    assertFalse(html.includes("mailto:"), "there is no address to link to");
+  });
+});
+
+Deno.test("team email: the submitter's address is a mailto link the team can reply from", async () => {
+  await withHarness({}, async (h) => {
+    await sendSubmissionNotification(
+      stubDb(),
+      submissionParams({ submitterEmail: "nurse@kinston.example.org" }),
+    );
+
+    // Team notification goes first, the submitter's own confirmation second.
+    assertEquals(h.captured.length, 2, "expected the team email plus a confirmation");
+    const html: string = h.captured[0].body.content[0].value;
+
+    assert(
+      html.includes('href="mailto:nurse@kinston.example.org"'),
+      `expected a mailto link, got: ${html}`,
+    );
+    // Visible as text too — a reviewer copying it into another system should
+    // not have to hover the link to read it.
+    assert(
+      html.includes(">nurse@kinston.example.org</a>"),
+      "the address should be readable, not just linked",
+    );
+    assertFalse(html.includes("Not provided"), "must not claim the address is missing");
   });
 });

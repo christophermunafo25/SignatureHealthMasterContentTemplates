@@ -244,6 +244,13 @@ export async function sendSubmissionNotification(
           row("Files", String(p.assets.length)),
         ].join("");
 
+  // The team triages from the inbox, so the submitter's address is a mailto
+  // link rather than text to retype. It is optional on the form: say so
+  // explicitly, because a blank cell reads as a bug in the notification.
+  const submitterEmailCell = p.submitterEmail
+    ? `<a href="mailto:${esc(p.submitterEmail)}" style="color: ${BRAND_NAVY};">${esc(p.submitterEmail)}</a>`
+    : `<span style="color: #777;">Not provided</span>`;
+
   // Plain and legible: a work notification in a busy inbox — restraint
   // beats art direction.
   const html = `
@@ -258,7 +265,8 @@ export async function sendSubmissionNotification(
     <table style="font-size: 14px; line-height: 1.7; border-collapse: collapse;">
       <tr><td style="color: #777; padding-right: 14px;">Facility</td><td>${esc(p.facilityName)}</td></tr>
       <tr><td style="color: #777; padding-right: 14px;">${p.kind === "direct" ? "Type" : "Template"}</td><td>${p.kind === "direct" ? "Direct upload" : esc(p.templateName)}</td></tr>
-      <tr><td style="color: #777; padding-right: 14px;">Submitted by</td><td>${esc(p.submitterName)}</td></tr>${releaseRows}
+      <tr><td style="color: #777; padding-right: 14px;">Submitted by</td><td>${esc(p.submitterName)}</td></tr>
+      <tr><td style="color: #777; padding-right: 14px;">Email</td><td>${submitterEmailCell}</td></tr>${releaseRows}
     </table>
     ${p.caption ? `
     <p style="font-size: 12px; color: #777; margin: 16px 0 4px; text-transform: uppercase; letter-spacing: 1px;">Caption</p>

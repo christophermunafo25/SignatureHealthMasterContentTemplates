@@ -357,7 +357,8 @@ Deno.test("download list: filenames are escaped and URL-encoded", () => {
 
 type SubmissionParams = Parameters<typeof sendSubmissionNotification>[1];
 
-/** Company lookup only. previewPath null and no assets keep Storage out of it. */
+/** Company lookup plus a Storage surface. Signed URLs are tagged PREVIEW vs
+ * SIGNED so a test can tell which path produced the inline image. */
 const stubDb = () =>
   ({
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () =>
@@ -366,6 +367,24 @@ const stubDb = () =>
         error: null,
       }),
     }) }) }),
+    storage: {
+      from: () => ({
+        createSignedUrl: (path: string) =>
+          Promise.resolve({
+            data: { signedUrl: `https://storage.test/${path}?token=PREVIEW` },
+            error: null,
+          }),
+        createSignedUrls: (paths: string[]) =>
+          Promise.resolve({
+            data: paths.map((path) => ({
+              path,
+              signedUrl: `https://storage.test/${path}?token=SIGNED`,
+              error: null,
+            })),
+            error: null,
+          }),
+      }),
+    },
   }) as unknown as Parameters<typeof sendSubmissionNotification>[0];
 
 const submissionParams = (over: Partial<SubmissionParams> = {}): SubmissionParams => ({
@@ -445,5 +464,83 @@ Deno.test("team email: the submitter's address is a mailto link the team can rep
       "the address should be readable, not just linked",
     );
     assertFalse(html.includes("Not provided"), "must not claim the address is missing");
+  });
+});
+
+// A direct upload has no rendered graphic, so the team used to get a
+// notification with nothing to look at. The first uploaded image stands in.
+
+const imgSrc = (html: string) => html.match(/<img src="([^"]+)"/)?.[1] ?? null;
+
+const png = (name: string): SubmissionAsset => ({
+  path: `co-1/${name}`,
+  name,
+  mimeType: "image/png",
+  size: 1_024,
+});
+
+Deno.test("team email: a direct upload shows its first photo inline", async () => {
+  await withHarness({}, async (h) => {
+    await sendSubmissionNotification(
+      stubDb(),
+      submissionParams({
+        kind: "direct",
+        templateName: "",
+        previewPath: null,
+        assets: [png("first.png"), png("second.png")],
+      }),
+    );
+
+    const html: string = h.captured[0].body.content[0].value;
+    assertEquals(
+      imgSrc(html),
+      "https://storage.test/co-1/first.png?token=SIGNED",
+      "the first uploaded image should be the one shown",
+    );
+    // renderDownloadList appends `&download=` to force an attachment
+    // response; an <img> pointed at that renders nothing.
+    assertFalse(
+      (imgSrc(html) ?? "").includes("download="),
+      "the inline image must not use the forced-download URL",
+    );
+  });
+});
+
+Deno.test("team email: a rendered template preview still wins over the uploads", async () => {
+  await withHarness({}, async (h) => {
+    await sendSubmissionNotification(
+      stubDb(),
+      submissionParams({ previewPath: "co-1/preview.png", assets: [png("photo.png")] }),
+    );
+
+    const html: string = h.captured[0].body.content[0].value;
+    assert(
+      (imgSrc(html) ?? "").includes("token=PREVIEW"),
+      `the rendered graphic is the hero, got: ${imgSrc(html)}`,
+    );
+  });
+});
+
+Deno.test("team email: a non-image upload shows no inline image rather than a broken one", async () => {
+  await withHarness({}, async (h) => {
+    await sendSubmissionNotification(
+      stubDb(),
+      submissionParams({
+        kind: "direct",
+        templateName: "",
+        previewPath: null,
+        assets: [{
+          path: "co-1/release.pdf",
+          name: "release.pdf",
+          mimeType: "application/pdf",
+          size: 2_048,
+        }],
+      }),
+    );
+
+    const html: string = h.captured[0].body.content[0].value;
+    assertEquals(imgSrc(html), null, "a PDF has no inline representation");
+    // It must still be reachable.
+    assert(html.includes("release.pdf"), "the file should still be listed for download");
   });
 });

@@ -198,6 +198,24 @@ export async function sendSubmissionNotification(
       if (r.path && r.signedUrl) assetUrls[r.path] = r.signedUrl;
     }
   }
+
+  // A direct upload has no rendered graphic, so previewPath is null and the
+  // team would otherwise get a notification with nothing to look at. Fall
+  // back to the first uploaded image. It is already signed for the download
+  // list, so this costs no extra Storage round trip, and the raw signed URL
+  // is used deliberately: the `&download=` variant the list appends forces
+  // an attachment response, which an <img> cannot render.
+  // A non-image upload (PDF, video) has no inline form, so it stays
+  // links-only rather than showing a broken image.
+  const heroFallback = previewUrl
+    ? undefined
+    : p.assets.find((a) => a.mimeType.startsWith("image/") && assetUrls[a.path]);
+  const heroUrl = previewUrl ?? (heroFallback ? assetUrls[heroFallback.path] : null);
+  const heroAlt = previewUrl
+    ? "Submitted graphic preview"
+    : heroFallback
+      ? `Submitted photo: ${esc(heroFallback.name)}`
+      : "";
   const downloadList = renderDownloadList(p.assets, assetUrls);
 
   const appUrl = (Deno.env.get("PUBLIC_APP_URL") ?? "").replace(/\/$/, "");
@@ -261,7 +279,7 @@ export async function sendSubmissionNotification(
   </div>
   <div style="border: 1px solid #e2e2e2; border-top: none; border-radius: 0 0 8px 8px; padding: 20px;">
     ${p.releaseFlagged ? `<p style="font-size: 14px; font-weight: bold; color: #c62f24; margin: 0 0 14px;">Needs a look: VP of Operations did not approve this event.</p>` : ""}
-    ${previewUrl ? `<img src="${previewUrl}" alt="Submitted graphic preview" style="width: 100%; max-width: 420px; display: block; margin: 0 auto 16px; border-radius: 6px; border: 1px solid #e2e2e2;" />` : ""}
+    ${heroUrl ? `<img src="${esc(heroUrl)}" alt="${heroAlt}" style="width: 100%; max-width: 420px; display: block; margin: 0 auto 16px; border-radius: 6px; border: 1px solid #e2e2e2;" />` : ""}
     <table style="font-size: 14px; line-height: 1.7; border-collapse: collapse;">
       <tr><td style="color: #777; padding-right: 14px;">Facility</td><td>${esc(p.facilityName)}</td></tr>
       <tr><td style="color: #777; padding-right: 14px;">${p.kind === "direct" ? "Type" : "Template"}</td><td>${p.kind === "direct" ? "Direct upload" : esc(p.templateName)}</td></tr>

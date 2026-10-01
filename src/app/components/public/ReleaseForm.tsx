@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
-import { AlertTriangle, Check, CheckCircle2, ChevronDown, ExternalLink, FileText, Film, Presentation, X } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, ChevronDown, Clock, ExternalLink, FileText, Film, Presentation, X } from "lucide-react";
 import type { PublicFacility } from "@/lib/publicClient";
 import {
   AGENCY_EMAIL,
@@ -14,6 +14,7 @@ import {
   PHOTO_REMINDERS_CLOSING,
   PLATFORM_CHOICES,
   PLATFORM_FOOTNOTE,
+  POSTING_SCHEDULE_NOTICE,
   POST_TEXT_REMINDER,
   RELEASE_QUESTIONS,
   SCHEDULE_CHOICES,
@@ -296,6 +297,47 @@ export function ReleaseForm({
             {SUBMISSION_INTRO.beforeSubmitting}
           </p>
           <p style={{ fontSize: 15, lineHeight: 1.6, color: "var(--fg-2)" }}>{SUBMISSION_INTRO.timing}</p>
+        </div>
+      </div>
+
+      {/* Posting schedule — the client's turnaround policy. Deliberately
+          OUTSIDE the intro panel above: that panel's supporting paragraphs
+          collapse behind a disclosure on mobile, and this is the one thing
+          facilities must not miss. Always visible, every breakpoint. */}
+      <div
+        role="note"
+        aria-label="Posting schedule"
+        className="flex gap-3 p-4"
+        style={{
+          background: "var(--amber-wash)",
+          border: "1px solid var(--amber)",
+          borderLeft: "4px solid var(--solar)",
+          borderRadius: 12,
+        }}
+      >
+        <Clock
+          aria-hidden
+          style={{ width: 18, height: 18, flexShrink: 0, marginTop: 3, color: "var(--solar)" }}
+        />
+        <div className="min-w-0">
+          <p
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              color: "var(--solar)",
+              margin: 0,
+            }}
+          >
+            Posting schedule
+          </p>
+          <p style={{ fontSize: 15, lineHeight: 1.6, fontWeight: 600, color: "var(--fg-1)", margin: "5px 0 0" }}>
+            {POSTING_SCHEDULE_NOTICE.rule}
+          </p>
+          <p style={{ fontSize: 15, lineHeight: 1.6, fontWeight: 700, color: "var(--fg-1)", margin: "6px 0 0" }}>
+            {POSTING_SCHEDULE_NOTICE.afterHours}
+          </p>
         </div>
       </div>
 

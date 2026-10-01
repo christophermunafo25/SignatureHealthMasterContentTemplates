@@ -68,6 +68,18 @@ export const SUBMISSION_INTRO: { lead: string; beforeSubmitting: string; timing:
     "Requests are typically reviewed and posted the day they are submitted or within 24 hours. If your content is time-sensitive, you can request a specific posting date below.",
 };
 
+/** The client's turnaround policy. Rendered as an unmissable callout at the
+ * top of the form — outside the mobile intro disclosure, because on a phone
+ * anything inside that starts collapsed. Split at the sentence boundary so
+ * the Friday exception can carry its own emphasis; the wording is the
+ * client's, verbatim. */
+export const POSTING_SCHEDULE_NOTICE: { rule: string; afterHours: string } = {
+  rule:
+    "All requests submitted during business hours, Monday through Friday, from 8:00 AM to 4:30 PM EST, will be posted within 24 hours of your requested date.",
+  afterHours:
+    "If a request is made after 4:30 PM on Friday, it will be posted on Monday.",
+};
+
 /** Q4 — the tinted reminders panel above the dropzone. */
 export const PHOTO_REMINDERS: string[] = [
   "Choose your best photos rather than uploading several similar images.",

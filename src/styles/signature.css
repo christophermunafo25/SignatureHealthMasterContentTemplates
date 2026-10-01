@@ -384,3 +384,18 @@ button, input, select, textarea, optgroup {
   background: #fff;
   border-color: var(--editor-accent);
 }
+
+/* Public chooser CTAs. Hover and focus-visible live here because inline
+   styles cannot express pseudo-classes; the per-card palette still belongs
+   to the component and arrives as custom properties. The focus ring is the
+   opposite brand color so it reads against either button fill. */
+.pc-cta {
+  transition: background-color 120ms ease;
+}
+.pc-cta:hover {
+  background: var(--pc-cta-hover);
+}
+.pc-cta:focus-visible {
+  outline: 3px solid var(--pc-cta-ring);
+  outline-offset: 2px;
+}

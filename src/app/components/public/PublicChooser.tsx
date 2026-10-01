@@ -17,6 +17,13 @@ import {
 const SERIF = '"Lora", Georgia, serif';
 const SANS = '"Montserrat", ui-sans-serif, system-ui, sans-serif';
 
+// html sets font-feature-settings: "tnum" for Inter's counters. Lora maps the
+// SPACE character into its tabular-figure set, so tnum pads every space out to
+// a tabular digit — 59% of the font size instead of 26%, which reads as broken
+// word spacing at display sizes. Reset it wherever Lora is used. Montserrat and
+// Inter measure identically with it on or off, so the global rule stays.
+const SERIF_HEADING = { fontFamily: SERIF, fontFeatureSettings: "normal" } as const;
+
 /** v2.2 landing: the public root is a CHOOSER, not the template grid. Two
  * paths — upload your own content, or build a brand template — both ending
  * in the same release form and the same review queue.
@@ -76,7 +83,7 @@ export function PublicChooser({ token }: { token: string }) {
         <div className="flex flex-col gap-3">
           <h1
             style={{
-              fontFamily: SERIF,
+              ...SERIF_HEADING,
               fontWeight: 700,
               fontSize: "clamp(38px, 4.2vw, 54px)",
               lineHeight: 1.1,
@@ -111,7 +118,7 @@ export function PublicChooser({ token }: { token: string }) {
               <div className="flex flex-col gap-2.5">
                 <h2
                   className="text-[32px] sm:text-[38px]"
-                  style={{ fontFamily: SERIF, fontWeight: 700, lineHeight: 1.1, color: "var(--ink)" }}
+                  style={{ ...SERIF_HEADING, fontWeight: 700, lineHeight: 1.1, color: "var(--ink)" }}
                 >
                   {p.title}
                 </h2>

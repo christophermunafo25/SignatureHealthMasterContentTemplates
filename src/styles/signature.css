@@ -74,6 +74,9 @@
   --accent-wash-strong: color-mix(in srgb, #003b71 16%, transparent);
   --accent-border: color-mix(in srgb, #003b71 35%, transparent);
   --fill-danger-bg: #ffd9d5;
+  /* Amber wash for the form's posting-schedule notice — warm enough to stop
+     a reader without reading as an error the way --danger does. */
+  --amber-wash: color-mix(in srgb, #ffce8b 45%, #ffffff);
 
   /* Typography families — Inter everywhere in the chrome. The four tokens
      stay distinct so the roles (display / body / mono-style labels / UI)

@@ -23,6 +23,12 @@ import { SubmissionsScreen } from "./components/admin/SubmissionBoard";
 import { SubmissionDetail } from "./components/admin/SubmissionDetail";
 import { FormRecords } from "./components/admin/FormRecords";
 import { FormRecordDetail } from "./components/admin/FormRecordDetail";
+import { HallOfFameErrorBoundary } from "./components/hallOfFame/HallOfFameErrorBoundary";
+import { HallOfFameSkeleton } from "./components/hallOfFame/HallOfFameSkeleton";
+
+// Split out of the main bundle: the portal and admin never load the Hall of
+// Fame pages' code or template artwork.
+const HallOfFameApp = React.lazy(() => import("./components/hallOfFame/HallOfFameApp"));
 
 function Screen() {
   const { loading, error, retry, company, role, user, backend, refreshProfile } = useAuth();
@@ -144,6 +150,18 @@ function NoMembership() {
  * trigger a session lookup (a failed one would render the sign-in page). */
 function RootSwitch() {
   const { route } = useRouter();
+  // Hall of Fame graphics: fully client-side, no backend calls, no tokens.
+  // Branches ahead of the public portal and the auth providers so visiting it
+  // never triggers a portal fetch or a session lookup.
+  if (route.name === "hallOfFame" || route.name === "hallOfFameTemplate") {
+    return (
+      <HallOfFameErrorBoundary>
+        <React.Suspense fallback={<HallOfFameSkeleton view={route.name === "hallOfFame" ? "library" : "fill"} />}>
+          <HallOfFameApp />
+        </React.Suspense>
+      </HallOfFameErrorBoundary>
+    );
+  }
   // Invite/recovery email links redirect to the Site URL — the public
   // root. They carry a session and need the set-password gate, so they
   // always belong to the signed-in tree, never the anonymous one.

@@ -31,7 +31,12 @@ export type Route =
   | { name: "publicHomeTemplate"; templateId: string }
   // v2.2 Form Records — the admin register of release forms.
   | { name: "records" }
-  | { name: "recordDetail"; submissionId: string };
+  | { name: "recordDetail"; submissionId: string }
+  // Standalone Hall of Fame graphics: a template library and a fill page.
+  // Anonymous, no token, no portal access, no submission. Branches before
+  // every provider (App.tsx).
+  | { name: "hallOfFame" }
+  | { name: "hallOfFameTemplate"; templateId: string };
 
 export function pathFor(route: Route): string {
   switch (route.name) {
@@ -79,6 +84,10 @@ export function pathFor(route: Route): string {
       return `/g/${encodeURIComponent(route.token)}/submit`;
     case "publicTemplate":
       return `/g/${encodeURIComponent(route.token)}/t/${encodeURIComponent(route.templateId)}`;
+    case "hallOfFame":
+      return "/hall-of-fame";
+    case "hallOfFameTemplate":
+      return `/hall-of-fame/${encodeURIComponent(route.templateId)}`;
   }
 }
 
@@ -123,6 +132,8 @@ export function routeFor(pathname: string): Route {
       return { name: "portalAccess" };
     case "records":
       return second ? { name: "recordDetail", submissionId: second } : { name: "records" };
+    case "hall-of-fame":
+      return second ? { name: "hallOfFameTemplate", templateId: second } : { name: "hallOfFame" };
     case "g":
       if (!second) return { name: "portal" };
       if (!third) return { name: "publicPortal", token: second };

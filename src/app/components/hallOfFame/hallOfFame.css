@@ -1,0 +1,16 @@
+/* Hall of Fame pages (/hall-of-fame). The chrome is the facility portal's own
+   (signature.css); this file carries one scoped fix.
+
+   signature.css sets html { font-feature-settings: "tnum" } for Inter's
+   counters. Lora's tabular set includes the SPACE glyph, so under tnum every
+   space in the winner's name renders about 2x wide in the thumbnails and the
+   live preview, while the PNG export and the canvas text fitting both use
+   normal spacing. Reset it for everything on these pages, then give the
+   character counters their tabular digits back. */
+.hof-scope {
+  font-feature-settings: normal;
+}
+
+.hof-scope .sp-field-meta {
+  font-feature-settings: "tnum";
+}

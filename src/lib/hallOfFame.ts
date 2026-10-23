@@ -12,7 +12,8 @@ import ivoryPhotoNamePhoto from "@/assets/hall-of-fame/placeholders/ivory-photo-
 import ivoryPhotoNameHighlightsPhoto from "@/assets/hall-of-fame/placeholders/ivory-photo-name-highlights-photo.png";
 
 /** Hall of Fame graphics: six FIXED templates (three styles, each in the two
- * layouts Signature asked for) served by the standalone /hall-of-fame pages.
+ * layouts Signature asked for) served by the standalone
+ * /hall-of-fame-submission pages.
  * Static data, never stored in Supabase, never listed in the facility
  * portal, never submitted. The pages render and export them entirely in the
  * browser through the same SchemaRenderer every portal template uses.

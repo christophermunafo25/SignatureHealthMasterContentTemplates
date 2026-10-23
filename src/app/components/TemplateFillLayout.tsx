@@ -55,6 +55,17 @@ export interface TemplateFillLayoutProps {
   /** Body text of the panel shown in place of the field steps when the
    * template has no form fields (a ready-to-post graphic). */
   readyToPostNote?: React.ReactNode;
+  /** What the preview draws when it differs from what the form edits: a
+   * schema derived from `template` (fitted text sizes, a download file name)
+   * and the values it renders with (a placeholder photo, trimmed text).
+   * `rendererRef` follows the preview, so the export does too. Default:
+   * `template` and `values`. */
+  previewTemplate?: TemplateSchema;
+  previewValues?: FieldValues;
+  /** Phones only: draw the preview between the fields and the actions panel,
+   * so the finished graphic is in view right above the action. The desktop
+   * layout is the same either way. Default: the preview follows the form. */
+  previewAboveActionsOnMobile?: boolean;
 }
 
 /** The shared body of every template-fill surface: field form + caption on
@@ -78,6 +89,9 @@ export function TemplateFillLayout({
   previewHint,
   facility,
   readyToPostNote,
+  previewTemplate,
+  previewValues,
+  previewAboveActionsOnMobile = false,
 }: TemplateFillLayoutProps) {
   const [copied, setCopied] = useState(false);
 
@@ -94,10 +108,15 @@ export function TemplateFillLayout({
     setTimeout(() => setCopied(false), 1600);
   };
 
+  // previewAboveActionsOnMobile: below lg the form column dissolves into the
+  // grid (display: contents) and the actions panel moves to the end, which
+  // puts the preview between the last field and the actions.
+  const reorder = previewAboveActionsOnMobile;
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-start${reorder ? " max-lg:gap-4" : ""}`}>
       {/* Left — field form */}
-      <div className="lg:col-span-5 space-y-4">
+      <div className={`lg:col-span-5 space-y-4${reorder ? " max-lg:contents max-lg:space-y-0" : ""}`}>
         {header ?? (
           <div>
             <h1 className="sp-page-title">{template.name}</h1>
@@ -198,7 +217,7 @@ export function TemplateFillLayout({
         )}
 
         {/* Action panel — download / submit / review, per composer */}
-        <div className="p-4 space-y-2" style={panel}>
+        <div className={`p-4 space-y-2${reorder ? " max-lg:order-1" : ""}`} style={panel}>
           {actions}
         </div>
       </div>
@@ -227,8 +246,8 @@ export function TemplateFillLayout({
           >
             <SchemaRenderer
               ref={rendererRef}
-              schema={template}
-              values={values}
+              schema={previewTemplate ?? template}
+              values={previewValues ?? values}
               brandKit={brandKit}
               instrument={instrument}
               facility={facility}

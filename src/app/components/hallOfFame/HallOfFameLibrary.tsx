@@ -29,9 +29,13 @@ export function HallOfFameLibrary({ onOpen }: { onOpen(template: HallOfFameTempl
 
   return (
     <>
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-8 pb-2">
-        {/* Light-on-navy header treatment: the page sits on the brand wash */}
+      {/* Clear of the header bar: the portal front page's 55px from sm up
+          (PublicChooser), a little less on phones. */}
+      <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-11 sm:pt-[55px] pb-2">
+        {/* Light-on-navy header treatment: the page sits on the brand wash.
+            Two lines on most screens; text-balance keeps them even. */}
         <h1
+          className="text-balance"
           style={{
             fontFamily: "var(--font-display)",
             fontWeight: 700,
@@ -42,7 +46,7 @@ export function HallOfFameLibrary({ onOpen }: { onOpen(template: HallOfFameTempl
             marginBottom: 8,
           }}
         >
-          Create your Hall of Fame submission graphic
+          Create your Hall of Fame submission graphic for us to post on social media
         </h1>
         <p style={{ fontFamily: "var(--font-body)", color: "rgba(255,255,255,0.85)", fontSize: 16, maxWidth: 460, marginBottom: 18 }}>
           Pick a template, add the winner&rsquo;s photo and name, then download the graphic and send it with your

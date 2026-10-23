@@ -1,12 +1,13 @@
 import React, { useEffect } from "react";
 import { HOF_LEGAL_LINKS, hallOfFameTemplate } from "@/lib/hallOfFame";
-import { useRouter } from "../../router";
+import { pathFor, useRouter } from "../../router";
 import { PublicShell } from "../public/PublicApp";
 import { HallOfFameFill } from "./HallOfFameFill";
 import { HallOfFameLibrary } from "./HallOfFameLibrary";
 import "./hallOfFame.css";
 
-/** Standalone Hall of Fame graphics (/hall-of-fame and /hall-of-fame/:id).
+/** Standalone Hall of Fame graphics (/hall-of-fame-submission and
+ * /hall-of-fame-submission/:id).
  * The facility portal's chrome and components, none of its data: anonymous
  * and fully client-side, with no Supabase calls, no tokens, no usage events,
  * and no submission. Pick a template, add the photo and words, download the
@@ -22,6 +23,15 @@ export default function HallOfFameApp() {
       document.title = previous;
     };
   }, []);
+
+  // Links to the first path (/hall-of-fame) still open these pages. Show the
+  // current address, so a link copied from the address bar is the new one.
+  useEffect(() => {
+    const path = pathFor(route);
+    if (window.location.pathname !== path) {
+      window.history.replaceState(null, "", path + window.location.search + window.location.hash);
+    }
+  }, [route]);
 
   // Each view starts at the top: the second row of cards sits below the fold.
   useEffect(() => {

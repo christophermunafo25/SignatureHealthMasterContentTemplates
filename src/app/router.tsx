@@ -85,9 +85,9 @@ export function pathFor(route: Route): string {
     case "publicTemplate":
       return `/g/${encodeURIComponent(route.token)}/t/${encodeURIComponent(route.templateId)}`;
     case "hallOfFame":
-      return "/hall-of-fame";
+      return "/hall-of-fame-submission";
     case "hallOfFameTemplate":
-      return `/hall-of-fame/${encodeURIComponent(route.templateId)}`;
+      return `/hall-of-fame-submission/${encodeURIComponent(route.templateId)}`;
   }
 }
 
@@ -132,7 +132,8 @@ export function routeFor(pathname: string): Route {
       return { name: "portalAccess" };
     case "records":
       return second ? { name: "recordDetail", submissionId: second } : { name: "records" };
-    case "hall-of-fame":
+    case "hall-of-fame-submission":
+    case "hall-of-fame": // first path, kept resolving
       return second ? { name: "hallOfFameTemplate", templateId: second } : { name: "hallOfFame" };
     case "g":
       if (!second) return { name: "portal" };

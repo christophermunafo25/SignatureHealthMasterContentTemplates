@@ -59,9 +59,22 @@ export function LibrarySkeleton() {
   return (
     <>
       <Announce>Loading templates</Announce>
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-8 pb-2">
-        <SkeletonBlock style={{ width: "min(560px, 85%)", height: 34, background: ON_WASH, marginBottom: 12 }} />
-        <SkeletonBlock style={{ width: "min(440px, 75%)", height: 40, background: ON_WASH, marginBottom: 18 }} />
+      <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-11 sm:pt-[55px] pb-2">
+        {/* Heading: its own size and leading, on as many lines as it takes:
+            two, or three on phones under 389px wide (iPhone SE and mini). */}
+        <div className="flex flex-col" style={{ fontSize: "clamp(20px, 3vw, 34px)", gap: "0.25em", padding: "0.125em 0", marginBottom: 8 }}>
+          <SkeletonBlock style={{ width: "min(640px, 92%)", height: "0.8em", background: ON_WASH }} />
+          <SkeletonBlock style={{ width: "min(520px, 72%)", height: "0.8em", background: ON_WASH }} />
+          <div className="min-[389px]:hidden" style={{ height: "0.8em" }}>
+            <SkeletonBlock style={{ width: "62%", height: "100%", background: ON_WASH }} />
+          </div>
+        </div>
+        {/* Intro: three 24px lines. */}
+        <div className="flex flex-col" style={{ maxWidth: 460, gap: 10, padding: "5px 0", marginBottom: 18 }}>
+          <SkeletonBlock style={{ width: "100%", height: 14, background: ON_WASH }} />
+          <SkeletonBlock style={{ width: "92%", height: 14, background: ON_WASH }} />
+          <SkeletonBlock style={{ width: "40%", height: 14, background: ON_WASH }} />
+        </div>
       </div>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 space-y-10">
         {[0, 1].map((section) => (

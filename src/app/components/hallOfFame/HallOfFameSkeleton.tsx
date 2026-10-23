@@ -60,8 +60,8 @@ export function LibrarySkeleton() {
     <>
       <Announce>Loading templates</Announce>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-8 pb-2">
-        <SkeletonBlock style={{ width: 96, height: 12, background: ON_WASH, marginBottom: 12 }} />
-        <SkeletonBlock style={{ width: "min(320px, 75%)", height: 34, background: ON_WASH, marginBottom: 8 }} />
+        <SkeletonBlock style={{ width: "min(560px, 85%)", height: 34, background: ON_WASH, marginBottom: 12 }} />
+        <SkeletonBlock style={{ width: "min(440px, 75%)", height: 40, background: ON_WASH, marginBottom: 18 }} />
       </div>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 space-y-10">
         {[0, 1].map((section) => (
@@ -90,7 +90,7 @@ export function FillSkeleton() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start max-lg:gap-4">
         <div className="lg:col-span-5 space-y-4 max-lg:contents max-lg:space-y-0">
           <div>
-            <SkeletonBlock style={{ width: 170, height: 12, background: ON_WASH, marginBottom: 10 }} />
+            <SkeletonBlock style={{ width: 250, height: 12, background: ON_WASH, marginBottom: 10 }} />
             <SkeletonBlock style={{ width: 160, height: 30, background: ON_WASH }} />
           </div>
           {[0, 1].map((i) => (

@@ -122,7 +122,7 @@ export function HallOfFameFill({ template, onBack }: { template: HallOfFameTempl
         header={
           <div>
             <p className="sp-eyebrow mb-2" style={{ color: "var(--mint)" }}>
-              Hall of Fame · {template.schema.category}
+              Hall of Fame submission · {template.schema.category}
             </p>
             <h1
               style={{

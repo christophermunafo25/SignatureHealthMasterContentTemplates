@@ -17,7 +17,7 @@ export default function HallOfFameApp() {
 
   useEffect(() => {
     const previous = document.title;
-    document.title = "Hall of Fame graphics";
+    document.title = "Hall of Fame submission graphics";
     return () => {
       document.title = previous;
     };

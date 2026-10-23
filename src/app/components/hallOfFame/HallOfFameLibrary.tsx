@@ -31,9 +31,6 @@ export function HallOfFameLibrary({ onOpen }: { onOpen(template: HallOfFameTempl
     <>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-8 pb-2">
         {/* Light-on-navy header treatment: the page sits on the brand wash */}
-        <p className="sp-eyebrow mb-2" style={{ color: "var(--mint)" }}>
-          Hall of Fame
-        </p>
         <h1
           style={{
             fontFamily: "var(--font-display)",
@@ -45,8 +42,12 @@ export function HallOfFameLibrary({ onOpen }: { onOpen(template: HallOfFameTempl
             marginBottom: 8,
           }}
         >
-          Choose a template
+          Create your Hall of Fame submission graphic
         </h1>
+        <p style={{ fontFamily: "var(--font-body)", color: "rgba(255,255,255,0.85)", fontSize: 16, maxWidth: 460, marginBottom: 18 }}>
+          Pick a template, add the winner&rsquo;s photo and name, then download the graphic and send it with your
+          Hall of Fame submission.
+        </p>
       </div>
 
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8">
